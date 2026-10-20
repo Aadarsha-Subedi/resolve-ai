@@ -49,7 +49,7 @@ Docker rules: `Dockerfile.dev` and `Dockerfile.prod` are the only image definiti
 
 ## Architecture rules
 
-- Django modular monolith. Modules: `accounts`, `workspaces`, `tickets`, `knowledge`, `ai`, `email_integration`, `dashboard`, `audit`, plus `common`. Deploy the API and a Celery worker as separate processes.
+- Django modular monolith. Modules: `accounts`, `workspaces`, `tickets`, `knowledge`, `ai`, `email_integration`, `audit` (also serves the dashboard endpoint), plus `common`. Deploy the API and a Celery worker as separate processes.
 - Business logic lives in `services/`, never in views or models. Views validate input and format output only. Imports are absolute from the project root.
 - Every feature app: `models/`, `services/`, `serializers/`, `views/`, `constants/`, `permissions.py` or `policies.py`, `tasks.py`, `tests/`.
 - Reuse `common/` instead of per-app equivalents: `response`, `exception`, `pagination`, `filter`, `order`, `cache`, `logger`, `validators`, `models`, `serializers`, `throttling`, `storage`, `crypto`, `observability`, `email`.

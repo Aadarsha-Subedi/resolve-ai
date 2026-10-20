@@ -2201,6 +2201,103 @@
       ]
     },
     {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Dashboard (everything, last 30 days)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/dashboard/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "dashboard",
+                ""
+              ],
+              "query": []
+            },
+            "description": "One call for the dashboard screen. Owner and members (dashboard.view); non-members get 404. Defaults: period=30d, tz=UTC, all sections, limits 5/5/10. Cached 30 s (meta.cached). 30 requests a minute per user. Unknown query parameters return 400. Shape: backend/docs/DASHBOARD_API.md."
+          }
+        },
+        {
+          "name": "Dashboard (custom range, local time zone)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/dashboard/?from=2026-03-01&to=2026-03-31&tz=Asia/Kathmandu",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "dashboard",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-03-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-03-31"
+                },
+                {
+                  "key": "tz",
+                  "value": "Asia/Kathmandu"
+                }
+              ]
+            },
+            "description": "from and to are inclusive dates, at most 366 days, and cannot be combined with period. The previous period is the same number of days right before from. Day boundaries follow tz (IANA name; unknown names return 400)."
+          }
+        },
+        {
+          "name": "Dashboard (7 days, subset and limits)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/dashboard/?period=7d&include=summary,waiting&waiting_limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "dashboard",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "7d"
+                },
+                {
+                  "key": "include",
+                  "value": "summary,waiting"
+                },
+                {
+                  "key": "waiting_limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "period is 7d, 30d or 90d. include is a comma list of summary, volume, recent_tickets, waiting, activity; only those sections are returned. recent_limit, waiting_limit and activity_limit are 1 to 50."
+          }
+        }
+      ]
+    },
+    {
       "name": "Audit",
       "item": [
         {

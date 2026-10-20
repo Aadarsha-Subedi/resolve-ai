@@ -62,6 +62,8 @@ class Ticket(TimeStampModel):
             models.Index(fields=["workspace", "priority", "-created_at"]),
             models.Index(fields=["workspace", "customer_email"]),
             models.Index(fields=["workspace", "-last_activity_at"]),
+            models.Index(fields=["workspace", "resolved_at"]),
+            models.Index(fields=["workspace", "created_at"]),
         ]
 
     @property

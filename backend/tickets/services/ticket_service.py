@@ -187,7 +187,7 @@ def change_status(user: User, workspace_id, ticket_id, new_status: str) -> Ticke
         old = ticket.status
         ticket.status = new_status
         if new_status == TicketStatus.RESOLVED:
-            ticket.resolved_at = now
+            ticket.resolved_at = ticket.resolved_at or now  # set on first entry only
             ticket.closed_at = None
         elif new_status == TicketStatus.CLOSED:
             ticket.resolved_at = ticket.resolved_at or now

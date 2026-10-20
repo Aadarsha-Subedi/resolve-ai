@@ -1,0 +1,32 @@
+CACHE_NAMESPACE = "dashboard"
+CACHE_TTL_SECONDS = 30
+THROTTLE_SCOPE = "dashboard"
+
+DEFAULT_TIMEZONE = "UTC"
+DEFAULT_PERIOD = "30d"
+PERIOD_DAYS = {"7d": 7, "30d": 30, "90d": 90}
+CUSTOM_PERIOD = "custom"
+MAX_CUSTOM_DAYS = 366  # inclusive: from and to may span at most this many days
+DAILY_BUCKET_MAX_DAYS = 31  # longer periods are bucketed by week
+BUCKET_WEEK_DAYS = 7
+
+SECTION_SUMMARY = "summary"
+SECTION_VOLUME = "volume"
+SECTION_RECENT = "recent_tickets"
+SECTION_WAITING = "waiting"
+SECTION_ACTIVITY = "activity"
+SECTIONS = (
+    SECTION_SUMMARY,
+    SECTION_VOLUME,
+    SECTION_RECENT,
+    SECTION_WAITING,
+    SECTION_ACTIVITY,
+)
+
+DEFAULT_RECENT_LIMIT = 5
+DEFAULT_WAITING_LIMIT = 5
+DEFAULT_ACTIVITY_LIMIT = 10
+MIN_LIMIT = 1
+MAX_LIMIT = 50
+
+ACTIVITY_SOURCE_TICKET = "ticket"

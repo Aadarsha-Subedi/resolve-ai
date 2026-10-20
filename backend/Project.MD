@@ -43,7 +43,7 @@ Django 6.1 + DRF, PostgreSQL, Redis, Celery, `uv`, Python 3.14; Docker for dev a
 | 4 | Knowledge base (`knowledge`) | 3 | Done, details below |
 | 5 | Tickets and public portal (`tickets`) | 3 | Done, details below |
 | 6 | Gmail connection and email (`email_integration`) | 1, 3, 5 | Done, details below |
-| 7 | Dashboard (`dashboard`) | 3, 5 | Planned |
+| 7 | Dashboard (served by the `audit` app) | 3, 5 | Done, details below |
 
 Build order is 1, 3, 4, 5, 6, 7, then 2. The audit log (feature 2) is built last so it is written once against the finished product instead of being edited by every feature (owner decision, 2026-10-20). Until then each feature records what it does through its own hook (for example `accounts.services.hooks.account_event`), and the dashboard's "recent activity" uses `TicketEvent` only. Notes: feature 4 comes before 5 only because it is simpler; they are independent and may swap. Feature 6 splits into 6a (connect/disconnect Gmail), 6b (send replies and confirmations) and 6c (inbound Pub/Sub, sync button, review list).
 
@@ -205,9 +205,16 @@ Endpoints: `/api/workspaces/{workspace_id}/tickets/` (GET list with filters `sta
 
 New env vars: `RESOLVE_AI_GMAIL_PUBSUB_TOPIC`, `RESOLVE_AI_PUBSUB_PUSH_AUDIENCE`, `RESOLVE_AI_PUBSUB_PUSH_SERVICE_ACCOUNT` (all empty = push off; the sync button still works). Google Cloud setup: `docs/GOOGLE_OAUTH_SETUP.md`.
 
-### Feature 7: Dashboard (`dashboard`)
+### Feature 7: Dashboard (lives in the `audit` app)
 
-Read-only, workspace-scoped endpoints: ticket counts (open, urgent), resolved over a period, volume over time, recently updated, waiting for reply, recent activity (from `TicketEvent` and audit). No SLA or response-time claims.
+One read endpoint, `GET /api/workspaces/{workspace_id}/dashboard/`, implemented inside the `audit` app (`audit/views/dashboard.py`, `audit/services/dashboard_*.py`; owner decision, there is no separate `dashboard` app), returns everything the dashboard screen shows (owner decision: one call per screen). Exact JSON shape: [docs/DASHBOARD_API.md](docs/DASHBOARD_API.md).
+
+- **Definitions:** *active* = open, in_progress or pending. *Urgent* = active with priority urgent; *high* is counted separately (high is not folded into urgent). *Waiting for reply* = active ticket whose last customer message is later than the last agent reply (or that has no agent reply). *Resolved* is counted by `resolved_at`, which is set on the first entry into resolved or closed and cleared only when the ticket goes back to an active status. No SLA or response-time claims.
+- **Period:** `period=7d|30d|90d` (default 30d; the last N local days ending today) or `from` and `to` (dates, inclusive, at most 366 days; not combined with `period`). Every period has a same-length previous period right before it (`summary.created` and `summary.resolved` return `current` and `previous`). `tz` is an IANA name (default UTC, unknown names are rejected); day boundaries and volume buckets follow it.
+- **Sections:** `summary`, `volume` (zero-filled; daily up to 31 days, otherwise 7-day buckets counted from the period start), `recent_tickets`, `waiting`, `activity` (ticket events only, source `ticket`; never message text or customer emails). `include=a,b` returns a subset. `recent_limit` (5), `waiting_limit` (5), `activity_limit` (10), each 1 to 50. Unknown query parameters are rejected with 400.
+- **Access:** permission code `dashboard.view` for owner and member; non-members and removed members get 404. Access is checked on every call, before the cache.
+- **Performance:** cached 30 seconds in Redis per workspace and normalised query (the cache key uses the resolved dates, time zone, sections and limits, not the raw query string); a fixed number of queries (about 10, none per row) whatever the data size; throttle scope `dashboard`, 30 per minute per user. `meta.cached` tells whether the response came from the cache.
+- **Not included (deferred with the AI phase):** most-used articles and AI usage metrics. Audit-log rows are not mixed into `activity`.
 
 ## Deferred (not in v1)
 

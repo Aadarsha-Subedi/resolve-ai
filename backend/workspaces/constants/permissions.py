@@ -18,6 +18,7 @@ KNOWLEDGE_VIEW = "knowledge.view"
 KNOWLEDGE_MANAGE = "knowledge.manage"
 TICKETS_VIEW = "tickets.view"
 TICKETS_MANAGE = "tickets.manage"
+DASHBOARD_VIEW = "dashboard.view"
 AUDIT_VIEW = "audit.view"  # owner only
 
 _MEMBER_PERMISSIONS = frozenset(
@@ -28,6 +29,7 @@ _MEMBER_PERMISSIONS = frozenset(
         KNOWLEDGE_MANAGE,
         TICKETS_VIEW,
         TICKETS_MANAGE,
+        DASHBOARD_VIEW,
     }
 )
 

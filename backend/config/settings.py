@@ -189,6 +189,7 @@ STRICT_THROTTLE_RATES = {
     "portal_ticket": "10/hour",  # public ticket submission, per IP
     "join_link": "20/hour",  # join-link redemption, per IP
     "ai": "30/min",  # AI calls, per user
+    "dashboard": "30/min",  # dashboard reads, per user
     "webhook": "300/min",
 }
 RELAXED_THROTTLE_RATES = {

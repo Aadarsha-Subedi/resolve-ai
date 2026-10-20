@@ -654,6 +654,10 @@ user", confirm) -
 recent workspace activity - most-used KB articles - AI request counts,
 tokens where available, errors, and rate-limit events
 
+Implemented (v1): a single read endpoint `GET /api/workspaces/{id}/dashboard/`
+covering the ticket metrics above (see `docs/DASHBOARD_API.md`); most-used
+articles and AI usage wait for the AI phase.
+
 Do not claim SLA compliance or average response time until the metric
 definitions and required timestamps are agreed.
 

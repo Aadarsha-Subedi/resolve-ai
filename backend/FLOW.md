@@ -84,6 +84,11 @@ All routes: `/api/workspaces/{workspace_id}/knowledge/...` -> `workspaces/servic
 - **Recording:** a service emits its hook signal (`workspaces/services/hooks.py::emit`, `knowledge/services/hooks.py::emit`, `tickets/services/hooks.py::emit`, `accounts/services/hooks.py::emit`, `email_integration/services/hooks.py::emit`) -> `audit/signals.py` receiver -> `constants/actions.py::ACTIONS` (is it registered, what is the target, is it account-level) -> `services/recorder.py::record` -> `services/sanitize.py::sanitize_metadata` -> `AuditEvent` row. Any failure is logged and swallowed.
 - **Reading:** `audit/views/events.py::AuditEventListView.get` -> `AuditFilterSerializer` -> `services/list_service.py::list_events` (`workspaces/services/access.py::require_permission` with `AUDIT_VIEW`, owner only) -> paginated list, newest first.
 
-## 12. Planned flows (not implemented yet; see the LLD, section 12)
+## 12. Dashboard (implemented, inside the `audit` app)
+
+- **Read:** `audit/views/dashboard.py::DashboardView.get` (throttles `UserThrottle`, `WorkspaceThrottle`, scope `dashboard`) -> `serializers/dashboard_requests.py::DashboardQuerySerializer.parse` (unknown, blank or invalid parameters -> 400) -> `audit/services/dashboard_service.py::get_dashboard`: `workspaces/services/access.py::require_permission` with `DASHBOARD_VIEW` (404 for non-members) -> `services/dashboard_period.py::resolve` (window and previous window in the requested time zone) -> `common/cache/manager.py::get_or_set` (30 s, key from workspace, dates, tz, sections, limits) -> on a miss `_build` -> `services/dashboard_metrics.py::summary`, `volume`, `recent_tickets`, `waiting_tickets`, `activity` -> item builders in `serializers/dashboard_responses.py` -> `DashboardData` in a `SuccessResponse` with `meta.cached`.
+- **`resolved_at`:** `tickets/services/ticket_service.py::change_status` sets it on the first entry to resolved or closed and clears it when the ticket returns to open, in progress or pending.
+
+## 13. Planned flows (not implemented yet; see the LLD, section 12)
 
 Mark each as implemented, with real file references, when built: Connect Gmail, public ticket creation, agent reply, AI-assisted reply, inbound Gmail (Pub/Sub push and manual sync button).

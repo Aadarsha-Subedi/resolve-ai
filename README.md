@@ -7,8 +7,8 @@ A capstone project that uses AI to resolve customer queries: a multi-tenant supp
 | Area | State |
 | --- | --- |
 | Design (LLD) | Draft, owner decisions applied: [backend/docs/ResolveAI_LLD.md](backend/docs/ResolveAI_LLD.md) |
-| Backend | In progress. `common` app and config done; features 1 (accounts and sessions), 3 (workspaces and membership) and 4 (knowledge base) and 5 (tickets and portal) 6 (Gmail and email) and 2 (audit log) built; the dashboard is the remaining feature; audit log built last |
-| Frontend | Not started |
+| Backend | In progress. Reusable `common` app and project config done; feature apps next |
+| Frontend | Scaffold and reusable component library done; design system draft awaiting approval: [frontend/README.md](frontend/README.md) |
 | LLM layer (full-text search, Gemini) | After frontend and backend scaffolding |
 
 ## Repository layout
@@ -17,13 +17,13 @@ A capstone project that uses AI to resolve customer queries: a multi-tenant supp
 resolve-ai/
   README.md      this file (kept current as the project evolves)
   backend/       Django REST API: code, docs/ (LLD), postman/, CLAUDE.md, DECISION.md, FLOW.md
-  frontend/      React + TypeScript app (not started)
+  frontend/      React + TypeScript app: README.md, PROJECT.md, DECISION.md, FLOW.md
 ```
 
 ## Stack
 
 - **Backend:** Django 6.1 + Django REST Framework, PostgreSQL, Redis, Celery, managed with `uv` (Python 3.14)
-- **Frontend:** React + TypeScript
+- **Frontend:** React 19 + TypeScript, Vite, TanStack (Router, Query, Table), Tailwind v4 + shadcn/ui, pnpm
 - **Auth:** Google OAuth with server-side Django sessions
 - **Email:** Gmail API (OAuth); inbound mail via Pub/Sub push plus a manual sync button
 - **AI:** Gemini API, with PostgreSQL full-text search over published knowledge-base content
@@ -32,19 +32,7 @@ resolve-ai/
 
 Built so far (`backend/common/`): response envelope, exception handling with stable error codes, pagination/filter/order helpers, strict serializers, model mixins (timestamps, soft delete, cache), request-id logging, Sentry hook, throttling (including per-workspace), file storage (R2/local/in-memory), Fernet encryption helper, `/api/health/`.
 
-Feature 1, `backend/accounts/`: Google-only sign-in through django-allauth (redirect flow with PKCE), custom UUIDv7 `User` without a password, 14-day sessions (30 days with remember me), device session list with revoke-one and log-out-everywhere, `/api/me/` profile, and account deletion with a 7-day grace period. Needs `RESOLVE_AI_GOOGLE_CLIENT_ID` and `RESOLVE_AI_GOOGLE_CLIENT_SECRET` in `backend/.env` (see `backend/docs/GOOGLE_OAUTH_SETUP.md`).
-
-Feature 3, `backend/workspaces/`: workspaces with an owner and members, join links (1 hour by default) and invitations to Google accounts, ownership transfer, deletion with a 7-day grace period, and a logo stored in R2.
-
-Feature 4, `backend/knowledge/`: knowledge-base articles with categories and PDF/TXT uploads, all stored in R2 under the workspace and counted in a 50 MB per-workspace quota; filters by title, status and category.
-
-Feature 5, `backend/tickets/`: tickets with notes, replies and history for the team, and a public portal where customers submit tickets without logging in (rate limited, honeypot).
-
-Feature 6, `backend/email_integration/`: Gmail through the same Google sign-in; replies are emailed from the agent's own Gmail, customer replies are matched to tickets by email headers (push and a sync button), and only ticket mail is stored.
-
-Feature 2, `backend/audit/`: an append-only audit log of sensitive actions (members, ownership, join links, knowledge base, tickets, Gmail connection), readable by the workspace owner only.
-
-v1 (backend only, no AI/RAG) is mapped in [backend/Project.MD](backend/Project.MD). Build order: accounts and sessions, workspaces, knowledge base, tickets and portal, Gmail and email, dashboard, then the audit log last. The `ai` app (full-text search, Gemini) comes after.
+v1 (backend only, no AI/RAG) is mapped in [backend/Project.MD](backend/Project.MD). Build order: accounts and sessions, audit log, workspaces, knowledge base, tickets and portal, Gmail and email, dashboard. The `ai` app (full-text search, Gemini) comes after.
 
 Quick start:
 
