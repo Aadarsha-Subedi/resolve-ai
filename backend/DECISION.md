@@ -89,3 +89,10 @@ Format: **Date, title** / Decision / Reason / Alternatives / Files.
 - **Reason:** keep one throttling mechanism and the response envelope; never let an OAuth code, session id or token reach logs or responses.
 - **Alternatives:** allauth headless API and its HTML pages (rejected, as before); a `SessionMeta` table (not needed).
 - **Files:** `accounts/**`, `config/settings.py`, `config/urls.py`, `common/logger/*`, `pyproject.toml`, `uv.lock`, `postman/*`, `README.md`, `../README.md`, `FLOW.md`, `Project.MD`.
+
+## 2026-10-20, Audit log (feature 2) moves to the end of the v1 build order
+- **Decision:** build order is now accounts, workspaces, knowledge base, tickets and portal, Gmail and email, dashboard, then audit. Feature numbers are unchanged so existing references stay valid.
+- **Reason:** owner: audit is written once, against the finished product, instead of being updated every time a feature adds actions.
+- **Consequences:** workspaces no longer depends on audit; the dashboard's "recent activity" uses `TicketEvent` only until audit exists. Features still emit their own hook or signal for sensitive actions (as `accounts.services.hooks.account_event` already does) so audit can subscribe later without touching feature code.
+- **Alternatives:** keep audit second and extend it per feature (rejected by the owner).
+- **Files:** `Project.MD`, `CLAUDE.md`, `../README.md`.

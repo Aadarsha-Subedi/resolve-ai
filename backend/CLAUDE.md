@@ -44,7 +44,7 @@ Docker rules: `Dockerfile.dev` and `Dockerfile.prod` are the only image definiti
 ## Build order
 
 1. `common/` reusable app (done first, before any feature).
-2. Frontend and backend feature scaffolding, one module at a time: accounts, workspaces, tickets, knowledge, email_integration, dashboard, audit.
+2. Frontend and backend feature scaffolding, one module at a time: accounts, workspaces, knowledge, tickets, email_integration, dashboard, then audit last (it is written once against the finished product).
 3. LLM layer last: PostgreSQL full-text search over knowledge content, then Gemini (`ai/`).
 
 ## Architecture rules

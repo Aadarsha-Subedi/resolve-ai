@@ -38,14 +38,14 @@ Django 6.1 + DRF, PostgreSQL, Redis, Celery, `uv`, Python 3.14; Docker for dev a
 | --- | --- | --- | --- |
 | 0 | Foundation: `common` app, config, Docker, Postman, docs | none | Done |
 | 1 | Accounts and sessions (`accounts`) | 0 | Done, breakdown below |
-| 2 | Audit log (`audit`) | 1 | Next |
-| 3 | Workspaces and membership (`workspaces`) | 1, 2 | Planned |
+| 2 | Audit log (`audit`) | all other features | Deferred: built last, after every other v1 feature |
+| 3 | Workspaces and membership (`workspaces`) | 1 | Next |
 | 4 | Knowledge base (`knowledge`) | 3 | Planned |
 | 5 | Tickets and public portal (`tickets`) | 3 | Planned |
 | 6 | Gmail connection and email (`email_integration`) | 1, 3, 5 | Planned |
-| 7 | Dashboard (`dashboard`) | 3, 5, 2 | Planned |
+| 7 | Dashboard (`dashboard`) | 3, 5 | Planned |
 
-Notes: feature 4 comes before 5 only because it is simpler; they are independent and may swap. Feature 6 splits into 6a (connect/disconnect Gmail), 6b (send replies and confirmations) and 6c (inbound Pub/Sub, sync button, review list).
+Build order is 1, 3, 4, 5, 6, 7, then 2. The audit log (feature 2) is built last so it is written once against the finished product instead of being edited by every feature (owner decision, 2026-10-20). Until then each feature records what it does through its own hook (for example `accounts.services.hooks.account_event`), and the dashboard's "recent activity" uses `TicketEvent` only. Notes: feature 4 comes before 5 only because it is simpler; they are independent and may swap. Feature 6 splits into 6a (connect/disconnect Gmail), 6b (send replies and confirmations) and 6c (inbound Pub/Sub, sync button, review list).
 
 ## Feature 1: Accounts and sessions (granular breakdown)
 
@@ -122,7 +122,7 @@ Throttling and rate limits (checked against allauth 65.20.0):
 - Settings: `AUTH_USER_MODEL = "accounts.User"`; apps `allauth`, `allauth.account`, `allauth.socialaccount`, `allauth.socialaccount.providers.google`, `allauth.usersessions`; `allauth.account.middleware.AccountMiddleware` and the usersessions middleware; `SOCIALACCOUNT_PROVIDERS["google"]` with `APPS` from env (`GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`), PKCE on; `ACCOUNT_USER_MODEL_USERNAME_FIELD = None`, `ACCOUNT_EMAIL_VERIFICATION = "none"` (Google verifies), `SOCIALACCOUNT_AUTO_SIGNUP = True`, `SOCIALACCOUNT_LOGIN_ON_GET = True`, `SOCIALACCOUNT_STORE_TOKENS = False`, adapter classes, `ACCOUNT_DELETION_GRACE_DAYS = 7`, `PUBLIC_API_URL`, the `google` (20/min) and `account_delete` throttle rates, beat schedule entries.
 - New env vars in `.env.example`: `RESOLVE_AI_GOOGLE_CLIENT_ID`, `RESOLVE_AI_GOOGLE_CLIENT_SECRET`, `RESOLVE_AI_PUBLIC_API_URL`.
 - Constants in `accounts/constants/` (messages, error codes, cache keys, session settings, task names). Views: an authenticated base using the common envelope.
-- Hooks for later features: `ownership_checks` registry (workspaces) and an `accounts.services.hooks` event for audit (feature 2).
+- Hooks for later features: `ownership_checks` registry (workspaces) and an `accounts.services.hooks` event that audit (feature 2, built last) subscribes to.
 - Postman: `Auth` and `Account` folders; `csrfToken` captured from the CSRF cookie.
 - Tests: first login vs repeat login (mocked Google), unverified email rejected, email held by another `sub` rejected, inactive user rejected, state mismatch / failed exchange redirects to `/login?google_error=`, open-redirect protection on `next`, session rotation, remember-me expiry, list/revoke one/revoke all, revoked session rejected, deletion blocked by an ownership check, deletion grace and cancel by login, purge task, CSRF on POST endpoints, throttling, no token or secret in responses or logs, allauth password/signup URLs not reachable.
 
