@@ -65,3 +65,5 @@ class EventType(models.TextChoices):
     DETAILS_CHANGED = "details_changed", "Details changed"
     PUBLIC_REPLY_ADDED = "public_reply_added", "Public reply added"
     INTERNAL_NOTE_ADDED = "internal_note_added", "Internal note added"
+    CUSTOMER_REPLY_RECEIVED = "customer_reply_received", "Customer reply received"
+    EMAIL_DELIVERY_FAILED = "email_delivery_failed", "Email delivery failed"

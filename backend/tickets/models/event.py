@@ -20,7 +20,7 @@ class TicketEvent(models.Model):
     actor_user = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+"
     )
-    event_type = models.CharField(max_length=25, choices=EventType.choices)
+    event_type = models.CharField(max_length=30, choices=EventType.choices)
     old_value = models.JSONField(null=True, blank=True)
     new_value = models.JSONField(null=True, blank=True)
     metadata = models.JSONField(default=dict, blank=True)

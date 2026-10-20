@@ -90,7 +90,7 @@
                 }
               ]
             },
-            "description": "Open this URL in a browser (Postman cannot complete Google's consent screen). Redirects to Google; after sign-in the callback redirects to the frontend /app (or /login?google_error=<code>). remember=1 gives a 30-day session, otherwise 14 days. Codes: cancelled, google_failed, rate_limited, email_unverified, email_conflict, account_disabled."
+            "description": "Open this URL in a browser (Postman cannot complete Google's consent screen). Redirects to Google; after sign-in the callback redirects to the frontend /app (or /login?google_error=<code>). remember=1 gives a 30-day session, otherwise 14 days. Codes: cancelled, google_failed, rate_limited, email_unverified, email_conflict, account_disabled. Add reconnect=1 to force Google's consent screen and obtain a fresh Gmail refresh token (works for signed-in users too). Sign-in now asks for Gmail send and read access; users may decline it and still log in."
           }
         },
         {
@@ -1932,6 +1932,236 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"customer_email\": \"customer@example.com\",\n  \"customer_name\": \"Cara\",\n  \"subject\": \"Where is my order?\",\n  \"description\": \"I ordered last week and nothing arrived.\",\n  \"category\": \"general\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Email (Gmail)",
+      "item": [
+        {
+          "name": "Gmail status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/email/gmail/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "email",
+                "gmail",
+                ""
+              ]
+            },
+            "description": "Connection created by Google sign-in. status: connected, not_connected (Gmail permission declined or no refresh token), reauth_required (token expired or revoked; Testing-mode tokens last 7 days), disconnected. When reconnecting is needed `reconnect_path` is a sign-in URL that forces Google's consent screen. Tokens are never returned."
+          }
+        },
+        {
+          "name": "Sync latest mails",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/email/gmail/sync/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "email",
+                "gmail",
+                "sync",
+                ""
+              ]
+            },
+            "description": "Reads at most the newest 30 inbox messages of your Gmail and files customer replies on their tickets (matched by email headers, never by subject). Mail from known customers that cannot be matched goes to the review list; everything else is ignored and not stored. Limited to 6 per minute."
+          }
+        },
+        {
+          "name": "Disconnect Gmail",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/email/gmail/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "email",
+                "gmail",
+                ""
+              ]
+            },
+            "description": "Stops the push watch, revokes the grant at Google and deletes the stored refresh token. Signing in again can reconnect."
+          }
+        },
+        {
+          "name": "List mail to review",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/email/review/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "email",
+                "review",
+                ""
+              ]
+            },
+            "description": "Messages from known customers that could not be matched to a ticket (sender, subject and a short snippet; newest 30, kept 30 days)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const items = (pm.response.json().data || {}).items || [];",
+                  "if (items.length) { pm.environment.set('reviewId', items[0].id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Attach mail to ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/email/review/{{reviewId}}/attach/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "email",
+                "review",
+                "{{reviewId}}",
+                "attach",
+                ""
+              ]
+            },
+            "description": "Files the message on the chosen ticket (its text is fetched from Gmail again) and removes it from the review list.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"workspace_id\": \"{{workspaceId}}\",\n  \"ticket_id\": \"{{ticketId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Dismiss mail",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/email/review/{{reviewId}}/dismiss/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "email",
+                "review",
+                "{{reviewId}}",
+                "dismiss",
+                ""
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Resend failed reply",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/messages/{{messageId}}/resend/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                "{{ticketId}}",
+                "messages",
+                "{{messageId}}",
+                "resend",
+                ""
+              ]
+            },
+            "description": "Queues a public reply whose delivery_status is failed again (sender or owner). delivery_error says why it failed: gmail_not_connected, gmail_reauth_required, gmail_rejected, gmail_unavailable."
+          }
+        },
+        {
+          "name": "Gmail push (Google Pub/Sub only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/email/gmail/push/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "email",
+                "gmail",
+                "push",
+                ""
+              ]
+            },
+            "description": "Called by Google Pub/Sub with a signed JWT, never by clients. Listed for reference; it needs RESOLVE_AI_PUBSUB_PUSH_AUDIENCE and RESOLVE_AI_PUBSUB_PUSH_SERVICE_ACCOUNT.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": {\n    \"data\": \"<base64 of {emailAddress, historyId}>\",\n    \"messageId\": \"1\"\n  },\n  \"subscription\": \"projects/<project>/subscriptions/<name>\"\n}"
             }
           }
         }

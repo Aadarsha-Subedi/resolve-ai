@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "workspaces",
     "knowledge",
     "tickets",
+    "email_integration",
 ]
 
 MIDDLEWARE = [
@@ -181,6 +182,7 @@ STRICT_THROTTLE_RATES = {
     "anon": "60/min",
     "user": "600/min",
     "google": "20/min",  # Google sign-in start and callback, per IP
+    "gmail_sync": "6/min",  # manual "Sync latest mails", per user
     "account_delete": "5/hour",  # account deletion requests, per user
     "workspace": "1200/min",  # all users of one workspace together
     "portal_ticket": "10/hour",  # public ticket submission, per IP
@@ -231,6 +233,10 @@ AUTHENTICATION_BACKENDS = [
 GOOGLE_CLIENT_ID = env("RESOLVE_AI_GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = env("RESOLVE_AI_GOOGLE_CLIENT_SECRET")
 PUBLIC_API_URL = env("RESOLVE_AI_PUBLIC_API_URL")  # origin the browser uses for /api
+GMAIL_SCOPES = [
+    "https://www.googleapis.com/auth/gmail.send",
+    "https://www.googleapis.com/auth/gmail.readonly",
+]
 ACCOUNT_ADAPTER = "accounts.adapters.AccountAdapter"
 SOCIALACCOUNT_ADAPTER = "accounts.adapters.SocialAccountAdapter"
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
@@ -252,8 +258,10 @@ SOCIALACCOUNT_PROVIDERS = {
                 "key": "",
             }
         ],
-        "SCOPE": ["openid", "email", "profile"],
-        "AUTH_PARAMS": {"prompt": "select_account"},
+        # One sign-in flow: login plus Gmail (send and read). Gmail needs offline access
+        # so Google hands back a refresh token (only on first consent or prompt=consent).
+        "SCOPE": ["openid", "email", "profile", *GMAIL_SCOPES],
+        "AUTH_PARAMS": {"prompt": "select_account", "access_type": "offline"},
         "OAUTH_PKCE_ENABLED": True,
     }
 }
@@ -262,6 +270,21 @@ ACCOUNT_DELETION_GRACE_DAYS = 7
 # Workspaces: deleted workspaces are purged after this many days
 
 WORKSPACE_DELETION_GRACE_DAYS = 7
+
+# Gmail push (Pub/Sub). All three empty = push disabled; the manual sync button still works.
+
+GMAIL_PUBSUB_TOPIC = env(
+    "RESOLVE_AI_GMAIL_PUBSUB_TOPIC"
+)  # projects/<project>/topics/<topic>
+PUBSUB_PUSH_AUDIENCE = env(
+    "RESOLVE_AI_PUBSUB_PUSH_AUDIENCE"
+)  # URL set on the push subscription
+PUBSUB_PUSH_SERVICE_ACCOUNT = env(
+    "RESOLVE_AI_PUBSUB_PUSH_SERVICE_ACCOUNT"
+)  # signs push JWTs
+GMAIL_MANUAL_SYNC_LIMIT = 30  # latest inbox messages read by "Sync latest mails"
+GMAIL_REVIEW_MAX_PER_USER = 30  # newest unmatched messages kept for review
+GMAIL_REVIEW_RETENTION_DAYS = 30
 
 # Encryption keys for secrets at rest (Gmail refresh tokens, ...)
 
@@ -323,6 +346,14 @@ CELERY_BEAT_SCHEDULE: dict = {  # feature apps register their periodic tasks her
     "knowledge-release-stale-uploads": {
         "task": "knowledge.release_stale_uploads",
         "schedule": crontab(minute=15),
+    },
+    "email-renew-gmail-watches": {
+        "task": "email_integration.renew_gmail_watches",
+        "schedule": crontab(hour=2, minute=30),
+    },
+    "email-purge-old-review-items": {
+        "task": "email_integration.purge_old_review_items",
+        "schedule": crontab(hour=3, minute=45),
     },
     "accounts-clear-expired-sessions": {
         "task": "accounts.clear_expired_sessions",

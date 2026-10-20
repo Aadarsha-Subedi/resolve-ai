@@ -47,6 +47,13 @@ class GoogleStartTests(AccountsTestCase):
             self.assertEqual(self.client.get(path).status_code, 404, path)
 
 
+class GoogleStartSignedInTests(AccountsTestCase):
+    def test_signed_in_user_goes_straight_to_the_app(self):
+        self.sign_in()
+        response = self.client.get(START + "?next=/inbox")
+        self.assertEqual(response["Location"], f"{FRONT}/inbox")
+
+
 class GoogleCallbackTests(AccountsTestCase):
     def test_first_login_creates_user_without_password(self):
         response = self.sign_in()
@@ -62,7 +69,9 @@ class GoogleCallbackTests(AccountsTestCase):
     def test_repeat_login_reuses_user_and_refreshes_avatar(self):
         self.sign_in()
         User.objects.filter(email="jane@example.com").update(display_name="Custom")
-        self.sign_in(google_identity(picture="https://lh3.example.com/a/new"))
+        self.sign_in(
+            google_identity(picture="https://lh3.example.com/a/new"), client=APIClient()
+        )
         self.assertEqual(User.objects.count(), 1)
         user = User.objects.get()
         self.assertEqual(user.avatar_url, "https://lh3.example.com/a/new")

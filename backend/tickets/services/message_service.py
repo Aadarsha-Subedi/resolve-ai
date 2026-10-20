@@ -74,5 +74,6 @@ def add_message(
         ticket,
         user,
         hooks.ACTION_REPLY_ADDED if public else hooks.ACTION_NOTE_ADDED,
+        message_id=str(message.id),
     )
     return message

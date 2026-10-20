@@ -11,7 +11,7 @@ Sign-in uses **django-allauth's Google provider with the OAuth 2.0 authorization
 3. Google redirects the browser back with `?code=...&state=...` to `GET /api/auth/google/login/callback/` (a top-level GET, so the Lax cookie is sent).
 4. allauth checks `state`, exchanges the code with the client secret, validates the ID token, and logs the user in; our adapter then redirects to the app (or to `/login?google_error=...` on failure).
 
-Scopes for sign-in: `openid email profile` (non-sensitive, no Google verification review needed). Gmail access is a separate consent added in feature 6.
+Scopes: `openid email profile` plus `gmail.send` (send mail) and `gmail.readonly` (read mail for the inbound sync). There is **one** flow: Gmail access is requested at sign-in with offline access, and the server keeps the refresh token encrypted. Users may untick the Gmail permissions and still sign in; Gmail is then shown as not connected. See the Gmail section below.
 
 ## Why not the Google button / popup (lessons from project-management)
 
@@ -45,9 +45,9 @@ Then fill in the tabs:
 
 - **Branding:** logo (optional, 120x120 PNG; adding a logo can trigger brand verification), Application home page, Privacy policy link and Terms link (needed to publish; placeholder pages are fine while testing), and **Authorized domains** (add your production domain, for example `example.com`; not needed for localhost).
 - **Audience:** keep Publishing status **Testing** while developing and add your Google addresses under **Test users** (up to 100). Only test users can sign in while in Testing. Move to **In production** when you launch; with only `openid email profile` there is no scope review. A "Google hasn't verified this app" screen can appear until branding is verified; it is skippable for test users.
-- **Data access:** Add or remove scopes, select `openid`, `.../auth/userinfo.email`, `.../auth/userinfo.profile`, Update, Save. Do not add Gmail scopes yet.
+- **Data access:** first enable the Gmail API (APIs & Services > Library > Gmail API > Enable). Then Add or remove scopes: select `openid`, `.../auth/userinfo.email`, `.../auth/userinfo.profile`, and the Gmail scopes `https://www.googleapis.com/auth/gmail.send` and `https://www.googleapis.com/auth/gmail.readonly` (if the picker does not list them, use "Manually add scopes" and paste the two URLs). Update, Save. Do not add `gmail.modify`.
 
-Important for feature 6 (Gmail): in **Testing** mode, Google expires refresh tokens after 7 days, and `gmail.readonly`/`gmail.modify` are restricted scopes that need a security assessment before production. Plan that review early; sign-in itself is unaffected.
+Important: in **Testing** mode, Google expires refresh tokens after 7 days, so users must sign in again (use `?reconnect=1`, or just sign out and in) about weekly for Gmail to keep working. `gmail.readonly` is a restricted scope and `gmail.send` is sensitive: before real users can sign in, the app needs OAuth verification and, for the restricted scope, a security assessment. Until then only the listed test users (up to 100) can sign in at all, and they see an unverified-app warning. Plan that review early.
 
 ## Step 3: Create the OAuth client
 
@@ -74,7 +74,22 @@ RESOLVE_AI_PUBLIC_API_URL=http://localhost:3000
 
 These variables are added to `.env.example` and `config/settings.py` when feature 1 is built. Never commit `.env` or the secret.
 
-## Step 5: Verify
+## Step 5: Gmail push notifications (optional, Pub/Sub)
+
+Without push, new customer mail is read only when an agent presses "Sync latest mails". To receive it as it arrives:
+
+1. Enable the **Cloud Pub/Sub API** in the same project.
+2. Create a topic, for example `gmail-inbound`. Give `gmail-api-push@system.gserviceaccount.com` the **Pub/Sub Publisher** role on that topic (topic > Permissions).
+3. Create a **push subscription** on the topic. Endpoint URL: `https://<your public API origin>/api/email/gmail/push/` (it must be reachable from the internet; use a tunnel such as ngrok in development). Enable **authentication** and choose a service account (create one such as `gmail-push@<project>.iam.gserviceaccount.com`); set the **audience** to the same endpoint URL.
+4. Put these in `backend/.env`, then run `docker compose up -d api`:
+   ```
+   RESOLVE_AI_GMAIL_PUBSUB_TOPIC=projects/<project-id>/topics/gmail-inbound
+   RESOLVE_AI_PUBSUB_PUSH_AUDIENCE=https://<your public API origin>/api/email/gmail/push/
+   RESOLVE_AI_PUBSUB_PUSH_SERVICE_ACCOUNT=gmail-push@<project>.iam.gserviceaccount.com
+   ```
+5. Sign in again (or `?reconnect=1`) so the watch is registered; it is renewed daily by Celery beat. Leaving the three variables empty turns push off. A Celery worker (and beat for renewals) must be running.
+
+## Step 6: Verify
 
 1. Start the stack (`docker compose up --build`).
 2. Open `http://localhost:3000/api/auth/google/start/` (or the backend URL). You should land on Google's account chooser, then return to the app.

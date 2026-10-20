@@ -45,6 +45,7 @@ uv run ruff check . && uv run ruff format .
 - `workspaces/` feature 3: workspaces, membership, join links, invitations, ownership transfer, logo (same layout as `accounts/`)
 - `knowledge/` feature 4: articles, categories, PDF/TXT uploads and the shared storage quota (same layout)
 - `tickets/` feature 5: tickets, messages, history and the public portal (same layout)
+- `email_integration/` feature 6: Gmail grant at sign-in, sending replies and confirmations, inbound sync and push, review list (same layout, plus `clients/`)
 - Feature apps are added one at a time (see the root README)
 
 ## Accounts (feature 1)
@@ -75,6 +76,10 @@ Articles (Markdown, up to 200 KB), categories (five defaults per workspace) and 
 
 Agents (owner and members) create and work tickets under `/api/workspaces/{id}/tickets/`: per-workspace numbers, fixed categories, priorities, five statuses, internal notes and public replies, history, and filters (status, priority, category, dates, search, waiting for reply). Customers use the public portal with no login: `GET /api/portal/{slug}/` and `POST /api/portal/{slug}/tickets/` (per-IP limit, 5 tickets per email per hour, hidden honeypot field `website`). Public replies are stored as `queued`; emailing them and the portal confirmation arrive with feature 6. Rules and endpoints: [Project.MD](Project.MD), Feature 5. Postman folders: `Tickets`, `Portal (public)`.
 
-Celery beat runs `accounts.purge_deleted_accounts`, `workspaces.purge_deleted_workspaces`, `knowledge.release_stale_uploads` and `accounts.clear_expired_sessions` daily (`docker compose --profile worker` starts a worker; run a beat process for the schedule). Later features plug in through `accounts.services.hooks` (`register_ownership_check`, the `account_event` signal).
+## Gmail and email (feature 6)
+
+Gmail is connected by the same Google sign-in (no second flow): the login asks for Gmail send and read access, and the refresh token is stored encrypted. Agents' public replies are emailed from their own Gmail; the portal confirmation goes out from the owner's Gmail; customer replies come back through Pub/Sub push or the "Sync latest mails" button (newest 30 messages) and are matched to tickets by email headers. Only mail that belongs to tickets is stored. Rules, endpoints and the privacy model: [Project.MD](Project.MD), Feature 6; Google Cloud setup (scopes, Pub/Sub): [docs/GOOGLE_OAUTH_SETUP.md](docs/GOOGLE_OAUTH_SETUP.md). Postman folder: `Email (Gmail)`. A running Celery worker is needed for sending (`docker compose --profile worker up`).
+
+Celery beat runs `accounts.purge_deleted_accounts`, `workspaces.purge_deleted_workspaces`, `knowledge.release_stale_uploads`, `email_integration.renew_gmail_watches`, `email_integration.purge_old_review_items` and `accounts.clear_expired_sessions` daily (`docker compose --profile worker` starts a worker; run a beat process for the schedule). Later features plug in through `accounts.services.hooks` (`register_ownership_check`, the `account_event` signal).
 
 Docs: `Project.MD` (v1 feature map and build order), `CLAUDE.md` (rules), `DECISION.md` (decision log), `FLOW.md` (code paths).

@@ -42,7 +42,7 @@ Django 6.1 + DRF, PostgreSQL, Redis, Celery, `uv`, Python 3.14; Docker for dev a
 | 3 | Workspaces and membership (`workspaces`) | 1 | Done, details below |
 | 4 | Knowledge base (`knowledge`) | 3 | Done, details below |
 | 5 | Tickets and public portal (`tickets`) | 3 | Done, details below |
-| 6 | Gmail connection and email (`email_integration`) | 1, 3, 5 | Planned |
+| 6 | Gmail connection and email (`email_integration`) | 1, 3, 5 | Done, details below |
 | 7 | Dashboard (`dashboard`) | 3, 5 | Planned |
 
 Build order is 1, 3, 4, 5, 6, 7, then 2. The audit log (feature 2) is built last so it is written once against the finished product instead of being edited by every feature (owner decision, 2026-10-20). Until then each feature records what it does through its own hook (for example `accounts.services.hooks.account_event`), and the dashboard's "recent activity" uses `TicketEvent` only. Notes: feature 4 comes before 5 only because it is simpler; they are independent and may swap. Feature 6 splits into 6a (connect/disconnect Gmail), 6b (send replies and confirmations) and 6c (inbound Pub/Sub, sync button, review list).
@@ -183,11 +183,20 @@ Rules (owner approved the proposed defaults, 2026-10-20):
 
 Endpoints: `/api/workspaces/{workspace_id}/tickets/` (GET list with filters `status`, `priority`, `category`, `created_from`, `created_to`, `q`, `waiting_for_reply`, `ordering`; POST create), `tickets/{id}/` (GET, PATCH), `tickets/{id}/status/` (POST), `tickets/{id}/messages/` (GET, POST), `tickets/{id}/events/` (GET), and the public `/api/portal/{slug}/` and `/api/portal/{slug}/tickets/`.
 
-### Feature 6: Gmail connection and email (`email_integration`)
+### Feature 6: Gmail connection and email (`email_integration`), built
 
-- 6a: `GmailConnection` (one per user, `sub` must equal login `sub`, encrypted refresh token via `common.crypto`, status), connect/disconnect/status endpoints.
-- 6b: `EmailDeliveryAttempt`, outbound reply and portal confirmation through Celery, retries with idempotency, delivery status on messages.
-- 6c: Pub/Sub push endpoint (verified), `EmailSyncCheckpoint`, "Sync latest mails" endpoint, header-based matching and dedupe, review list for unmatched or ambiguous mail (attach to ticket or dismiss), Gmail watch renewal task.
+**One sign-in flow.** Owner decision (2026-10-20): there is no separate "Connect Gmail" flow. Google sign-in requests `openid email profile` plus `gmail.send` and `gmail.readonly` with `access_type=offline`. After login, `email_integration.signals.record_gmail_grant` (allauth's `user_logged_in`, which carries the `sociallogin`) reads which scopes Google really granted (`tokeninfo`), and stores the refresh token **encrypted** (`common.crypto`) in `GmailConnection` (one per user). allauth's own token storage stays off. Statuses: `connected`, `not_connected` (Gmail permission declined, or Google sent no refresh token), `reauth_required` (token revoked or expired; Testing-mode tokens last 7 days), `disconnected`. Declining Gmail never blocks sign-in. Google sends the refresh token only on first consent, so `GET /api/auth/google/start/?reconnect=1` forces `prompt=consent`. No passwords or app passwords are ever used.
+
+- **Client:** `clients/base.py::GmailClient` (interface), `rest.py::RestGmailClient` (plain HTTPS with `requests`, refreshing access tokens as needed), `fake.py::FakeGmailClient` (tests). `clients.get_gmail_client(connection)` is the single factory.
+- **Sending (6b):** a public reply is stored first (`queued`), then a Celery task emails it from **the agent's own mailbox** (`From` = their Gmail, `To` = the customer, `Subject` = `Re: <subject> [#n]`, `In-Reply-To`/`References` from the ticket's known Message-IDs, Gmail `threadId` reused for that mailbox). After sending, the sent message is read back to store the Message-ID Gmail actually used. Internal notes are never emailed. Outcomes: `sent`, or `failed` with `delivery_error` (`gmail_not_connected`, `gmail_reauth_required`, `gmail_rejected`, `gmail_unavailable`) and an `email_delivery_failed` ticket event; temporary Gmail errors retry 3 times first. Failed replies can be re-queued (`.../messages/{id}/resend/`). Header values are stripped of line breaks.
+- **Portal confirmation:** after a portal ticket is created, the **owner's** mailbox sends "We received your request #n" (skipped if the owner has no connected Gmail). It is stored as a `system` message so the customer's reply threads onto the ticket.
+- **Inbound (6c):** mail arrives through Pub/Sub push (`POST /api/email/gmail/push/`, Google-signed JWT checked against the configured audience and service account) and the "Sync latest mails" button (`POST /api/email/gmail/sync/`, newest 30 inbox messages only). No polling. Push uses a stored Gmail history checkpoint; the first run only records the starting point, so **nothing from before the connection is imported**. Watches are registered at connect and renewed daily.
+- **Matching:** by headers only (`In-Reply-To`/`References` against stored Message-IDs of tickets in the agent's workspaces), never by subject. The sender must also be the ticket's customer (Gmail dot/plus spellings count as the same mailbox), otherwise anyone who learned a Message-ID could write into a ticket. A match stores the reply as a plain-text inbound message with the quoted history stripped, updates `waiting_for_reply`, and records a `customer_reply_received` event. Deduplicated by Message-ID.
+- **Privacy:** mail that does not match is stored only if it comes from the address of a known customer (a ticket in one of the agent's workspaces); it goes to the review list as sender, subject and a 300-character snippet (newest 30 per user, kept 30 days). Everything else in the mailbox is ignored and not stored. An agent can attach a review item to a ticket (its text is then fetched from Gmail) or dismiss it.
+- **For the AI phase:** a ticket's history for an LLM is its `TicketMessage` rows (ordered, only that ticket, both directions), not a Gmail thread. Gmail `threadId` is per mailbox and is kept only for correlation.
+- **Disconnect:** `DELETE /api/email/gmail/` stops the watch, revokes the grant at Google and deletes our copy.
+
+New env vars: `RESOLVE_AI_GMAIL_PUBSUB_TOPIC`, `RESOLVE_AI_PUBSUB_PUSH_AUDIENCE`, `RESOLVE_AI_PUBSUB_PUSH_SERVICE_ACCOUNT` (all empty = push off; the sync button still works). Google Cloud setup: `docs/GOOGLE_OAUTH_SETUP.md`.
 
 ### Feature 7: Dashboard (`dashboard`)
 

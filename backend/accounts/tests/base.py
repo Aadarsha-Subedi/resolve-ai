@@ -30,8 +30,17 @@ class AccountsTestCase(TestCase):
     def setUp(self):
         cache.clear()
         self.client = APIClient()
+        # Never call Google from tests: pretend the token carries no Gmail scopes.
+        patcher = mock.patch(
+            "email_integration.services.connection_service.fetch_granted_scopes",
+            return_value=set(),
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
-    def sign_in(self, identity=None, client=None, query="", ua="", ip=None):
+    def sign_in(
+        self, identity=None, client=None, query="", ua="", ip=None, token_data=None
+    ):
         """start -> (Google, mocked) -> callback. Returns the callback response."""
         client = client or self.client
         extra = {"HTTP_USER_AGENT": ua} if ua else {}
@@ -50,7 +59,7 @@ class AccountsTestCase(TestCase):
             mock.patch.object(
                 GoogleOAuth2Adapter,
                 "get_access_token_data",
-                return_value={"access_token": "fake"},
+                return_value=token_data or {"access_token": "fake"},
             ),
             mock.patch.object(GoogleOAuth2Adapter, "complete_login", complete_login),
         ):

@@ -69,6 +69,15 @@ All routes: `/api/workspaces/{workspace_id}/knowledge/...` -> `workspaces/servic
 - **Reply or note:** `TicketMessageListView.post` -> `message_service.add_message` (public reply: `ensure_can_reply`, stored QUEUED with `sent_from_user`, feature 6 will send it; note: internal) -> event without the body.
 - **Portal:** `views/portal.py::PortalTicketView.post` (no auth, `IPScopedThrottle` scope `portal_ticket`) -> `PortalTicketSerializer` -> `portal_service.submit` (workspace by slug and `portal_enabled`, honeypot check, per-email cache counter, then `ticket_service.create_ticket` with source portal and `confirmation_pending`). `PortalInfoView.get` -> `portal_service.portal_info`.
 
-## 10. Planned flows (not implemented yet; see the LLD, section 12)
+## 10. Gmail and email (implemented)
+
+- **Grant at sign-in:** Google callback (section 5) -> allauth `user_logged_in` (with `sociallogin`) -> `email_integration/signals.py::record_gmail_grant` -> `services/connection_service.py::record_login_grant` (tokeninfo for granted scopes, `token_service.encrypt_refresh_token`, `GmailConnection`) -> task `ensure_gmail_watch` when a Pub/Sub topic is configured.
+- **Reply out:** `tickets/services/message_service.py::add_message` emits `ticket_signal` (reply added, with the message id) -> `email_integration/signals.py::on_ticket_event` -> after commit `tasks.send_ticket_message` -> `services/send_service.py::send_ticket_message` -> `mime_service.build_reply` -> `clients.get_gmail_client(...).send` -> read back the sent message -> store Message-ID/thread id, `sent`, or `failed` with a `delivery_error` and an event.
+- **Portal confirmation:** `ticket_signal` (created, source portal) -> `tasks.send_portal_confirmation` -> `send_service.send_portal_confirmation` (owner's mailbox, stored as a system message).
+- **Mail in:** Pub/Sub -> `views/gmail.py::GmailPushView` (`push_service.verify_request`) -> `tasks.sync_mailbox` -> `inbound_service.sync_from_history`; the button -> `GmailSyncView` -> `inbound_service.manual_sync`. Both end in `inbound_service.process_message`: ignore own/sent mail, dedupe by Message-ID, match by `In-Reply-To`/`References` plus sender check -> `_store_customer_reply`, else known customer -> `_store_for_review`, else ignore.
+- **Review:** `ReviewAttachView` -> `review_service.attach_to_ticket` (fetches the body again); `ReviewDismissView` -> `dismiss`. Daily `purge_old_review_items`.
+- **Disconnect:** `GmailStatusView.delete` -> `connection_service.disconnect` (stop watch, revoke, wipe token).
+
+## 11. Planned flows (not implemented yet; see the LLD, section 12)
 
 Mark each as implemented, with real file references, when built: Connect Gmail, public ticket creation, agent reply, AI-assisted reply, inbound Gmail (Pub/Sub push and manual sync button).

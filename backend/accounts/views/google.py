@@ -1,6 +1,7 @@
 import logging
 
 from allauth.socialaccount.providers.google.views import oauth2_callback, oauth2_login
+from django.contrib.auth import get_user
 from django.http import HttpResponseRedirect
 from rest_framework.exceptions import Throttled
 from rest_framework.permissions import AllowAny
@@ -33,7 +34,10 @@ class GoogleStartView(GoogleFlowView):
 
     def get(self, request):
         django_request = request._request
-        if django_request.user.is_authenticated:
+        reconnect = request.query_params.get("reconnect") == "1"
+        # DRF replaces request.user with AnonymousUser when a view has no authenticators, so
+        # ask the session directly.
+        if get_user(django_request).is_authenticated and not reconnect:
             return HttpResponseRedirect(
                 redirects.app_redirect_url(request.query_params.get("next"))
             )
@@ -44,9 +48,14 @@ class GoogleStartView(GoogleFlowView):
             session[SESSION_NEXT_KEY] = next_path
         else:
             session.pop(SESSION_NEXT_KEY, None)
-        # `next` is kept in our session and resolved against FRONTEND_URL; allauth must not see it.
+        # allauth must not see `next` (resolved against FRONTEND_URL by our adapter), nor
+        # caller-chosen scopes or auth params. `reconnect=1` forces Google's consent screen,
+        # which is the only way to get a fresh Gmail refresh token for an existing grant.
         django_request.GET = django_request.GET.copy()
-        django_request.GET.pop("next", None)
+        for name in ("next", "scope", "auth_params", "process"):
+            django_request.GET.pop(name, None)
+        if reconnect:
+            django_request.GET["auth_params"] = "prompt=consent"
         return oauth2_login(django_request)
 
 

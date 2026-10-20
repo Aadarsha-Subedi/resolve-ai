@@ -37,6 +37,11 @@ class TicketMessage(TimeStampModel):
     email_thread_id = models.CharField(max_length=200, blank=True)
     in_reply_to = models.CharField(max_length=500, blank=True)
     references_header = models.TextField(blank=True)
+    # Whose connected mailbox the email passed through (inbound and outbound).
+    mailbox_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    delivery_error = models.CharField(max_length=40, blank=True)
     sent_from_user = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+"
     )
