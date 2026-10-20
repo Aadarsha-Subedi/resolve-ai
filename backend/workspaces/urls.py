@@ -1,0 +1,77 @@
+from django.urls import path
+
+from workspaces.views import invitation, join_link, logo, member, workspace
+
+urlpatterns = [
+    path("workspaces/", workspace.WorkspaceListView.as_view(), name="workspace_list"),
+    path(
+        "workspaces/<uuid:workspace_id>/",
+        workspace.WorkspaceDetailView.as_view(),
+        name="workspace_detail",
+    ),
+    path(
+        "workspaces/<uuid:workspace_id>/transfer-ownership/",
+        workspace.TransferOwnershipView.as_view(),
+        name="workspace_transfer_ownership",
+    ),
+    path(
+        "workspaces/<uuid:workspace_id>/members/",
+        member.MemberListView.as_view(),
+        name="member_list",
+    ),
+    path(
+        "workspaces/<uuid:workspace_id>/members/<uuid:user_id>/",
+        member.MemberDetailView.as_view(),
+        name="member_detail",
+    ),
+    path(
+        "workspaces/<uuid:workspace_id>/leave/",
+        member.LeaveWorkspaceView.as_view(),
+        name="workspace_leave",
+    ),
+    path(
+        "workspaces/<uuid:workspace_id>/join-link/",
+        join_link.JoinLinkView.as_view(),
+        name="join_link",
+    ),
+    path(
+        "join-links/redeem/",
+        join_link.RedeemJoinLinkView.as_view(),
+        name="join_link_redeem",
+    ),
+    path(
+        "workspaces/<uuid:workspace_id>/invitations/",
+        invitation.WorkspaceInvitationListView.as_view(),
+        name="workspace_invitation_list",
+    ),
+    path(
+        "workspaces/<uuid:workspace_id>/invitations/<uuid:invitation_id>/",
+        invitation.WorkspaceInvitationDetailView.as_view(),
+        name="workspace_invitation_detail",
+    ),
+    path(
+        "workspaces/<uuid:workspace_id>/logo/upload-url/",
+        logo.LogoUploadUrlView.as_view(),
+        name="logo_upload_url",
+    ),
+    path(
+        "workspaces/<uuid:workspace_id>/logo/",
+        logo.LogoView.as_view(),
+        name="logo",
+    ),
+    path(
+        "invitations/",
+        invitation.MyInvitationListView.as_view(),
+        name="my_invitation_list",
+    ),
+    path(
+        "invitations/<uuid:invitation_id>/accept/",
+        invitation.AcceptInvitationView.as_view(),
+        name="invitation_accept",
+    ),
+    path(
+        "invitations/<uuid:invitation_id>/decline/",
+        invitation.DeclineInvitationView.as_view(),
+        name="invitation_decline",
+    ),
+]

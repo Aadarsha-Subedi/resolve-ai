@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "common",
     "accounts",
+    "workspaces",
 ]
 
 MIDDLEWARE = [
@@ -256,6 +257,10 @@ SOCIALACCOUNT_PROVIDERS = {
 }
 ACCOUNT_DELETION_GRACE_DAYS = 7
 
+# Workspaces: deleted workspaces are purged after this many days
+
+WORKSPACE_DELETION_GRACE_DAYS = 7
+
 # Encryption keys for secrets at rest (Gmail refresh tokens, ...)
 
 ENCRYPTION_KEYS = env_list("RESOLVE_AI_ENCRYPTION_KEYS")
@@ -308,6 +313,10 @@ CELERY_BEAT_SCHEDULE: dict = {  # feature apps register their periodic tasks her
     "accounts-purge-deleted-accounts": {
         "task": "accounts.purge_deleted_accounts",
         "schedule": crontab(hour=3, minute=0),
+    },
+    "workspaces-purge-deleted-workspaces": {
+        "task": "workspaces.purge_deleted_workspaces",
+        "schedule": crontab(hour=4, minute=0),
     },
     "accounts-clear-expired-sessions": {
         "task": "accounts.clear_expired_sessions",

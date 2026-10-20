@@ -35,3 +35,14 @@ class WorkspaceThrottle(SimpleRateThrottle):
         if workspace_id is None:
             return None
         return self.cache_format % {"scope": self.scope, "ident": str(workspace_id)}
+
+
+class IPScopedThrottle(ScopedRateThrottle):
+    """Named per-view limit keyed by client IP even for signed-in callers (token
+    guessing is an IP-level concern). A view opts in with `throttle_scope`."""
+
+    def get_cache_key(self, request, view) -> str | None:
+        return self.cache_format % {
+            "scope": self.scope,
+            "ident": self.get_ident(request),
+        }

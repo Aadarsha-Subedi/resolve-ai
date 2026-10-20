@@ -37,6 +37,18 @@ Service -> `common/crypto.py::encrypt/decrypt/rotate` using `settings.ENCRYPTION
 
 `/api/auth/sessions/` and `/api/auth/logout*` -> `accounts/views/session.py` -> `services/session_service.py` (allauth `UserSession` rows are created per authenticated request by `UserSessionsMiddleware`; `device.py::device_label` parses the user agent). `/api/me/` -> `views/profile.py::MeView` -> `profile_service.update_display_name` or `deletion_service.request_deletion` (runs `hooks.ownership_checks`, sets `deletion_requested_at`, ends all sessions). Daily beat tasks in `accounts/tasks.py` purge accounts past the 7-day grace and expired sessions.
 
-## 7. Planned flows (not implemented yet; see the LLD, section 12)
+## 7. Workspaces (implemented)
+
+Every `/api/workspaces/{workspace_id}/...` request: view -> `workspaces/services/access.py::get_membership` (ACTIVE membership in a live workspace, else 404) or `require_permission` (RBAC code from `workspaces/constants/permissions.py::ROLE_PERMISSIONS`, else 403) -> service. `WorkspaceThrottle` caps all traffic per `workspace_id`.
+
+- **Create:** `views/workspace.py::WorkspaceListView.post` -> `workspace_service.create_workspace` (slug derived or validated, workspace and OWNER membership in one transaction) -> `hooks.emit`.
+- **Join link:** owner `JoinLinkView.post` -> `join_link_service.rotate_link` (revokes the live link, stores only `hash_token`, returns the raw token once). Anyone signed in: `RedeemJoinLinkView.post` (`IPScopedThrottle` scope `join_link`) -> `join_link_service.redeem` -> `member_service.add_member` (creates or re-activates a MEMBER).
+- **Invitation:** owner `WorkspaceInvitationListView.post` -> `invitation_service.create_invitations` (`common/email/utils.py::canonical_email_key` dedupes mailboxes). Invitee: `MyInvitationListView.get` lists by the canonical key of their sign-in email; `AcceptInvitationView.post` -> `invitation_service.accept_invitation` (atomic claim, then `add_member`).
+- **Ownership transfer:** `TransferOwnershipView.post` -> `member_service.transfer_ownership` (row locks, demote then promote in one transaction).
+- **Delete and purge:** `WorkspaceDetailView.delete` -> `workspace_service.delete_workspace` (soft delete). Beat task `workspaces/tasks.py::purge_deleted_workspaces` -> `workspace_service.purge_due_workspaces` (hard delete and logo removal after 7 days).
+- **Logo:** `LogoUploadUrlView.post` -> `logo_service.create_upload_url` (signed PUT via `common/storage`) -> browser PUT to R2 -> `LogoView.put` -> `logo_service.confirm_logo` (checks the object exists, type and size, then swaps and deletes the old object).
+- **Account deletion check:** `workspaces/apps.py::ready` registers `services/ownership.py::account_ownership_blocker` with `accounts.services.hooks`, which `accounts/services/deletion_service.py::request_deletion` runs.
+
+## 8. Planned flows (not implemented yet; see the LLD, section 12)
 
 Mark each as implemented, with real file references, when built: Connect Gmail, public ticket creation, agent reply, AI-assisted reply, inbound Gmail (Pub/Sub push and manual sync button).

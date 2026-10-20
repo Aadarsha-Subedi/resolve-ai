@@ -39,7 +39,7 @@ Django 6.1 + DRF, PostgreSQL, Redis, Celery, `uv`, Python 3.14; Docker for dev a
 | 0 | Foundation: `common` app, config, Docker, Postman, docs | none | Done |
 | 1 | Accounts and sessions (`accounts`) | 0 | Done, breakdown below |
 | 2 | Audit log (`audit`) | all other features | Deferred: built last, after every other v1 feature |
-| 3 | Workspaces and membership (`workspaces`) | 1 | Next |
+| 3 | Workspaces and membership (`workspaces`) | 1 | Done, details below |
 | 4 | Knowledge base (`knowledge`) | 3 | Planned |
 | 5 | Tickets and public portal (`tickets`) | 3 | Planned |
 | 6 | Gmail connection and email (`email_integration`) | 1, 3, 5 | Planned |
@@ -136,9 +136,20 @@ Passwords, email verification flows, avatar upload, other login providers, MFA, 
 
 `AuditEvent` model and a `record(actor, workspace, action, target, metadata)` service (never raises, no secrets or message bodies). Owner-only list endpoint with filters (action, actor, date range); no export. Actions are registered as constants as features land.
 
-### Feature 3: Workspaces and membership (`workspaces`)
+### Feature 3: Workspaces and membership (`workspaces`), built
 
-Models: `Workspace` (immutable slug, name, logo reference, portal enabled flag, soft delete), `WorkspaceMembership` (OWNER/MEMBER, ACTIVE/REMOVED), `WorkspaceJoinLink` (hashed token, rotate, revoke, rate-limited redemption). Endpoints: create/read/update workspace, list my workspaces, members list/remove/leave, join link rotate/revoke/redeem, ownership transfer (transactional), workspace delete with 7-day purge, portal toggle. Role-permission registry (fixed presets) and `WorkspaceAccessPolicy`. Registers the account-deletion ownership check.
+Models: `Workspace` (UUIDv7, name, immutable unique slug, `logo_key`, `portal_enabled`, soft delete), `WorkspaceMembership` (OWNER/MEMBER, ACTIVE/REMOVED; database constraints allow one membership per user and one active owner per workspace), `WorkspaceJoinLink` (SHA-256 token hash, `expires_at`, `revoked_at`; one unrevoked link per workspace), `WorkspaceInvitation` (address as typed plus a canonical mailbox key, `expires_at`, `accepted_at`, `closed_at`).
+
+Rules (owner answers of 2026-10-20):
+- **Join link:** direct membership, expires after **1 hour** by default; the owner may choose 1 hour, 1 day or 7 days. Creating a link rotates (revokes) the previous one. The raw token and URL (`FRONTEND_URL/join/<token>`) are shown once; status calls return metadata only. Redemption is limited per IP (`join_link` scope); unknown, expired, revoked and deleted-workspace links return the same 404.
+- **Invitations:** the owner invites one or several Google accounts (max 20 per request, 7-day expiry, single use). A person sees and accepts invitations for the mailbox they signed in with; acceptance is an explicit step. Gmail addresses are compared by mailbox (`common.email.utils.canonical_email_key`: dots and `+tags` ignored, `googlemail.com` = `gmail.com`), other domains only lower-cased. `x.y@gmail.com` is mailbox `xy`, while `x+y@gmail.com` is mailbox `x`. No invitation email is sent in this feature (Gmail sending is feature 6); the owner tells the person.
+- **Roles:** fixed presets in `workspaces/constants/permissions.py` (`OWNER` has every code, `MEMBER` can view the workspace and the member list). Non-members and removed members get 404; members lacking a permission get 403. `WorkspaceAccessPolicy` answers the boolean questions.
+- **Ownership transfer** is one transaction (old owner demoted first, then the target promoted). The owner cannot leave or be removed. Removal keeps the membership row (history) and revokes access; a removed person can come back through a link or an invitation as a MEMBER.
+- **Deletion:** the owner soft-deletes a workspace; it vanishes for everyone at once and a daily task (`workspaces.purge_deleted_workspaces`) hard-deletes it, and its logo object, after 7 days. `account_ownership_blocker` is registered with the account-deletion check, so an owner must transfer or delete first.
+- **Logo:** direct-to-R2 upload with a signed PUT (`logo/upload-url/`, then `PUT logo/` to confirm; the server verifies the object, type and size, 2 MB, PNG/JPEG/WebP). Needs R2 configured.
+- Audit: every action calls `workspaces.services.hooks.emit`, a signal the audit app subscribes to later.
+
+Endpoints (under `/api/`): `workspaces/` (GET list, POST create), `workspaces/{id}/` (GET, PATCH name and portal_enabled, DELETE), `workspaces/{id}/transfer-ownership/`, `workspaces/{id}/members/`, `workspaces/{id}/members/{user_id}/` (DELETE), `workspaces/{id}/leave/`, `workspaces/{id}/join-link/` (GET, POST, DELETE), `join-links/redeem/`, `workspaces/{id}/invitations/` (GET, POST), `workspaces/{id}/invitations/{id}/` (DELETE), `invitations/` (mine), `invitations/{id}/accept/`, `invitations/{id}/decline/`, `workspaces/{id}/logo/upload-url/`, `workspaces/{id}/logo/` (PUT, DELETE).
 
 ### Feature 4: Knowledge base (`knowledge`)
 

@@ -70,7 +70,7 @@ Docker rules: `Dockerfile.dev` and `Dockerfile.prod` are the only image definiti
 ## Product decisions (confirmed by the owner)
 
 - **Auth:** Google-only sign-in (key on the stable `sub`), server-side Django sessions, "remember me", per-device session list with revoke-one and log-out-everywhere in v1. No passwords.
-- **Roles:** `OWNER` and `MEMBER`; one owner per workspace; transactional ownership transfer. Join link grants membership directly (hashed token, rotate/revoke by owner).
+- **Roles:** `OWNER` and `MEMBER`; one owner per workspace; transactional ownership transfer. Join link grants membership directly (hashed token, expires after 1 hour by default or 1 day / 7 days, rotate/revoke by owner); the owner can also invite specific Google accounts, matched by canonical Gmail mailbox.
 - **Authorization:** RBAC permission codes (for example "can update ticket status") plus **fixed, non-configurable ABAC rules** that extend RBAC (for example "only the owner can change status once a ticket is CLOSED"). ABAC rules live in code (`policies`), are never user-editable, and every one needs a negative test. Authorization is enforced in services and DRF permissions, never only in the frontend.
 - **Workspace:** slug is immutable after creation. All workspace-owned queries are scoped by an authorized membership; non-members get 404.
 - **Tickets:** statuses OPEN, IN_PROGRESS, PENDING, RESOLVED, CLOSED (RESOLVED and CLOSED separate; only the owner reopens CLOSED). Ticket categories are a fixed list. No assignment in v1. "Waiting for reply" = the last public message was sent by the customer (ticket awaits an agent). Owner wrote "sent by the user"; confirm this reading.

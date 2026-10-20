@@ -1,0 +1,44 @@
+MESSAGE_WORKSPACE_CREATED = "Workspace created successfully."
+MESSAGE_WORKSPACES_LISTED = "Workspaces retrieved successfully."
+MESSAGE_WORKSPACE_RETRIEVED = "Workspace retrieved successfully."
+MESSAGE_WORKSPACE_UPDATED = "Workspace updated successfully."
+MESSAGE_WORKSPACE_DELETED = (
+    "Workspace deleted. It is permanently removed after {days} days."
+)
+MESSAGE_WORKSPACE_NOT_FOUND = "Workspace not found."
+MESSAGE_SLUG_TAKEN = "That workspace address is already taken."
+MESSAGE_SLUG_RESERVED = "That workspace address is reserved."
+MESSAGE_NOTHING_TO_UPDATE = "Provide at least one field to update."
+
+MESSAGE_MEMBERS_LISTED = "Members retrieved successfully."
+MESSAGE_MEMBER_NOT_FOUND = "Member not found."
+MESSAGE_MEMBER_REMOVED = "Member removed."
+MESSAGE_LEFT_WORKSPACE = "You left the workspace."
+MESSAGE_OWNER_CANNOT_LEAVE = "Transfer ownership before leaving the workspace."
+MESSAGE_CANNOT_REMOVE_OWNER = "The owner cannot be removed. Transfer ownership first."
+MESSAGE_OWNERSHIP_TRANSFERRED = "Ownership transferred."
+MESSAGE_TRANSFER_TO_SELF = "You already own this workspace."
+MESSAGE_TRANSFER_TARGET_INVALID = "Ownership can only go to an active member."
+
+MESSAGE_JOIN_LINK_RETRIEVED = "Join link retrieved successfully."
+MESSAGE_JOIN_LINK_CREATED = "Join link created. Copy it now; it is shown only once."
+MESSAGE_JOIN_LINK_REVOKED = "Join link revoked."
+MESSAGE_JOIN_LINK_INVALID = "This join link is invalid, expired or revoked."
+MESSAGE_JOINED = "You joined the workspace."
+MESSAGE_ALREADY_MEMBER = "You are already a member of this workspace."
+
+MESSAGE_INVITATIONS_CREATED = "Invitations processed."
+MESSAGE_INVITATIONS_LISTED = "Invitations retrieved successfully."
+MESSAGE_INVITATION_REVOKED = "Invitation revoked."
+MESSAGE_INVITATION_ACCEPTED = "Invitation accepted."
+MESSAGE_INVITATION_DECLINED = "Invitation declined."
+MESSAGE_INVITATION_NOT_FOUND = "Invitation not found."
+MESSAGE_INVITATION_NOT_USABLE = "This invitation has expired or was already used."
+
+MESSAGE_LOGO_UPLOAD_URL = "Upload URL created."
+MESSAGE_LOGO_UPLOAD_UNSUPPORTED = "Logo upload needs R2 storage to be configured."
+MESSAGE_LOGO_INVALID = (
+    "The uploaded logo is missing or does not match what was declared."
+)
+MESSAGE_LOGO_UPDATED = "Logo updated."
+MESSAGE_LOGO_REMOVED = "Logo removed."
