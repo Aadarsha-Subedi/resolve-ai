@@ -9,6 +9,7 @@ dependencies = [
     "celery>=5.6.3",
     "cryptography>=50.0.2",
     "django>=6.1",
+    "django-allauth[socialaccount]>=65.20.0",
     "django-cors-headers>=4.9.0",
     "django-filter>=26.1",
     "djangorestframework>=3.17.2",
@@ -25,6 +26,10 @@ dependencies = [
 dev = [
     "ruff>=0.16.3",
 ]
+
+[tool.ruff]
+# `ruff format` also reformats Python code blocks inside Markdown; leave the docs as written.
+extend-exclude = ["docs"]
 
 [tool.ruff.lint]
 # Django and DRF declare mutable class attributes (Meta.ordering, parser_classes, ...) by design.

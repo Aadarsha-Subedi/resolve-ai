@@ -14,10 +14,12 @@ The repo root holds only `frontend/`, `backend/` and `README.md`. Everything bac
 
 ## Mandatory upkeep files
 
-- **`postman/`**: `postman/resolveai.postman_collection.json` and `postman/resolveai.postman_environment.json` (both importable in Postman). In the same change as any API contract change (endpoint added, removed or renamed; method, path, request body or query fields; auth/CSRF behaviour; a variable requests need), update both files. Keep requests grouped in folders that match the URL sections (one folder per feature app), include example bodies, and keep variables (`baseUrl`, `csrfToken`, ids) in the environment file. Never put real secrets in either file.
+- **`postman/`**: `postman/resolveai.postman_collection.json` and `postman/resolveai.postman_environment.json` (both importable in Postman). In the same change as any API contract change (endpoint added, removed or renamed; method, path, request body or query fields; auth/CSRF behaviour; a variable requests need), update both files. Keep requests grouped in folders that match the URL sections (one folder per feature app), include example bodies, and keep variables (`baseUrl`, `csrfToken`, ids) in the environment file. Every URL ends with a trailing slash, in both `raw` and the `path` array (end `path` with an empty string `""`), because Django's `APPEND_SLASH` cannot redirect POST/PATCH/DELETE (it raises a 500 in DEBUG). Never put real secrets in either file.
 - **`DECISION.md`**: append an entry for every meaningful decision that changes the codebase (new module, dependency, pattern, schema change, policy rule, rejected alternative). Format: date, title, decision, reason, alternatives considered, files touched. Never rewrite history; supersede with a new entry.
 - **`FLOW.md`**: track how a request/task travels through files and functions (view -> serializer -> service -> policy -> model -> task/integration). Update the affected flow whenever a call path changes. Use `path/to/file.py::function` references.
 - **`README.md`** (this folder) and the monorepo root `../README.md`: update both in the same change whenever features, setup, env vars, services, dependencies or conventions change; the root README's Status table and Backend/Frontend sections must always match reality.
+
+- **`graphify-out/`** (graphify knowledge graph): after every code or doc change, update the graph before finishing the task (`graphify update .` from `backend/`, or `/graphify . --update`). Use the graph (`graphify query`, `GRAPH_REPORT.md`) to understand the project before changing it. `graphify-out/` is generated output and stays git-ignored.
 
 ## Commands
 

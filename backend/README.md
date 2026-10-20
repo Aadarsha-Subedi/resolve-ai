@@ -41,6 +41,25 @@ uv run ruff check . && uv run ruff format .
 - `config/` Django project (settings, Celery, root URLs)
 - `common/` shared infrastructure (response, exception, pagination, filter, order, cache, logger, validators, models, serializers, throttling, storage, crypto, observability, email helpers)
 - `docs/` LLD and `GOOGLE_OAUTH_SETUP.md` (how to create the Google OAuth client); `postman/` Postman collection and environment (updated with every API change)
+- `accounts/` feature 1: Google sign-in (django-allauth), `User` model, device sessions, profile, account deletion, Celery tasks (`models/`, `services/`, `serializers/`, `views/`, `constants/`, `adapters.py`, `tasks.py`, `tests/`)
 - Feature apps are added one at a time (see the root README)
+
+## Accounts (feature 1)
+
+Set `RESOLVE_AI_GOOGLE_CLIENT_ID`, `RESOLVE_AI_GOOGLE_CLIENT_SECRET`, `RESOLVE_AI_PUBLIC_API_URL` and `RESOLVE_AI_FRONTEND_URL` in `.env`, and register `<origin>/api/auth/google/login/callback/` as a redirect URI in Google Cloud ([docs/GOOGLE_OAUTH_SETUP.md](docs/GOOGLE_OAUTH_SETUP.md)). Whatever proxy sits in front of the API must keep the `Host` header and send `X-Forwarded-Proto`, because the redirect URI is built from the incoming request.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/api/csrf/` | set the CSRF cookie |
+| GET | `/api/auth/google/start/?remember=0\|1&next=/path` | begin sign-in (redirect) |
+| GET | `/api/auth/google/login/callback/` | Google's redirect target |
+| POST | `/api/auth/logout/`, `/api/auth/logout-all/` | end this session / every session |
+| GET | `/api/auth/sessions/` | own device sessions |
+| DELETE | `/api/auth/sessions/{id}/` | revoke one device |
+| GET, PATCH, DELETE | `/api/me/` | profile, rename, request deletion (7-day grace; signing in again cancels it) |
+
+Postman: Google sign-in cannot finish inside Postman. Sign in with a browser, copy the `sessionid` cookie (DevTools, Application, Cookies) into the `sessionCookie` environment variable; the collection sends it on every request. Run `Auth / CSRF cookie` first for POST, PATCH and DELETE. `sessionId` is a different variable: the numeric device id used by `Revoke session`.
+
+Celery beat runs `accounts.purge_deleted_accounts` and `accounts.clear_expired_sessions` daily (`docker compose --profile worker` starts a worker; run a beat process for the schedule). Later features plug in through `accounts.services.hooks` (`register_ownership_check`, the `account_event` signal).
 
 Docs: `Project.MD` (v1 feature map and build order), `CLAUDE.md` (rules), `DECISION.md` (decision log), `FLOW.md` (code paths).

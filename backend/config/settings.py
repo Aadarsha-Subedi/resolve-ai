@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 import sentry_sdk
+from celery.schedules import crontab
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
@@ -44,10 +45,16 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.admin",
     "django.contrib.staticfiles",
+    "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
+    "allauth.usersessions",
     "rest_framework",
     "django_filters",
     "corsheaders",
     "common",
+    "accounts",
 ]
 
 MIDDLEWARE = [
@@ -59,6 +66,8 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
+    "allauth.usersessions.middleware.UserSessionsMiddleware",
     "common.logger.request_id.UserContextMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "common.logger.middleware.RequestLoggingMiddleware",
@@ -143,7 +152,7 @@ else:
 SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
 SESSION_COOKIE_AGE = 14 * 24 * 60 * 60  # 2 weeks, sliding
 SESSION_REMEMBER_ME_AGE = 30 * 24 * 60 * 60  # 30 days, sliding
-SESSION_SAVE_EVERY_REQUEST = False
+SESSION_SAVE_EVERY_REQUEST = True  # keeps the lifetime sliding
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = "Lax"
@@ -168,6 +177,8 @@ CORS_ALLOW_CREDENTIALS = True
 STRICT_THROTTLE_RATES = {
     "anon": "60/min",
     "user": "600/min",
+    "google": "20/min",  # Google sign-in start and callback, per IP
+    "account_delete": "5/hour",  # account deletion requests, per user
     "workspace": "1200/min",  # all users of one workspace together
     "portal_ticket": "10/hour",  # public ticket submission, per IP
     "join_link": "20/hour",  # join-link redemption, per IP
@@ -177,6 +188,8 @@ STRICT_THROTTLE_RATES = {
 RELAXED_THROTTLE_RATES = {
     **STRICT_THROTTLE_RATES,
     "anon": "600/min",
+    "google": "600/min",
+    "account_delete": "200/hour",
     "workspace": "6000/min",
     "portal_ticket": "200/hour",
     "join_link": "200/hour",
@@ -204,6 +217,44 @@ REST_FRAMEWORK = {
     "NUM_PROXIES": int(env("RESOLVE_AI_NUM_PROXIES")),
     "DEFAULT_THROTTLE_RATES": THROTTLE_RATES,
 }
+
+# Accounts: django-allauth (Google only) with our own user model
+
+AUTH_USER_MODEL = "accounts.User"
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
+]
+GOOGLE_CLIENT_ID = env("RESOLVE_AI_GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = env("RESOLVE_AI_GOOGLE_CLIENT_SECRET")
+PUBLIC_API_URL = env("RESOLVE_AI_PUBLIC_API_URL")  # origin the browser uses for /api
+ACCOUNT_ADAPTER = "accounts.adapters.AccountAdapter"
+SOCIALACCOUNT_ADAPTER = "accounts.adapters.SocialAccountAdapter"
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_USER_MODEL_EMAIL_FIELD = "email"
+ACCOUNT_LOGIN_METHODS = {"email"}
+ACCOUNT_SIGNUP_FIELDS = ["email*"]
+ACCOUNT_EMAIL_VERIFICATION = "none"  # Google verifies the address
+SOCIALACCOUNT_EMAIL_VERIFICATION = "none"
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_LOGIN_ON_GET = True  # no intermediate "continue" page
+SOCIALACCOUNT_STORE_TOKENS = False  # the browser never gets Google tokens
+SOCIALACCOUNT_ONLY = True
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "APPS": [
+            {
+                "client_id": GOOGLE_CLIENT_ID,
+                "secret": GOOGLE_CLIENT_SECRET,
+                "key": "",
+            }
+        ],
+        "SCOPE": ["openid", "email", "profile"],
+        "AUTH_PARAMS": {"prompt": "select_account"},
+        "OAUTH_PKCE_ENABLED": True,
+    }
+}
+ACCOUNT_DELETION_GRACE_DAYS = 7
 
 # Encryption keys for secrets at rest (Gmail refresh tokens, ...)
 
@@ -253,7 +304,16 @@ CELERY_TASK_DEFAULT_QUEUE = "default"
 CELERY_DATA_DIR = BASE_DIR / ".celery"
 CELERY_DATA_DIR.mkdir(exist_ok=True)
 CELERY_BEAT_SCHEDULE_FILENAME = str(CELERY_DATA_DIR / "celerybeat-schedule")
-CELERY_BEAT_SCHEDULE: dict = {}  # feature apps register their periodic tasks here
+CELERY_BEAT_SCHEDULE: dict = {  # feature apps register their periodic tasks here
+    "accounts-purge-deleted-accounts": {
+        "task": "accounts.purge_deleted_accounts",
+        "schedule": crontab(hour=3, minute=0),
+    },
+    "accounts-clear-expired-sessions": {
+        "task": "accounts.clear_expired_sessions",
+        "schedule": crontab(hour=3, minute=30),
+    },
+}
 
 # Logging
 

@@ -37,8 +37,8 @@ Django 6.1 + DRF, PostgreSQL, Redis, Celery, `uv`, Python 3.14; Docker for dev a
 | # | Feature | Depends on | Status |
 | --- | --- | --- | --- |
 | 0 | Foundation: `common` app, config, Docker, Postman, docs | none | Done |
-| 1 | Accounts and sessions (`accounts`) | 0 | Next, breakdown below |
-| 2 | Audit log (`audit`) | 1 | Planned |
+| 1 | Accounts and sessions (`accounts`) | 0 | Done, breakdown below |
+| 2 | Audit log (`audit`) | 1 | Next |
 | 3 | Workspaces and membership (`workspaces`) | 1, 2 | Planned |
 | 4 | Knowledge base (`knowledge`) | 3 | Planned |
 | 5 | Tickets and public portal (`tickets`) | 3 | Planned |

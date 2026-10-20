@@ -20,12 +20,321 @@
               ],
               "path": [
                 "api",
-                "health"
+                "health",
+                ""
               ]
             }
           }
         }
       ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "CSRF cookie",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/csrf/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "csrf",
+                ""
+              ]
+            },
+            "description": "Sets the csrftoken cookie. The test script copies it into the csrfToken variable used by the X-CSRFToken header."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const c = pm.cookies.get('csrftoken');",
+                  "if (c) { pm.environment.set('csrfToken', c); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Start Google sign-in",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/google/start/?remember=1&next=/app",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "google",
+                "start",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "remember",
+                  "value": "1"
+                },
+                {
+                  "key": "next",
+                  "value": "/app"
+                }
+              ]
+            },
+            "description": "Open this URL in a browser (Postman cannot complete Google's consent screen). Redirects to Google; after sign-in the callback redirects to the frontend /app (or /login?google_error=<code>). remember=1 gives a 30-day session, otherwise 14 days. Codes: cancelled, google_failed, rate_limited, email_unverified, email_conflict, account_disabled."
+          }
+        },
+        {
+          "name": "Google callback (redirect target)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/google/login/callback/?code=&state=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "google",
+                "login",
+                "callback",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "code",
+                  "value": ""
+                },
+                {
+                  "key": "state",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Called by Google, not by clients. Listed for reference; add http://localhost:8000/api/auth/google/login/callback/ as an authorized redirect URI."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout",
+                ""
+              ]
+            },
+            "description": "Ends the current session."
+          }
+        },
+        {
+          "name": "Logout everywhere",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout-all/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout-all",
+                ""
+              ]
+            },
+            "description": "Ends every session of the user."
+          }
+        },
+        {
+          "name": "List sessions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sessions/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sessions",
+                ""
+              ]
+            },
+            "description": "Own device sessions: id, device label, created_at, last_active_at, is_current. The IP is never returned."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const items = (pm.response.json().data || {}).items || [];",
+                  "const other = items.find(i => !i.is_current);",
+                  "if (other) { pm.environment.set('sessionId', String(other.id)); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Revoke session",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sessions/{{sessionId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sessions",
+                "{{sessionId}}",
+                ""
+              ]
+            },
+            "description": "Ends another device's session. The current session is ended with Logout (400 cannot_revoke_current_session)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Account",
+      "item": [
+        {
+          "name": "Get profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "me",
+                ""
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Update profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "me",
+                ""
+              ]
+            },
+            "description": "Only display_name (1-80 chars); unknown fields are rejected.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"display_name\": \"Jane Doe\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Request account deletion",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "me",
+                ""
+              ]
+            },
+            "description": "Starts a 7-day grace period and ends all sessions. 409 account_owns_workspace while the user owns a workspace. Signing in again within 7 days cancels it."
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Google sign-in cannot finish inside Postman. Sign in with a browser, copy the",
+          "// `sessionid` cookie value into the `sessionCookie` environment variable, and every",
+          "// request below sends it (plus the CSRF cookie when `csrfToken` is set).",
+          "const session = pm.environment.get('sessionCookie');",
+          "if (session) {",
+          "  const csrf = pm.environment.get('csrfToken');",
+          "  let cookie = 'sessionid=' + session;",
+          "  if (csrf) { cookie += '; csrftoken=' + csrf; }",
+          "  pm.request.headers.upsert({ key: 'Cookie', value: cookie });",
+          "}"
+        ]
+      }
     }
   ]
 }

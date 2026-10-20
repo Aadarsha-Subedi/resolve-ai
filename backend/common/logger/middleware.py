@@ -2,6 +2,7 @@ import json
 import logging
 import time
 
+from common.logger.constants import SENSITIVE_QUERY_KEYS
 from common.logger.redaction import redact_sensitive_data
 
 logger = logging.getLogger("request")
@@ -55,7 +56,9 @@ class RequestLoggingMiddleware:
             "method": request.method,
             "route": request.path,
             "view_name": self.get_view_name(request),
-            "query_params": redact_sensitive_data(dict(request.GET)),
+            "query_params": redact_sensitive_data(
+                dict(request.GET), SENSITIVE_QUERY_KEYS
+            ),
             "headers": redact_sensitive_data(dict(request.headers)),
             "body": redact_sensitive_data(request_body),
             "status_code": response.status_code,

@@ -19,7 +19,14 @@ SENSITIVE_KEYS = {
     "cvv",
     "ssn",
     "credit_card",
+    "cookie",
+    "set-cookie",
+    "x-csrftoken",
+    "id_token",
 }
+
+# Query parameters that are single-use secrets (the OAuth callback carries them).
+SENSITIVE_QUERY_KEYS = SENSITIVE_KEYS | {"code", "state"}
 
 REDACTED = "***REDACTED***"
 
