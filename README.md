@@ -7,7 +7,7 @@ A capstone project that uses AI to resolve customer queries: a multi-tenant supp
 | Area | State |
 | --- | --- |
 | Design (LLD) | Draft, owner decisions applied: [backend/docs/ResolveAI_LLD.md](backend/docs/ResolveAI_LLD.md) |
-| Backend | In progress. Reusable `common` app and project config done; feature apps next |
+| Backend | In progress. `common` app and config done; feature 1 (accounts and sessions) built; audit, workspaces, tickets next |
 | Frontend | Not started |
 | LLM layer (full-text search, Gemini) | After frontend and backend scaffolding |
 
@@ -31,6 +31,8 @@ resolve-ai/
 ## Backend
 
 Built so far (`backend/common/`): response envelope, exception handling with stable error codes, pagination/filter/order helpers, strict serializers, model mixins (timestamps, soft delete, cache), request-id logging, Sentry hook, throttling (including per-workspace), file storage (R2/local/in-memory), Fernet encryption helper, `/api/health/`.
+
+Feature 1, `backend/accounts/`: Google-only sign-in through django-allauth (redirect flow with PKCE), custom UUIDv7 `User` without a password, 14-day sessions (30 days with remember me), device session list with revoke-one and log-out-everywhere, `/api/me/` profile, and account deletion with a 7-day grace period. Needs `RESOLVE_AI_GOOGLE_CLIENT_ID` and `RESOLVE_AI_GOOGLE_CLIENT_SECRET` in `backend/.env` (see `backend/docs/GOOGLE_OAUTH_SETUP.md`).
 
 v1 (backend only, no AI/RAG) is mapped in [backend/Project.MD](backend/Project.MD). Build order: accounts and sessions, audit log, workspaces, knowledge base, tickets and portal, Gmail and email, dashboard. The `ai` app (full-text search, Gemini) comes after.
 
