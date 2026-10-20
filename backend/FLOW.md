@@ -49,6 +49,17 @@ Every `/api/workspaces/{workspace_id}/...` request: view -> `workspaces/services
 - **Logo:** `LogoUploadUrlView.post` -> `logo_service.create_upload_url` (signed PUT via `common/storage`) -> browser PUT to R2 -> `LogoView.put` -> `logo_service.confirm_logo` (checks the object exists, type and size, then swaps and deletes the old object).
 - **Account deletion check:** `workspaces/apps.py::ready` registers `services/ownership.py::account_ownership_blocker` with `accounts.services.hooks`, which `accounts/services/deletion_service.py::request_deletion` runs.
 
-## 8. Planned flows (not implemented yet; see the LLD, section 12)
+## 8. Knowledge base (implemented)
+
+All routes: `/api/workspaces/{workspace_id}/knowledge/...` -> `workspaces/services/access.py::require_permission` (`KNOWLEDGE_VIEW` / `KNOWLEDGE_MANAGE`, 404 for non-members) -> service.
+
+- **Article write:** `views/article.py::ArticleListView.post` / `ArticleDetailView.patch` -> `services/article_service.py::create_article` / `update_article` -> one transaction: `quota_service.reserve` (conditional UPDATE on `Workspace.storage_used_bytes`), row, categories, then `get_storage().upload` last (a storage error rolls everything back). `KnowledgePolicy.ensure_can_edit` blocks archived articles.
+- **Article read:** `ArticleDetailView.get` -> `article_service.read_content` (reads the object). Lists use `article_service.list_articles` (database filters only).
+- **Status:** `PublishArticleView` / `UnpublishArticleView` / `ArchiveArticleView` -> `article_service.change_status` (allowed transitions table).
+- **Delete:** `article_service.delete_article` -> row removed and `quota_service.release` in the transaction, the object deleted `on_commit`.
+- **Upload:** `UploadUrlView.post` -> `upload_service.create_upload` (reserve quota, PENDING row, signed PUT) -> browser PUT to R2 -> `UploadConfirmView.post` -> `upload_service.confirm_upload` (HEAD size and type, PDF magic bytes; a bad object is discarded and its quota released). `UploadDownloadView.get` -> `upload_service.download_url` (signed GET, forced download). Hourly `knowledge/tasks.py::release_stale_uploads` -> `upload_service.release_stale_uploads`.
+- **Workspace lifecycle:** `knowledge/signals.py::on_workspace_event` seeds the default categories on `workspace.created` and deletes stored objects on `workspace.purged` (`workspaces/services/hooks.py::workspace_event`).
+
+## 9. Planned flows (not implemented yet; see the LLD, section 12)
 
 Mark each as implemented, with real file references, when built: Connect Gmail, public ticket creation, agent reply, AI-assisted reply, inbound Gmail (Pub/Sub push and manual sync button).

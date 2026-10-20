@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "common",
     "accounts",
     "workspaces",
+    "knowledge",
 ]
 
 MIDDLEWARE = [
@@ -317,6 +318,10 @@ CELERY_BEAT_SCHEDULE: dict = {  # feature apps register their periodic tasks her
     "workspaces-purge-deleted-workspaces": {
         "task": "workspaces.purge_deleted_workspaces",
         "schedule": crontab(hour=4, minute=0),
+    },
+    "knowledge-release-stale-uploads": {
+        "task": "knowledge.release_stale_uploads",
+        "schedule": crontab(minute=15),
     },
     "accounts-clear-expired-sessions": {
         "task": "accounts.clear_expired_sessions",

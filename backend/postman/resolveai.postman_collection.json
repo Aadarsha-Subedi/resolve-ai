@@ -1007,6 +1007,575 @@
           }
         }
       ]
+    },
+    {
+      "name": "Knowledge",
+      "item": [
+        {
+          "name": "Articles",
+          "item": [
+            {
+              "name": "Create article",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRFToken",
+                    "value": "{{csrfToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/articles/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "articles",
+                    ""
+                  ]
+                },
+                "description": "Body is Markdown/text, up to 200 KB, stored in R2 and counted in the 50 MB workspace quota. Starts as draft.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"How to reset your password\",\n  \"content\": \"# Reset\\n\\nOpen Settings and choose Reset password.\",\n  \"category_ids\": [\n    \"{{categoryId}}\"\n  ]\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const d = pm.response.json().data;",
+                      "if (d && d.id) { pm.environment.set('articleId', d.id); }"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List articles",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/articles/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "articles",
+                    ""
+                  ]
+                },
+                "description": "Filters: ?title=(contains) &status=draft|published|archived &category=<id> &ordering=-updated_at|title|created_at|published_at, plus limit/offset. No full-text search in v1."
+              }
+            },
+            {
+              "name": "Get article",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/articles/{{articleId}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "articles",
+                    "{{articleId}}",
+                    ""
+                  ]
+                },
+                "description": "Includes the content (read from storage)."
+              }
+            },
+            {
+              "name": "Update article",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRFToken",
+                    "value": "{{csrfToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/articles/{{articleId}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "articles",
+                    "{{articleId}}",
+                    ""
+                  ]
+                },
+                "description": "Any of title, content, category_ids. Archived articles are read-only (409 article_archived).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Reset your password\",\n  \"content\": \"Updated text\",\n  \"category_ids\": [\n    \"{{categoryId}}\"\n  ]\n}"
+                }
+              }
+            },
+            {
+              "name": "Publish article",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-CSRFToken",
+                    "value": "{{csrfToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/articles/{{articleId}}/publish/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "articles",
+                    "{{articleId}}",
+                    "publish",
+                    ""
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "Unpublish (back to draft)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-CSRFToken",
+                    "value": "{{csrfToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/articles/{{articleId}}/unpublish/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "articles",
+                    "{{articleId}}",
+                    "unpublish",
+                    ""
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "Archive article",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-CSRFToken",
+                    "value": "{{csrfToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/articles/{{articleId}}/archive/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "articles",
+                    "{{articleId}}",
+                    "archive",
+                    ""
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "Delete article",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "X-CSRFToken",
+                    "value": "{{csrfToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/articles/{{articleId}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "articles",
+                    "{{articleId}}",
+                    ""
+                  ]
+                },
+                "description": "Permanent. Frees its storage quota."
+              }
+            }
+          ]
+        },
+        {
+          "name": "Categories",
+          "item": [
+            {
+              "name": "List categories",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/categories/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "categories",
+                    ""
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const items = (pm.response.json().data || {}).items || [];",
+                      "if (items.length) { pm.environment.set('categoryId', items[0].id); }"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Create category",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRFToken",
+                    "value": "{{csrfToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/categories/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "categories",
+                    ""
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Shipping\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Rename category",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRFToken",
+                    "value": "{{csrfToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/categories/{{categoryId}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "categories",
+                    "{{categoryId}}",
+                    ""
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Delivery\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Delete category",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "X-CSRFToken",
+                    "value": "{{csrfToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/categories/{{categoryId}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "categories",
+                    "{{categoryId}}",
+                    ""
+                  ]
+                },
+                "description": "Only unlinks the category from articles."
+              }
+            }
+          ]
+        },
+        {
+          "name": "Uploads",
+          "item": [
+            {
+              "name": "Get upload URL",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRFToken",
+                    "value": "{{csrfToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/uploads/upload-url/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "uploads",
+                    "upload-url",
+                    ""
+                  ]
+                },
+                "description": "PDF or TXT, 1 byte to 10 MB. size is in BYTES and must equal the real file size exactly. Reserves quota. Then PUT the raw bytes to upload_url (method PUT, body binary, header Content-Type exactly as returned, nothing else; create that request outside this collection), then call Confirm upload. Unconfirmed uploads are removed after 1 hour.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"filename\": \"guide.pdf\",\n  \"content_type\": \"application/pdf\",\n  \"size\": 12345\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const d = pm.response.json().data;",
+                      "if (d && d.id) { pm.environment.set('uploadId', d.id); }"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Confirm upload",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-CSRFToken",
+                    "value": "{{csrfToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/uploads/{{uploadId}}/confirm/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "uploads",
+                    "{{uploadId}}",
+                    "confirm",
+                    ""
+                  ]
+                },
+                "description": "Checks the stored object has the declared size and type (PDFs must start with %PDF-)."
+              }
+            },
+            {
+              "name": "List uploads",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/uploads/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "uploads",
+                    ""
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "Download URL",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/uploads/{{uploadId}}/download/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "uploads",
+                    "{{uploadId}}",
+                    "download",
+                    ""
+                  ]
+                },
+                "description": "Signed URL that forces a download, valid 5 minutes."
+              }
+            },
+            {
+              "name": "Delete upload",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "X-CSRFToken",
+                    "value": "{{csrfToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/uploads/{{uploadId}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "uploads",
+                    "{{uploadId}}",
+                    ""
+                  ]
+                },
+                "description": "Frees its storage quota."
+              }
+            }
+          ]
+        },
+        {
+          "name": "Storage usage",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/storage/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "knowledge",
+                "storage",
+                ""
+              ]
+            },
+            "description": "used_bytes, limit_bytes (50 MB) and remaining_bytes for articles plus uploads. The logo is not counted."
+          }
+        }
+      ]
     }
   ],
   "event": [

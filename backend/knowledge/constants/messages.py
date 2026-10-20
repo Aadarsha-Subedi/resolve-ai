@@ -1,0 +1,38 @@
+MESSAGE_ARTICLE_CREATED = "Article created successfully."
+MESSAGE_ARTICLE_RETRIEVED = "Article retrieved successfully."
+MESSAGE_ARTICLES_LISTED = "Articles retrieved successfully."
+MESSAGE_ARTICLE_UPDATED = "Article updated successfully."
+MESSAGE_ARTICLE_DELETED = "Article deleted."
+MESSAGE_ARTICLE_NOT_FOUND = "Article not found."
+MESSAGE_ARTICLE_PUBLISHED = "Article published."
+MESSAGE_ARTICLE_UNPUBLISHED = "Article moved back to draft."
+MESSAGE_ARTICLE_ARCHIVED = "Article archived."
+MESSAGE_ARTICLE_IS_ARCHIVED = (
+    "Archived articles are read-only. Move it back to draft first."
+)
+MESSAGE_ARTICLE_TOO_LARGE = "The article is larger than {limit_kb} KB."
+MESSAGE_INVALID_TRANSITION = "An article cannot move from {current} to {target}."
+MESSAGE_NOTHING_TO_UPDATE = "Provide at least one field to update."
+MESSAGE_CATEGORY_NOT_FOUND = "Category not found."
+MESSAGE_CATEGORIES_INVALID = "One or more categories do not exist in this workspace."
+MESSAGE_CATEGORY_EXISTS = "A category with that name already exists."
+MESSAGE_CATEGORIES_LISTED = "Categories retrieved successfully."
+MESSAGE_CATEGORY_CREATED = "Category created successfully."
+MESSAGE_CATEGORY_UPDATED = "Category updated successfully."
+MESSAGE_CATEGORY_DELETED = "Category deleted."
+MESSAGE_QUOTA_EXCEEDED = (
+    "This would exceed the workspace storage limit of {limit_mb} MB."
+)
+MESSAGE_STORAGE_RETRIEVED = "Storage usage retrieved successfully."
+MESSAGE_UPLOAD_URL = "Upload URL created. PUT the file there, then confirm the upload."
+MESSAGE_UPLOAD_UNSUPPORTED = "File uploads need R2 storage to be configured."
+MESSAGE_UPLOAD_CONFIRMED = "Upload confirmed."
+MESSAGE_UPLOAD_INVALID = (
+    "The uploaded file is missing or does not match what was declared."
+)
+MESSAGE_UPLOAD_NOT_FOUND = "Upload not found."
+MESSAGE_UPLOAD_NOT_PENDING = "This upload was already confirmed."
+MESSAGE_UPLOADS_LISTED = "Uploads retrieved successfully."
+MESSAGE_UPLOAD_DELETED = "Upload deleted."
+MESSAGE_DOWNLOAD_URL = "Download URL created."
+MESSAGE_STORAGE_UNAVAILABLE = "File storage is temporarily unavailable. Try again."

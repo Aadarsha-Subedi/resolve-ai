@@ -40,7 +40,7 @@ Django 6.1 + DRF, PostgreSQL, Redis, Celery, `uv`, Python 3.14; Docker for dev a
 | 1 | Accounts and sessions (`accounts`) | 0 | Done, breakdown below |
 | 2 | Audit log (`audit`) | all other features | Deferred: built last, after every other v1 feature |
 | 3 | Workspaces and membership (`workspaces`) | 1 | Done, details below |
-| 4 | Knowledge base (`knowledge`) | 3 | Planned |
+| 4 | Knowledge base (`knowledge`) | 3 | Done, details below |
 | 5 | Tickets and public portal (`tickets`) | 3 | Planned |
 | 6 | Gmail connection and email (`email_integration`) | 1, 3, 5 | Planned |
 | 7 | Dashboard (`dashboard`) | 3, 5 | Planned |
@@ -151,9 +151,22 @@ Rules (owner answers of 2026-10-20):
 
 Endpoints (under `/api/`): `workspaces/` (GET list, POST create), `workspaces/{id}/` (GET, PATCH name and portal_enabled, DELETE), `workspaces/{id}/transfer-ownership/`, `workspaces/{id}/members/`, `workspaces/{id}/members/{user_id}/` (DELETE), `workspaces/{id}/leave/`, `workspaces/{id}/join-link/` (GET, POST, DELETE), `join-links/redeem/`, `workspaces/{id}/invitations/` (GET, POST), `workspaces/{id}/invitations/{id}/` (DELETE), `invitations/` (mine), `invitations/{id}/accept/`, `invitations/{id}/decline/`, `workspaces/{id}/logo/upload-url/`, `workspaces/{id}/logo/` (PUT, DELETE).
 
-### Feature 4: Knowledge base (`knowledge`)
+### Feature 4: Knowledge base (`knowledge`), built
 
-`KnowledgeArticle` (draft/published/archived, title, content), `KnowledgeCategory` with default seeding and user management, article-category through model, `KnowledgeUpload` (PDF/TXT, type and size validation, stored through `common.storage`, atomic 50 MB workspace quota). Endpoints: article CRUD and publish/archive, category CRUD, upload/list/download/delete, filter by title/status/category. No text extraction, no full-text search, no AI usage.
+Models: `KnowledgeArticle` (draft/published/archived; metadata in the database, the Markdown body is an object in R2), `KnowledgeCategory` (per workspace, unique slug), `KnowledgeArticleCategory` (many-to-many), `KnowledgeUpload` (PDF/TXT metadata; PENDING until the browser upload is confirmed, then READY). `Workspace.storage_used_bytes` holds the quota counter.
+
+Rules (owner answers D5, D6 and the defaults of 2026-10-20):
+- **Storage:** the same R2 bucket as the logo, one prefix per workspace: `workspaces/{id}/knowledge/articles/{article_id}.md` and `.../uploads/{upload_id}.pdf|txt`. Keys never contain user-supplied names; the display filename is kept in the database. Articles and uploads (not the logo) all count toward the 50 MB per-workspace quota.
+- **Quota:** one conditional `UPDATE` reserves space (articles on save, uploads when the upload URL is issued) so concurrent writers cannot overshoot; it answers 413 `storage_quota_exceeded` when full. Deleting or shrinking frees space. Uploads never confirmed within 1 hour are removed by the hourly task `knowledge.release_stale_uploads`.
+- **Articles:** title up to 200 characters, body up to 200 KB (UTF-8 bytes), up to 10 categories. Status changes go through `publish`, `unpublish` (back to draft) and `archive`; PATCH cannot change status. ABAC rule: archived articles are read-only until moved back to draft. Delete is permanent and removes the stored object. A storage failure rolls the row and the quota change back.
+- **Uploads:** PDF or TXT, 1 byte to 10 MB, signed direct upload then confirm. Confirm checks exact size and content type (PDFs must start with `%PDF-`) and discards anything else. Downloads are signed URLs that force a download, valid 5 minutes. No text extraction.
+- **Filters:** `?title=` (contains), `?status=`, `?category=<id>`, `?ordering=` (title, created_at, updated_at, published_at), plus limit/offset. No full-text search in v1.
+- **Categories:** defaults General, Getting started, Billing, Troubleshooting, FAQ are created with each workspace (and by a data migration for existing ones). Owner and members may add, rename and delete them; names are unique per workspace (case-insensitive through the slug); deleting a category only unlinks it.
+- **Access:** both roles may view and manage the knowledge base (`knowledge.view`, `knowledge.manage`); non-members get 404.
+- When a workspace is purged, its stored article and upload objects are deleted. Audit hook: `knowledge.services.hooks.knowledge_event`.
+- Known limit: no versioning. An article save overwrites the stored object, so a crash between the database commit and the storage write is the only way the two can disagree (the write happens last inside the transaction so a failure undoes the rows).
+
+Endpoints (under `/api/workspaces/{workspace_id}/knowledge/`): `articles/` (GET, POST), `articles/{id}/` (GET, PATCH, DELETE), `articles/{id}/publish|unpublish|archive/` (POST), `categories/` (GET, POST), `categories/{id}/` (PATCH, DELETE), `uploads/` (GET), `uploads/upload-url/` (POST), `uploads/{id}/confirm/` (POST), `uploads/{id}/download/` (GET), `uploads/{id}/` (DELETE), `storage/` (GET).
 
 ### Feature 5: Tickets and public portal (`tickets`)
 

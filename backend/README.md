@@ -43,6 +43,7 @@ uv run ruff check . && uv run ruff format .
 - `docs/` LLD and `GOOGLE_OAUTH_SETUP.md` (how to create the Google OAuth client); `postman/` Postman collection and environment (updated with every API change)
 - `accounts/` feature 1: Google sign-in (django-allauth), `User` model, device sessions, profile, account deletion, Celery tasks (`models/`, `services/`, `serializers/`, `views/`, `constants/`, `adapters.py`, `tasks.py`, `tests/`)
 - `workspaces/` feature 3: workspaces, membership, join links, invitations, ownership transfer, logo (same layout as `accounts/`)
+- `knowledge/` feature 4: articles, categories, PDF/TXT uploads and the shared storage quota (same layout)
 - Feature apps are added one at a time (see the root README)
 
 ## Accounts (feature 1)
@@ -65,6 +66,10 @@ Postman: Google sign-in cannot finish inside Postman. Sign in with a browser, co
 
 A user can create workspaces (becoming the owner), belong to several, and join through a join link (1 hour by default, 1 day or 7 days) or an invitation to their Google account. The owner removes members, transfers ownership, deletes the workspace (purged after 7 days) and sets the logo. Endpoint list and rules: [Project.MD](Project.MD), Feature 3. Postman folders: `Workspaces`, `Members`, `Join link`, `Invitations`. The logo upload needs the `RESOLVE_AI_R2_*` variables (the browser PUTs to a signed R2 URL, so allow your frontend origin in the bucket's CORS policy with the PUT method).
 
-Celery beat runs `accounts.purge_deleted_accounts`, `workspaces.purge_deleted_workspaces` and `accounts.clear_expired_sessions` daily (`docker compose --profile worker` starts a worker; run a beat process for the schedule). Later features plug in through `accounts.services.hooks` (`register_ownership_check`, the `account_event` signal).
+## Knowledge base (feature 4)
+
+Articles (Markdown, up to 200 KB), categories (five defaults per workspace) and PDF/TXT uploads (up to 10 MB). Everything is stored in the R2 bucket under `workspaces/{id}/knowledge/` and counts toward the 50 MB per-workspace quota (the logo does not). Uploads use a signed URL: request it (`size` in exact bytes), PUT the file with method PUT and the returned Content-Type, then confirm. Filters: title, status, category. Rules and endpoints: [Project.MD](Project.MD), Feature 4. Postman folder: `Knowledge`. Needs the `RESOLVE_AI_R2_*` variables for uploads (articles also need storage: with an empty bucket they use local disk under `media/`).
+
+Celery beat runs `accounts.purge_deleted_accounts`, `workspaces.purge_deleted_workspaces`, `knowledge.release_stale_uploads` and `accounts.clear_expired_sessions` daily (`docker compose --profile worker` starts a worker; run a beat process for the schedule). Later features plug in through `accounts.services.hooks` (`register_ownership_check`, the `account_event` signal).
 
 Docs: `Project.MD` (v1 feature map and build order), `CLAUDE.md` (rules), `DECISION.md` (decision log), `FLOW.md` (code paths).

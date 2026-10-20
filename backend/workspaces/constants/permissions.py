@@ -14,8 +14,12 @@ MEMBERS_REMOVE = "members.remove"
 OWNERSHIP_TRANSFER = "ownership.transfer"
 JOIN_LINK_MANAGE = "join_link.manage"
 INVITATIONS_MANAGE = "invitations.manage"
+KNOWLEDGE_VIEW = "knowledge.view"
+KNOWLEDGE_MANAGE = "knowledge.manage"
 
-_MEMBER_PERMISSIONS = frozenset({WORKSPACE_VIEW, MEMBERS_VIEW})
+_MEMBER_PERMISSIONS = frozenset(
+    {WORKSPACE_VIEW, MEMBERS_VIEW, KNOWLEDGE_VIEW, KNOWLEDGE_MANAGE}
+)
 
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     Role.MEMBER: _MEMBER_PERMISSIONS,
