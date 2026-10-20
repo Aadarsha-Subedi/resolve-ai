@@ -7,7 +7,7 @@ A capstone project that uses AI to resolve customer queries: a multi-tenant supp
 | Area | State |
 | --- | --- |
 | Design (LLD) | Draft, owner decisions applied: [backend/docs/ResolveAI_LLD.md](backend/docs/ResolveAI_LLD.md) |
-| Backend | In progress. `common` app and config done; features 1 (accounts and sessions), 3 (workspaces and membership) and 4 (knowledge base) built; tickets and portal next; audit log built last |
+| Backend | In progress. `common` app and config done; features 1 (accounts and sessions), 3 (workspaces and membership) and 4 (knowledge base) and 5 (tickets and portal) built; Gmail and email next; audit log built last |
 | Frontend | Not started |
 | LLM layer (full-text search, Gemini) | After frontend and backend scaffolding |
 
@@ -37,6 +37,8 @@ Feature 1, `backend/accounts/`: Google-only sign-in through django-allauth (redi
 Feature 3, `backend/workspaces/`: workspaces with an owner and members, join links (1 hour by default) and invitations to Google accounts, ownership transfer, deletion with a 7-day grace period, and a logo stored in R2.
 
 Feature 4, `backend/knowledge/`: knowledge-base articles with categories and PDF/TXT uploads, all stored in R2 under the workspace and counted in a 50 MB per-workspace quota; filters by title, status and category.
+
+Feature 5, `backend/tickets/`: tickets with notes, replies and history for the team, and a public portal where customers submit tickets without logging in (rate limited, honeypot).
 
 v1 (backend only, no AI/RAG) is mapped in [backend/Project.MD](backend/Project.MD). Build order: accounts and sessions, workspaces, knowledge base, tickets and portal, Gmail and email, dashboard, then the audit log last. The `ai` app (full-text search, Gemini) comes after.
 
