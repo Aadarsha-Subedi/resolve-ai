@@ -74,7 +74,7 @@ Articles (Markdown, up to 200 KB), categories (five defaults per workspace) and 
 
 ## Tickets and public portal (feature 5)
 
-Agents (owner and members) create and work tickets under `/api/workspaces/{id}/tickets/`: per-workspace numbers, fixed categories, priorities, five statuses, internal notes and public replies, history, and filters (status, priority, category, dates, search, waiting for reply). Customers use the public portal with no login: `GET /api/portal/{slug}/` and `POST /api/portal/{slug}/tickets/` (per-IP limit, 5 tickets per email per hour, hidden honeypot field `website`). Public replies are stored as `queued`; emailing them and the portal confirmation arrive with feature 6. Rules and endpoints: [Project.MD](Project.MD), Feature 5. Postman folders: `Tickets`, `Portal (public)`.
+Agents (owner and members) create and work tickets under `/api/workspaces/{id}/tickets/`: per-workspace numbers, fixed categories, priorities, five statuses, internal notes and public replies, history, and filters (status, priority, category, dates, search, waiting for reply). Customers use the public portal with no login: `GET /api/portal/{slug}/` and `POST /api/portal/{slug}/tickets/` (per-IP limit, 5 tickets per email per hour, hidden honeypot field `website`). `GET .../tickets/{id}/overview/` returns the whole ticket page in one request (ticket, conversation, history, your role and permissions, your Gmail status). Public replies are stored as `queued`; emailing them and the portal confirmation arrive with feature 6. Rules and endpoints: [Project.MD](Project.MD), Feature 5. Postman folders: `Tickets`, `Portal (public)`.
 
 ## Gmail and email (feature 6)
 

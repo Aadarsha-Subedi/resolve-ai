@@ -256,3 +256,21 @@ class PortalConfirmationTests(EmailTestCase):
             2,
         )
         self.assertIn(gmail_id, fake.messages)
+
+
+class OverviewEmailBlockTests(EmailTestCase):
+    def test_ticket_overview_shows_the_viewers_gmail_status(self):
+        ticket = self.new_ticket()
+        url = self.turl(f"{ticket['id']}/overview/")
+        before = self.member_client.get(url).data["data"]["email"]
+        self.assertEqual(before["status"], "not_connected")
+        self.connect(self.member)
+        after = self.member_client.get(url).data["data"]["email"]
+        self.assertEqual(
+            (after["status"], after["mailbox_email"], after["reconnect_path"]),
+            ("connected", "member@example.com", None),
+        )
+        # Each viewer sees their own connection, not their colleague's.
+        self.assertEqual(
+            self.owner_client.get(url).data["data"]["email"]["status"], "not_connected"
+        )

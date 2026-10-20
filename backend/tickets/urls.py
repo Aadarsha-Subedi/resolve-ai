@@ -12,6 +12,11 @@ urlpatterns = [
         name="ticket_detail",
     ),
     path(
+        _W + "<uuid:ticket_id>/overview/",
+        ticket.TicketOverviewView.as_view(),
+        name="ticket_overview",
+    ),
+    path(
         _W + "<uuid:ticket_id>/status/",
         ticket.TicketStatusView.as_view(),
         name="ticket_status",

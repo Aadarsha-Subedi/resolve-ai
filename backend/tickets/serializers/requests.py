@@ -89,6 +89,17 @@ class TicketFilterSerializer(serializers.Serializer):
     ordering = serializers.CharField(required=False, max_length=30)
 
 
+class OverviewQuerySerializer(serializers.Serializer):
+    """How much conversation and history to include (the newest items)."""
+
+    messages_limit = serializers.IntegerField(
+        required=False, min_value=1, max_value=100, default=50
+    )
+    events_limit = serializers.IntegerField(
+        required=False, min_value=1, max_value=100, default=50
+    )
+
+
 class PortalTicketSerializer(serializers.Serializer):
     """Public form. The honeypot is read separately so a bot filling it is not told apart."""
 

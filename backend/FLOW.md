@@ -67,6 +67,7 @@ All routes: `/api/workspaces/{workspace_id}/knowledge/...` -> `workspaces/servic
 - **Status:** `TicketStatusView.post` -> `ticket_service.change_status` (row lock, `TicketPolicy.ensure_can_change_status`, resolved/closed timestamps, event).
 - **Update:** `TicketDetailView.patch` -> `ticket_service.update_ticket` (`TicketPolicy.ensure_can_edit` for closed tickets, one event per change type).
 - **Reply or note:** `TicketMessageListView.post` -> `message_service.add_message` (public reply: `ensure_can_reply`, stored QUEUED with `sent_from_user`, feature 6 will send it; note: internal) -> event without the body.
+- **Ticket page in one call:** `views/ticket.py::TicketOverviewView.get` -> `services/overview_service.py::build` (permission check through `ticket_service.get_for_user`, the viewer's membership role and `ROLE_PERMISSIONS`, the newest messages and events, then each registered extra block; `email_integration/apps.py::ready` registers `services/overview.py::gmail_status_block`).
 - **Portal:** `views/portal.py::PortalTicketView.post` (no auth, `IPScopedThrottle` scope `portal_ticket`) -> `PortalTicketSerializer` -> `portal_service.submit` (workspace by slug and `portal_enabled`, honeypot check, per-email cache counter, then `ticket_service.create_ticket` with source portal and `confirmation_pending`). `PortalInfoView.get` -> `portal_service.portal_info`.
 
 ## 10. Gmail and email (implemented)

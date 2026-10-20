@@ -80,6 +80,10 @@ Docker rules: `Dockerfile.dev` and `Dockerfile.prod` are the only image definiti
 - **AI:** Gemini via `GeminiClient`; retrieval first (PostgreSQL FTS), never the whole KB; citations only from real retrieval results; AI never sends or changes state on its own. AI conversations are private per user per workspace. Feedback is a 1 to 5 star rating plus an optional description, scoped to the user who interacted with the AI.
 - **Dashboard/audit:** no SLA or response-time claims until defined; audit sensitive actions without secrets or message bodies.
 
+## API shape for the frontend
+
+- A screen must not need a fan-out of requests: give each screen one read endpoint (for example `tickets/{id}/overview/`, the dashboard) that returns everything it shows, bounded and paginated, keeping the same access rules as the fine-grained endpoints. Cross-app data comes in through a registry (`register_extra`), not by importing the other app. Keep the fine-grained endpoints for refreshes.
+
 ## Guardrails
 
 - Never skip workspace scoping; add tests for cross-workspace access, internal-note leakage, wrong-Google-account Gmail connection, duplicate inbound mail, owner-only reopen.

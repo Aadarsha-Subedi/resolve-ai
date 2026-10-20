@@ -13,11 +13,17 @@ from tickets.serializers.requests import (
     AddMessageSerializer,
     ChangeStatusSerializer,
     CreateTicketSerializer,
+    OverviewQuerySerializer,
     TicketFilterSerializer,
     UpdateTicketSerializer,
 )
-from tickets.serializers.responses import EventData, MessageData, TicketData
-from tickets.services import message_service, ticket_service
+from tickets.serializers.responses import (
+    EventData,
+    MessageData,
+    OverviewData,
+    TicketData,
+)
+from tickets.services import message_service, overview_service, ticket_service
 
 
 def _paged(request, queryset):
@@ -68,6 +74,23 @@ class TicketDetailView(APIView):
         return ResourceUpdatedResponse(
             data=TicketData(ticket, detail=True),
             message=messages.MESSAGE_TICKET_UPDATED,
+        )
+
+
+class TicketOverviewView(APIView):
+    """GET: everything the ticket page needs in one call (replaces separate calls for the
+    ticket, its messages, its history, the viewer's role and their Gmail status).
+    ?messages_limit= and ?events_limit= (1-100, default 50) return the newest items; older
+    ones come from the paginated messages/ and events/ endpoints."""
+
+    def get(self, request, workspace_id, ticket_id):
+        query = OverviewQuerySerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        overview = overview_service.build(
+            request.user, workspace_id, ticket_id, **query.validated_data
+        )
+        return SuccessResponse(
+            data=OverviewData(overview), message=messages.MESSAGE_OVERVIEW_RETRIEVED
         )
 
 

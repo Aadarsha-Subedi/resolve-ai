@@ -24,6 +24,7 @@ def google_identity(sub="g-123", email="jane@example.com", verified=True, **extr
     }
 
 
+@override_settings(GMAIL_PUBSUB_TOPIC="")  # never reach for Pub/Sub or Gmail in tests
 class AccountsTestCase(TestCase):
     """Drives the real allauth flow; only the network calls to Google are mocked."""
 

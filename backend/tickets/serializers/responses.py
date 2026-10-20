@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from common.response.domain import BaseResponseData
 from tickets.models import Ticket, TicketEvent, TicketMessage
+from tickets.services.overview_service import Overview
 
 
 @dataclass(frozen=True)
@@ -85,6 +86,27 @@ class EventData(BaseResponseData):
             "new_value": e.new_value,
             "metadata": e.metadata,
             "created_at": e.created_at.isoformat(),
+        }
+
+
+@dataclass(frozen=True)
+class OverviewData(BaseResponseData):
+    overview: Overview
+
+    def to_dict(self) -> dict:
+        o = self.overview
+        return {
+            "ticket": TicketData(o.ticket, detail=True).to_dict(),
+            "viewer": {"role": o.role, "permissions": o.permissions},
+            "messages": [MessageData(m).to_dict() for m in o.messages],
+            "events": [EventData(e).to_dict() for e in o.events],
+            "meta": {
+                "messages_total": o.messages_total,
+                "messages_returned": len(o.messages),
+                "events_total": o.events_total,
+                "events_returned": len(o.events),
+            },
+            **o.extras,
         }
 
 

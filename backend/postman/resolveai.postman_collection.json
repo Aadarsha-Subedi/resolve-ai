@@ -1692,6 +1692,39 @@
           }
         },
         {
+          "name": "Ticket overview (one call for the page)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/overview/?messages_limit=50&events_limit=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                "{{ticketId}}",
+                "overview",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "messages_limit",
+                  "value": "50"
+                },
+                {
+                  "key": "events_limit",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Everything the ticket page needs in one request: `ticket` (detail), `viewer` (your role and permission codes), `messages` (public replies and internal notes), `events` (history), `meta` (totals and how many were returned) and `email` (your own Gmail status, for the reply box). messages_limit and events_limit (1-100, default 50) return the newest items in chronological order; older ones come from the paginated messages/ and events/ requests. Read-only; same access rules as the separate requests."
+          }
+        },
+        {
           "name": "Update ticket",
           "request": {
             "method": "PATCH",

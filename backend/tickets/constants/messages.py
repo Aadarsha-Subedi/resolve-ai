@@ -1,4 +1,5 @@
 MESSAGE_TICKET_CREATED = "Ticket created successfully."
+MESSAGE_OVERVIEW_RETRIEVED = "Ticket overview retrieved successfully."
 MESSAGE_TICKET_RETRIEVED = "Ticket retrieved successfully."
 MESSAGE_TICKETS_LISTED = "Tickets retrieved successfully."
 MESSAGE_TICKET_UPDATED = "Ticket updated successfully."

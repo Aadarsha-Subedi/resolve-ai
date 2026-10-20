@@ -13,7 +13,13 @@ from tickets.tests.base import TicketTestCase
 KEY = Fernet.generate_key().decode()
 
 
-@override_settings(ENCRYPTION_KEYS=[KEY])
+# Whatever push settings the developer has in .env, tests start with push switched off.
+@override_settings(
+    ENCRYPTION_KEYS=[KEY],
+    GMAIL_PUBSUB_TOPIC="",
+    PUBSUB_PUSH_AUDIENCE="",
+    PUBSUB_PUSH_SERVICE_ACCOUNT="",
+)
 class EmailTestCase(TicketTestCase):
     """Tickets workspace with a fake Gmail per user. Celery runs tasks inline and
     `api()` runs the after-commit hooks the way a real request would."""
