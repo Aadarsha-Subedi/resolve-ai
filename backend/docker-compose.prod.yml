@@ -1,0 +1,44 @@
+# Production-like stack built from Dockerfile.prod (no bind mount, gunicorn).
+# Usage: docker compose -f docker-compose.prod.yml up --build -d
+x-backend: &backend
+  build:
+    context: .
+    dockerfile: Dockerfile.prod
+  env_file: .env
+  environment:
+    RESOLVE_AI_DB_HOST: db
+    RESOLVE_AI_DB_PORT: "5432"
+    RESOLVE_AI_REDIS_URL: redis://redis:6379/0
+  restart: unless-stopped
+  depends_on:
+    - db
+    - redis
+
+services:
+  db:
+    image: postgres:17
+    container_name: ${RESOLVE_AI_DB_CONTAINER_NAME}
+    environment:
+      POSTGRES_DB: ${RESOLVE_AI_DB_NAME}
+      POSTGRES_USER: ${RESOLVE_AI_DB_USER}
+      POSTGRES_PASSWORD: ${RESOLVE_AI_DB_PASSWORD}
+    restart: unless-stopped
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: ${RESOLVE_AI_REDIS_CONTAINER_NAME}
+    restart: unless-stopped
+
+  api:
+    <<: *backend
+    ports:
+      - "8000:8000"
+
+  celery:
+    <<: *backend
+    command: celery -A config worker -Q default -l info
+
+volumes:
+  db_data:

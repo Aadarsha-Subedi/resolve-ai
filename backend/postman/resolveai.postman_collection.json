@@ -1,0 +1,31 @@
+{
+  "info": {
+    "name": "ResolveAI",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "ResolveAI backend API. Session-cookie auth; send X-CSRFToken on unsafe requests. Every response uses the envelope {success, status_code, message, data, meta}; errors carry a stable `code`."
+  },
+  "item": [
+    {
+      "name": "Common",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

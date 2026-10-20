@@ -1,0 +1,13 @@
+.git
+.venv
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[oc]
+.ruff_cache/
+.celery/
+db.sqlite3
+media/
+docs/
+postman/
