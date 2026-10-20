@@ -7,7 +7,7 @@ A capstone project that uses AI to resolve customer queries: a multi-tenant supp
 | Area | State |
 | --- | --- |
 | Design (LLD) | Draft, owner decisions applied: [backend/docs/ResolveAI_LLD.md](backend/docs/ResolveAI_LLD.md) |
-| Backend | In progress. `common` app and config done; features 1 (accounts and sessions), 3 (workspaces and membership) and 4 (knowledge base) and 5 (tickets and portal) and 6 (Gmail and email) built; dashboard next; audit log built last |
+| Backend | In progress. `common` app and config done; features 1 (accounts and sessions), 3 (workspaces and membership) and 4 (knowledge base) and 5 (tickets and portal) 6 (Gmail and email) and 2 (audit log) built; the dashboard is the remaining feature; audit log built last |
 | Frontend | Not started |
 | LLM layer (full-text search, Gemini) | After frontend and backend scaffolding |
 
@@ -41,6 +41,8 @@ Feature 4, `backend/knowledge/`: knowledge-base articles with categories and PDF
 Feature 5, `backend/tickets/`: tickets with notes, replies and history for the team, and a public portal where customers submit tickets without logging in (rate limited, honeypot).
 
 Feature 6, `backend/email_integration/`: Gmail through the same Google sign-in; replies are emailed from the agent's own Gmail, customer replies are matched to tickets by email headers (push and a sync button), and only ticket mail is stored.
+
+Feature 2, `backend/audit/`: an append-only audit log of sensitive actions (members, ownership, join links, knowledge base, tickets, Gmail connection), readable by the workspace owner only.
 
 v1 (backend only, no AI/RAG) is mapped in [backend/Project.MD](backend/Project.MD). Build order: accounts and sessions, workspaces, knowledge base, tickets and portal, Gmail and email, dashboard, then the audit log last. The `ai` app (full-text search, Gemini) comes after.
 

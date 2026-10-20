@@ -39,7 +39,12 @@ def create_category(user: User, workspace_id, name: str) -> KnowledgeCategory:
             )
     except IntegrityError:
         raise _exists() from None
-    hooks.emit(membership.workspace, user, hooks.ACTION_CATEGORY_CREATED)
+    hooks.emit(
+        membership.workspace,
+        user,
+        hooks.ACTION_CATEGORY_CREATED,
+        target_id=str(category.id),
+    )
     return category
 
 
@@ -66,7 +71,12 @@ def rename_category(
             category.save(update_fields=["name", "slug", "updated_at"])
     except IntegrityError:
         raise _exists() from None
-    hooks.emit(membership.workspace, user, hooks.ACTION_CATEGORY_UPDATED)
+    hooks.emit(
+        membership.workspace,
+        user,
+        hooks.ACTION_CATEGORY_UPDATED,
+        target_id=str(category_id),
+    )
     return category
 
 
@@ -76,7 +86,12 @@ def delete_category(user: User, workspace_id, category_id) -> None:
         user, workspace_id, permissions.KNOWLEDGE_MANAGE
     )
     get_category(workspace_id, category_id).delete()
-    hooks.emit(membership.workspace, user, hooks.ACTION_CATEGORY_DELETED)
+    hooks.emit(
+        membership.workspace,
+        user,
+        hooks.ACTION_CATEGORY_DELETED,
+        target_id=str(category_id),
+    )
 
 
 def _exists() -> ConflictException:

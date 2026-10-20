@@ -38,7 +38,7 @@ Django 6.1 + DRF, PostgreSQL, Redis, Celery, `uv`, Python 3.14; Docker for dev a
 | --- | --- | --- | --- |
 | 0 | Foundation: `common` app, config, Docker, Postman, docs | none | Done |
 | 1 | Accounts and sessions (`accounts`) | 0 | Done, breakdown below |
-| 2 | Audit log (`audit`) | all other features | Deferred: built last, after every other v1 feature |
+| 2 | Audit log (`audit`) | all other features | Done (built last, as decided) |
 | 3 | Workspaces and membership (`workspaces`) | 1 | Done, details below |
 | 4 | Knowledge base (`knowledge`) | 3 | Done, details below |
 | 5 | Tickets and public portal (`tickets`) | 3 | Done, details below |
@@ -132,9 +132,15 @@ Passwords, email verification flows, avatar upload, other login providers, MFA, 
 
 ## Features 2 to 7 (outline)
 
-### Feature 2: Audit log (`audit`)
+### Feature 2: Audit log (`audit`), built last (owner decision of 2026-10-20)
 
-`AuditEvent` model and a `record(actor, workspace, action, target, metadata)` service (never raises, no secrets or message bodies). Owner-only list endpoint with filters (action, actor, date range); no export. Actions are registered as constants as features land.
+`AuditEvent` (UUIDv7, `workspace` nullable, `actor_user` plus an `actor_name` snapshot, `action`, `target_type`/`target_id`, sanitised flat `metadata`, `created_at`) and `audit.services.recorder.record(...)`, which never raises: a failing audit write is logged and the audited action carries on. Rows are append-only (saving an existing row raises) and have no API to change or delete them.
+
+- **How features feed it:** each feature already emits a hook signal (`accounts`, `workspaces`, `knowledge`, `tickets`, `email_integration`). `audit/signals.py` subscribes to all of them, so feature code does not call the audit app. Which actions are kept, and what each points at, is one table: `audit/constants/actions.py`. A new feature registers its sensitive actions there; an unregistered action is ignored.
+- **Recorded:** workspace created/updated/deleted/logo changed; member joined/left/removed; ownership transferred; join link created/revoked; invitation created/revoked/accepted/declined; every knowledge-base article, category and upload action; ticket created/updated/status changed (old and new status, so closing and reopening show); account-level (no workspace, kept for security reviews, not in the workspace API): account deletion requested/cancelled/completed, log out everywhere, session revoked, Gmail connected/reauthorisation needed/disconnected. **Not recorded:** ticket replies and notes (the ticket's own history), logins/logouts/profile edits (noise), `workspace.purged` (its rows are deleted with the workspace).
+- **Never stored:** tokens, raw join tokens, message or article text, snippets, cookies/sessions, passwords or keys (dropped by key name), email addresses (masked if one slips in), nested objects; strings are capped at 200 characters and a whole metadata blob at 2,000 (else replaced by `{"truncated": true}`).
+- **Endpoint:** `GET /api/workspaces/{id}/audit/`, owner only (`audit.view` is held by OWNER only: members 403, non-members 404), newest first, paginated (25, max 100). Filters: `action`, `action_prefix`, `actor`, `target_type`, `target_id`, `created_from`, `created_to`. No export, no write methods. Reading the log is not itself audited.
+- **Lifetime:** a workspace's rows are purged with the workspace (7 days after deletion). They survive removal of members and deletion of the actor's account (the name snapshot stays). No retention limit otherwise in v1.
 
 ### Feature 3: Workspaces and membership (`workspaces`), built
 

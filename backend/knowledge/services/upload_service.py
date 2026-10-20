@@ -127,7 +127,12 @@ def confirm_upload(user: User, workspace_id, upload_id) -> KnowledgeUpload:
         )
     upload.status = UploadStatus.READY
     upload.save(update_fields=["status", "updated_at"])
-    hooks.emit(membership.workspace, user, hooks.ACTION_UPLOAD_CONFIRMED)
+    hooks.emit(
+        membership.workspace,
+        user,
+        hooks.ACTION_UPLOAD_CONFIRMED,
+        target_id=str(upload.id),
+    )
     return upload
 
 
@@ -163,7 +168,12 @@ def delete_upload(user: User, workspace_id, upload_id) -> None:
         user, workspace_id, permissions.KNOWLEDGE_MANAGE
     )
     _discard(_get(workspace_id, upload_id))
-    hooks.emit(membership.workspace, user, hooks.ACTION_UPLOAD_DELETED)
+    hooks.emit(
+        membership.workspace,
+        user,
+        hooks.ACTION_UPLOAD_DELETED,
+        target_id=str(upload_id),
+    )
 
 
 def release_stale_uploads() -> int:

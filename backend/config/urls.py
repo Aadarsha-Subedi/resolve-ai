@@ -11,4 +11,5 @@ urlpatterns = [
     path("api/", include("knowledge.urls")),
     path("api/", include("tickets.urls")),
     path("api/", include("email_integration.urls")),
+    path("api/", include("audit.urls")),
 ]

@@ -79,6 +79,11 @@ All routes: `/api/workspaces/{workspace_id}/knowledge/...` -> `workspaces/servic
 - **Review:** `ReviewAttachView` -> `review_service.attach_to_ticket` (fetches the body again); `ReviewDismissView` -> `dismiss`. Daily `purge_old_review_items`.
 - **Disconnect:** `GmailStatusView.delete` -> `connection_service.disconnect` (stop watch, revoke, wipe token).
 
-## 11. Planned flows (not implemented yet; see the LLD, section 12)
+## 11. Audit log (implemented)
+
+- **Recording:** a service emits its hook signal (`workspaces/services/hooks.py::emit`, `knowledge/services/hooks.py::emit`, `tickets/services/hooks.py::emit`, `accounts/services/hooks.py::emit`, `email_integration/services/hooks.py::emit`) -> `audit/signals.py` receiver -> `constants/actions.py::ACTIONS` (is it registered, what is the target, is it account-level) -> `services/recorder.py::record` -> `services/sanitize.py::sanitize_metadata` -> `AuditEvent` row. Any failure is logged and swallowed.
+- **Reading:** `audit/views/events.py::AuditEventListView.get` -> `AuditFilterSerializer` -> `services/list_service.py::list_events` (`workspaces/services/access.py::require_permission` with `AUDIT_VIEW`, owner only) -> paginated list, newest first.
+
+## 12. Planned flows (not implemented yet; see the LLD, section 12)
 
 Mark each as implemented, with real file references, when built: Connect Gmail, public ticket creation, agent reply, AI-assisted reply, inbound Gmail (Pub/Sub push and manual sync button).

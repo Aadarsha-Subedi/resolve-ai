@@ -46,6 +46,7 @@ uv run ruff check . && uv run ruff format .
 - `knowledge/` feature 4: articles, categories, PDF/TXT uploads and the shared storage quota (same layout)
 - `tickets/` feature 5: tickets, messages, history and the public portal (same layout)
 - `email_integration/` feature 6: Gmail grant at sign-in, sending replies and confirmations, inbound sync and push, review list (same layout, plus `clients/`)
+- `audit/` feature 2: append-only audit log fed by every feature's hook signals, owner-only read endpoint
 - Feature apps are added one at a time (see the root README)
 
 ## Accounts (feature 1)
@@ -79,6 +80,10 @@ Agents (owner and members) create and work tickets under `/api/workspaces/{id}/t
 ## Gmail and email (feature 6)
 
 Gmail is connected by the same Google sign-in (no second flow): the login asks for Gmail send and read access, and the refresh token is stored encrypted. Agents' public replies are emailed from their own Gmail; the portal confirmation goes out from the owner's Gmail; customer replies come back through Pub/Sub push or the "Sync latest mails" button (newest 30 messages) and are matched to tickets by email headers. Only mail that belongs to tickets is stored. Rules, endpoints and the privacy model: [Project.MD](Project.MD), Feature 6; Google Cloud setup (scopes, Pub/Sub): [docs/GOOGLE_OAUTH_SETUP.md](docs/GOOGLE_OAUTH_SETUP.md). Postman folder: `Email (Gmail)`. A running Celery worker is needed for sending (`docker compose --profile worker up`).
+
+## Audit log (feature 2)
+
+Sensitive actions (membership and ownership changes, join links, invitations, knowledge-base changes, ticket creation/edits/status changes, account and Gmail connection changes) are recorded automatically from the hook signals each feature emits. The workspace owner reads them at `GET /api/workspaces/{id}/audit/` (filters: action, action_prefix, actor, target, dates). The log is append-only, has no export, and never stores tokens, message text or email addresses. To audit a new action, add it to `audit/constants/actions.py` and emit it from the feature's `hooks.py`. Details: [Project.MD](Project.MD), Feature 2. Postman folder: `Audit`.
 
 Celery beat runs `accounts.purge_deleted_accounts`, `workspaces.purge_deleted_workspaces`, `knowledge.release_stale_uploads`, `email_integration.renew_gmail_watches`, `email_integration.purge_old_review_items` and `accounts.clear_expired_sessions` daily (`docker compose --profile worker` starts a worker; run a beat process for the schedule). Later features plug in through `accounts.services.hooks` (`register_ownership_check`, the `account_event` signal).
 

@@ -18,6 +18,7 @@ KNOWLEDGE_VIEW = "knowledge.view"
 KNOWLEDGE_MANAGE = "knowledge.manage"
 TICKETS_VIEW = "tickets.view"
 TICKETS_MANAGE = "tickets.manage"
+AUDIT_VIEW = "audit.view"  # owner only
 
 _MEMBER_PERMISSIONS = frozenset(
     {
@@ -40,5 +41,6 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         OWNERSHIP_TRANSFER,
         JOIN_LINK_MANAGE,
         INVITATIONS_MANAGE,
+        AUDIT_VIEW,
     },
 }

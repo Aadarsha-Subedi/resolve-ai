@@ -2199,6 +2199,42 @@
           }
         }
       ]
+    },
+    {
+      "name": "Audit",
+      "item": [
+        {
+          "name": "List audit log (owner only)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/audit/?action_prefix=member.&limit=25",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "audit",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "action_prefix",
+                  "value": "member."
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                }
+              ]
+            },
+            "description": "Newest first. Owner only (members get 403, non-members 404). Filters: action (exact, e.g. ticket.status_changed), action_prefix (e.g. member., ticket., article.), actor (user id), target_type, target_id, created_from, created_to (YYYY-MM-DD), plus limit/offset (25, max 100). Read-only: no create, edit, delete or export. Each item: id, action, actor {id, name}, target {type, id}, metadata (flat facts only, never secrets, message text or email addresses), created_at. Recorded actions: workspace and member changes, ownership transfer, join links and invitations, knowledge base changes, ticket created/updated/status changed. Replies and notes are not audited (they are the ticket's own history)."
+          }
+        }
+      ]
     }
   ],
   "event": [

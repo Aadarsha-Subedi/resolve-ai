@@ -111,7 +111,12 @@ def create_article(
         _write(
             article.storage_key, content
         )  # last: a failure undoes the rows and quota
-    hooks.emit(membership.workspace, user, hooks.ACTION_ARTICLE_CREATED)
+    hooks.emit(
+        membership.workspace,
+        user,
+        hooks.ACTION_ARTICLE_CREATED,
+        target_id=str(article.id),
+    )
     return get_article(workspace_id, article.id)
 
 
@@ -154,7 +159,12 @@ def update_article(
         article.save()
         if content is not None:
             _write(article.storage_key, content)
-    hooks.emit(membership.workspace, user, hooks.ACTION_ARTICLE_UPDATED)
+    hooks.emit(
+        membership.workspace,
+        user,
+        hooks.ACTION_ARTICLE_UPDATED,
+        target_id=str(article_id),
+    )
     return get_article(workspace_id, article_id)
 
 
@@ -174,7 +184,12 @@ def delete_article(user: User, workspace_id, article_id) -> None:
         article.delete()
         quota_service.release(workspace_id, size)
         transaction.on_commit(lambda: get_storage().delete(key))
-    hooks.emit(membership.workspace, user, hooks.ACTION_ARTICLE_DELETED)
+    hooks.emit(
+        membership.workspace,
+        user,
+        hooks.ACTION_ARTICLE_DELETED,
+        target_id=str(article_id),
+    )
 
 
 _TRANSITIONS = {
@@ -215,7 +230,7 @@ def change_status(
             article.published_at = timezone.now()
         article.updated_by = user
         article.save()
-    hooks.emit(membership.workspace, user, _ACTIONS[target])
+    hooks.emit(membership.workspace, user, _ACTIONS[target], target_id=str(article_id))
     return get_article(workspace_id, article_id)
 
 

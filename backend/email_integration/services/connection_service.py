@@ -11,7 +11,7 @@ from email_integration.clients.base import GmailError
 from email_integration.constants import settings as cfg
 from email_integration.constants.enums import ConnectionStatus
 from email_integration.models import GmailConnection
-from email_integration.services import token_service
+from email_integration.services import hooks, token_service
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +42,7 @@ def record_login_grant(user: User, sociallogin) -> GmailConnection | None:
         scopes = fetch_granted_scopes(token.token)
         refresh = token.token_secret or ""
         connection = GmailConnection.objects.filter(user=user).first()
+        was_connected = connection is not None and connection.is_connected
         has_scopes = cfg.REQUIRED_SCOPES <= scopes
         if connection is None:
             connection = GmailConnection(
@@ -67,6 +68,8 @@ def record_login_grant(user: User, sociallogin) -> GmailConnection | None:
             connection.status = ConnectionStatus.NOT_CONNECTED
         connection.mailbox_email = user.email
         connection.save()
+        if connection.is_connected and not was_connected:
+            hooks.emit(user, hooks.ACTION_GMAIL_CONNECTED)
     except Exception:
         logger.exception("Could not record the Gmail grant")
         return None
@@ -80,6 +83,7 @@ def get_connection(user: User) -> GmailConnection | None:
 def mark_reauth_required(connection: GmailConnection) -> None:
     connection.status = ConnectionStatus.REAUTH_REQUIRED
     connection.save(update_fields=["status", "updated_at"])
+    hooks.emit(connection.user, hooks.ACTION_GMAIL_REAUTH_REQUIRED)
 
 
 def disconnect(user: User) -> GmailConnection | None:
@@ -87,7 +91,8 @@ def disconnect(user: User) -> GmailConnection | None:
     connection = get_connection(user)
     if connection is None:
         return None
-    if connection.is_connected:
+    was_connected = connection.is_connected
+    if was_connected:
         try:
             client = clients.get_gmail_client(connection)
             if connection.watch_expires_at:
@@ -100,6 +105,8 @@ def disconnect(user: User) -> GmailConnection | None:
     connection.history_id = ""
     connection.watch_expires_at = None
     connection.save()
+    if was_connected:
+        hooks.emit(user, hooks.ACTION_GMAIL_DISCONNECTED)
     return connection
 
 

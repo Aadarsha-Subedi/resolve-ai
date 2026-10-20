@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     "knowledge",
     "tickets",
     "email_integration",
+    "audit",
 ]
 
 MIDDLEWARE = [
