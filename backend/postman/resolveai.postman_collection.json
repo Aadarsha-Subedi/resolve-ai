@@ -1576,6 +1576,366 @@
           }
         }
       ]
+    },
+    {
+      "name": "Tickets",
+      "item": [
+        {
+          "name": "Create ticket (agent)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                ""
+              ]
+            },
+            "description": "Owner or member. category: billing, technical, account, feature_request, general (default), other. priority: low, medium (default), high, urgent. Gets the next per-workspace number.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subject\": \"Cannot log in\",\n  \"description\": \"The customer phoned: password reset email never arrives.\",\n  \"customer_email\": \"jane@example.com\",\n  \"customer_name\": \"Jane\",\n  \"category\": \"technical\",\n  \"priority\": \"medium\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json().data;",
+                  "if (d && d.id) { pm.environment.set('ticketId', d.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List tickets",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/?status=open&ordering=-priority",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "open"
+                },
+                {
+                  "key": "ordering",
+                  "value": "-priority"
+                }
+              ]
+            },
+            "description": "Filters: status, priority, category, created_from, created_to (YYYY-MM-DD), q (contains in subject, customer email and name), waiting_for_reply=true|false, ordering (number, created_at, updated_at, last_activity_at, priority, status; prefix - for descending), plus limit/offset (25, max 100)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const items = (pm.response.json().data || {}).items || [];",
+                  "if (items.length) { pm.environment.set('ticketId', items[0].id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get ticket",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                "{{ticketId}}",
+                ""
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Update ticket",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                "{{ticketId}}",
+                ""
+              ]
+            },
+            "description": "subject, description, customer_name, customer_email, category, priority. Status has its own request. On a CLOSED ticket members get 403 ticket_closed; the owner can still edit.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"priority\": \"high\",\n  \"category\": \"billing\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Change status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/status/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                "{{ticketId}}",
+                "status",
+                ""
+              ]
+            },
+            "description": "open, in_progress, pending, resolved, closed. Any member can change it, but only the owner can move a CLOSED ticket to another status (403 owner_only_reopen).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_progress\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List messages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/messages/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                "{{ticketId}}",
+                "messages",
+                ""
+              ]
+            },
+            "description": "Public messages and internal notes (agent view)."
+          }
+        },
+        {
+          "name": "Add internal note",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/messages/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                "{{ticketId}}",
+                "messages",
+                ""
+              ]
+            },
+            "description": "Never visible to customers.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Customer is on the Pro plan.\",\n  \"visibility\": \"internal\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Add public reply",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/messages/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                "{{ticketId}}",
+                "messages",
+                ""
+              ]
+            },
+            "description": "Stored with delivery_status queued; feature 6 emails it from the agent's own Gmail. Not allowed on a CLOSED ticket.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Thanks, we are looking into it.\",\n  \"visibility\": \"public\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Ticket history",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/events/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                "{{ticketId}}",
+                "events",
+                ""
+              ]
+            },
+            "description": "Created, status/priority/category/details changed, reply and note added. Never contains message text."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Portal (public)",
+      "item": [
+        {
+          "name": "Portal info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/portal/{{portalSlug}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "portal",
+                "{{portalSlug}}",
+                ""
+              ]
+            },
+            "description": "No login. Name, slug and logo only. 404 when the slug is unknown, the portal is switched off or the workspace was deleted."
+          }
+        },
+        {
+          "name": "Submit ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/portal/{{portalSlug}}/tickets/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "portal",
+                "{{portalSlug}}",
+                "tickets",
+                ""
+              ]
+            },
+            "description": "No login, no CSRF token. Limited per IP and to 5 tickets per email address per hour per workspace. Leave the hidden field `website` empty or omit it (bots that fill it get a fake success). Returns only the ticket number.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_email\": \"customer@example.com\",\n  \"customer_name\": \"Cara\",\n  \"subject\": \"Where is my order?\",\n  \"description\": \"I ordered last week and nothing arrived.\",\n  \"category\": \"general\"\n}"
+            }
+          }
+        }
+      ]
     }
   ],
   "event": [

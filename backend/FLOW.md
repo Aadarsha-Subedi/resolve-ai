@@ -60,6 +60,15 @@ All routes: `/api/workspaces/{workspace_id}/knowledge/...` -> `workspaces/servic
 - **Upload:** `UploadUrlView.post` -> `upload_service.create_upload` (reserve quota, PENDING row, signed PUT) -> browser PUT to R2 -> `UploadConfirmView.post` -> `upload_service.confirm_upload` (HEAD size and type, PDF magic bytes; a bad object is discarded and its quota released). `UploadDownloadView.get` -> `upload_service.download_url` (signed GET, forced download). Hourly `knowledge/tasks.py::release_stale_uploads` -> `upload_service.release_stale_uploads`.
 - **Workspace lifecycle:** `knowledge/signals.py::on_workspace_event` seeds the default categories on `workspace.created` and deletes stored objects on `workspace.purged` (`workspaces/services/hooks.py::workspace_event`).
 
-## 9. Planned flows (not implemented yet; see the LLD, section 12)
+## 9. Tickets and public portal (implemented)
+
+- **Agent routes** `/api/workspaces/{workspace_id}/tickets/...` -> `workspaces/services/access.py::require_permission` (`TICKETS_VIEW` / `TICKETS_MANAGE`, 404 for non-members) -> `tickets/services/ticket_service.py` or `message_service.py`; ABAC rules in `tickets/policies.py::TicketPolicy`.
+- **Create (agent or portal):** `ticket_service.create_ticket` -> one transaction: `numbering.next_ticket_number` (row-locking counter on the workspace), `Ticket`, the customer's first `TicketMessage`, a `created` `TicketEvent` -> `hooks.emit`.
+- **Status:** `TicketStatusView.post` -> `ticket_service.change_status` (row lock, `TicketPolicy.ensure_can_change_status`, resolved/closed timestamps, event).
+- **Update:** `TicketDetailView.patch` -> `ticket_service.update_ticket` (`TicketPolicy.ensure_can_edit` for closed tickets, one event per change type).
+- **Reply or note:** `TicketMessageListView.post` -> `message_service.add_message` (public reply: `ensure_can_reply`, stored QUEUED with `sent_from_user`, feature 6 will send it; note: internal) -> event without the body.
+- **Portal:** `views/portal.py::PortalTicketView.post` (no auth, `IPScopedThrottle` scope `portal_ticket`) -> `PortalTicketSerializer` -> `portal_service.submit` (workspace by slug and `portal_enabled`, honeypot check, per-email cache counter, then `ticket_service.create_ticket` with source portal and `confirmation_pending`). `PortalInfoView.get` -> `portal_service.portal_info`.
+
+## 10. Planned flows (not implemented yet; see the LLD, section 12)
 
 Mark each as implemented, with real file references, when built: Connect Gmail, public ticket creation, agent reply, AI-assisted reply, inbound Gmail (Pub/Sub push and manual sync button).

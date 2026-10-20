@@ -16,9 +16,18 @@ JOIN_LINK_MANAGE = "join_link.manage"
 INVITATIONS_MANAGE = "invitations.manage"
 KNOWLEDGE_VIEW = "knowledge.view"
 KNOWLEDGE_MANAGE = "knowledge.manage"
+TICKETS_VIEW = "tickets.view"
+TICKETS_MANAGE = "tickets.manage"
 
 _MEMBER_PERMISSIONS = frozenset(
-    {WORKSPACE_VIEW, MEMBERS_VIEW, KNOWLEDGE_VIEW, KNOWLEDGE_MANAGE}
+    {
+        WORKSPACE_VIEW,
+        MEMBERS_VIEW,
+        KNOWLEDGE_VIEW,
+        KNOWLEDGE_MANAGE,
+        TICKETS_VIEW,
+        TICKETS_MANAGE,
+    }
 )
 
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {

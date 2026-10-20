@@ -44,6 +44,7 @@ uv run ruff check . && uv run ruff format .
 - `accounts/` feature 1: Google sign-in (django-allauth), `User` model, device sessions, profile, account deletion, Celery tasks (`models/`, `services/`, `serializers/`, `views/`, `constants/`, `adapters.py`, `tasks.py`, `tests/`)
 - `workspaces/` feature 3: workspaces, membership, join links, invitations, ownership transfer, logo (same layout as `accounts/`)
 - `knowledge/` feature 4: articles, categories, PDF/TXT uploads and the shared storage quota (same layout)
+- `tickets/` feature 5: tickets, messages, history and the public portal (same layout)
 - Feature apps are added one at a time (see the root README)
 
 ## Accounts (feature 1)
@@ -69,6 +70,10 @@ A user can create workspaces (becoming the owner), belong to several, and join t
 ## Knowledge base (feature 4)
 
 Articles (Markdown, up to 200 KB), categories (five defaults per workspace) and PDF/TXT uploads (up to 10 MB). Everything is stored in the R2 bucket under `workspaces/{id}/knowledge/` and counts toward the 50 MB per-workspace quota (the logo does not). Uploads use a signed URL: request it (`size` in exact bytes), PUT the file with method PUT and the returned Content-Type, then confirm. Filters: title, status, category. Rules and endpoints: [Project.MD](Project.MD), Feature 4. Postman folder: `Knowledge`. Needs the `RESOLVE_AI_R2_*` variables for uploads (articles also need storage: with an empty bucket they use local disk under `media/`).
+
+## Tickets and public portal (feature 5)
+
+Agents (owner and members) create and work tickets under `/api/workspaces/{id}/tickets/`: per-workspace numbers, fixed categories, priorities, five statuses, internal notes and public replies, history, and filters (status, priority, category, dates, search, waiting for reply). Customers use the public portal with no login: `GET /api/portal/{slug}/` and `POST /api/portal/{slug}/tickets/` (per-IP limit, 5 tickets per email per hour, hidden honeypot field `website`). Public replies are stored as `queued`; emailing them and the portal confirmation arrive with feature 6. Rules and endpoints: [Project.MD](Project.MD), Feature 5. Postman folders: `Tickets`, `Portal (public)`.
 
 Celery beat runs `accounts.purge_deleted_accounts`, `workspaces.purge_deleted_workspaces`, `knowledge.release_stale_uploads` and `accounts.clear_expired_sessions` daily (`docker compose --profile worker` starts a worker; run a beat process for the schedule). Later features plug in through `accounts.services.hooks` (`register_ownership_check`, the `account_event` signal).
 

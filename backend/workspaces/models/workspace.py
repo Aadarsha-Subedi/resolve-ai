@@ -16,6 +16,8 @@ class Workspace(SoftDeleteModel, TimeStampModel):
     slug = models.SlugField(max_length=SLUG_MAX_LENGTH, unique=True, editable=False)
     logo_key = models.CharField(max_length=300, blank=True)
     portal_enabled = models.BooleanField(default=True)
+    # Last ticket number handed out; tickets.services.numbering is the only writer.
+    last_ticket_number = models.PositiveIntegerField(default=0)
     # Bytes used by knowledge articles and uploads (logo excluded); changed only by
     # knowledge.services.quota_service with atomic conditional updates.
     storage_used_bytes = models.BigIntegerField(default=0)

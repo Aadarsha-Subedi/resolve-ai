@@ -41,7 +41,7 @@ Django 6.1 + DRF, PostgreSQL, Redis, Celery, `uv`, Python 3.14; Docker for dev a
 | 2 | Audit log (`audit`) | all other features | Deferred: built last, after every other v1 feature |
 | 3 | Workspaces and membership (`workspaces`) | 1 | Done, details below |
 | 4 | Knowledge base (`knowledge`) | 3 | Done, details below |
-| 5 | Tickets and public portal (`tickets`) | 3 | Planned |
+| 5 | Tickets and public portal (`tickets`) | 3 | Done, details below |
 | 6 | Gmail connection and email (`email_integration`) | 1, 3, 5 | Planned |
 | 7 | Dashboard (`dashboard`) | 3, 5 | Planned |
 
@@ -168,9 +168,20 @@ Rules (owner answers D5, D6 and the defaults of 2026-10-20):
 
 Endpoints (under `/api/workspaces/{workspace_id}/knowledge/`): `articles/` (GET, POST), `articles/{id}/` (GET, PATCH, DELETE), `articles/{id}/publish|unpublish|archive/` (POST), `categories/` (GET, POST), `categories/{id}/` (PATCH, DELETE), `uploads/` (GET), `uploads/upload-url/` (POST), `uploads/{id}/confirm/` (POST), `uploads/{id}/download/` (GET), `uploads/{id}/` (DELETE), `storage/` (GET).
 
-### Feature 5: Tickets and public portal (`tickets`)
+### Feature 5: Tickets and public portal (`tickets`), built
 
-Models: `Ticket` (per-workspace number, subject, description, customer name/email, status, priority, fixed category, created via PORTAL/AGENT/EMAIL, activity timestamps), `TicketMessage` (public vs internal, author type, direction, email correlation fields, delivery status), `TicketEvent` (history). Public portal submit endpoint (honeypot, rate limit, workspace resolved by slug, portal toggle respected). Agent endpoints: list with filter/search/sort, detail, update status/priority/category, add internal note, add public reply (stored, then queued by feature 6). ABAC: only owner reopens CLOSED, closed tickets lock protected fields, internal notes never customer-visible.
+Models: `Ticket` (per-workspace number, subject, description, customer name/email, status, priority, fixed category, `created_via` PORTAL/AGENT/EMAIL, resolved/closed/last-activity timestamps, `last_customer_message_at` and `last_agent_reply_at`, `confirmation_pending`), `TicketMessage` (public or internal, author type, direction, delivery status, and email correlation fields that feature 6 fills), `TicketEvent` (history without message text). `Workspace.last_ticket_number` is the counter behind the numbers.
+
+Rules (owner approved the proposed defaults, 2026-10-20):
+- **Numbers:** per workspace from 1 (`#1`), allocated with an `UPDATE ... SET n = n + 1` on the workspace row inside the creating transaction, so concurrent creators queue, there are no duplicates, and a rollback gives the number back.
+- **Categories (fixed):** billing, technical, account, feature_request, general (default), other. **Priority:** low, medium (default), high, urgent; customers cannot set it. **Statuses:** open, in_progress, pending, resolved, closed. No assignment, no ticket deletion.
+- **ABAC (`tickets/policies.py`):** any member changes status freely, but only the owner moves a ticket out of CLOSED (403 `owner_only_reopen`). On a CLOSED ticket members cannot edit subject, description, customer fields, category or priority (403 `ticket_closed`); the owner can. Nobody can add a public reply to a CLOSED ticket (reopen first); internal notes are still allowed.
+- **Messages:** an internal note (never customer-visible) or a public reply, up to 20,000 plain-text characters. A public reply is stored first with delivery status QUEUED; feature 6 sends it from the agent's own Gmail. Messages cannot be edited or deleted. Replies do not change status; "waiting for reply" is computed (last customer message newer than the last agent reply, and the `waiting_for_reply` list filter). The customer's description is stored as the first public message.
+- **History:** `TicketEvent` rows for created, status/priority/category/details changed, public reply added, internal note added (message ids, not bodies).
+- **Portal (no login, no CSRF):** `GET /api/portal/{slug}/` (name, slug, logo only) and `POST /api/portal/{slug}/tickets/` (email required; name, subject, description, optional category). Unknown slug, deleted workspace and disabled portal all answer the same 404. Protection: per-IP limit (`portal_ticket` scope), at most 5 tickets per customer email per workspace per hour (429 `portal_email_rate_limited`), and a hidden `website` field that, when filled, returns a normal-looking success without creating anything. The response carries only the ticket number. No customer token or ticket page; follow-up is by email (feature 6). Portal tickets are flagged `confirmation_pending` until feature 6 sends the confirmation from the owner's mailbox.
+- **Access:** owner and members see every ticket of the workspace; non-members get 404. Audit hook: `tickets.services.hooks.ticket_signal`.
+
+Endpoints: `/api/workspaces/{workspace_id}/tickets/` (GET list with filters `status`, `priority`, `category`, `created_from`, `created_to`, `q`, `waiting_for_reply`, `ordering`; POST create), `tickets/{id}/` (GET, PATCH), `tickets/{id}/status/` (POST), `tickets/{id}/messages/` (GET, POST), `tickets/{id}/events/` (GET), and the public `/api/portal/{slug}/` and `/api/portal/{slug}/tickets/`.
 
 ### Feature 6: Gmail connection and email (`email_integration`)
 

@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     "accounts",
     "workspaces",
     "knowledge",
+    "tickets",
 ]
 
 MIDDLEWARE = [
