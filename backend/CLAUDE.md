@@ -34,8 +34,7 @@ uv run python manage.py test              # RESOLVE_AI_USE_SQLITE=true works wit
 uv run ruff check . && uv run ruff format .
 
 # Docker (dev image with the code bind-mounted for hot reload)
-docker compose up --build                     # db, redis, api
-docker compose --profile worker up --build    # plus Celery worker
+docker compose up -d --build                  # db, redis, api, Celery worker and beat
 docker compose -f docker-compose.prod.yml up --build -d   # production-like, Dockerfile.prod
 ```
 
@@ -73,7 +72,7 @@ Docker rules: `Dockerfile.dev` and `Dockerfile.prod` are the only image definiti
 - **Roles:** `OWNER` and `MEMBER`; one owner per workspace; transactional ownership transfer. Join link grants membership directly (hashed token, expires after 1 hour by default or 1 day / 7 days, rotate/revoke by owner); the owner can also invite specific Google accounts, matched by canonical Gmail mailbox.
 - **Authorization:** RBAC permission codes (for example "can update ticket status") plus **fixed, non-configurable ABAC rules** that extend RBAC (for example "only the owner can change status once a ticket is CLOSED"). ABAC rules live in code (`policies`), are never user-editable, and every one needs a negative test. Authorization is enforced in services and DRF permissions, never only in the frontend.
 - **Workspace:** slug is immutable after creation. All workspace-owned queries are scoped by an authorized membership; non-members get 404.
-- **Tickets:** statuses OPEN, IN_PROGRESS, PENDING, RESOLVED, CLOSED (RESOLVED and CLOSED separate; only the owner reopens CLOSED). Ticket categories are a fixed list. No assignment in v1. "Waiting for reply" = the last public message was sent by the customer (ticket awaits an agent). Owner wrote "sent by the user"; confirm this reading.
+- **Tickets:** statuses OPEN, IN_PROGRESS, PENDING, RESOLVED, CLOSED (RESOLVED and CLOSED separate; only the owner reopens CLOSED). Ticket categories are a fixed list. One optional assignee (an active member) per ticket. "Waiting for reply" = the last public message was sent by the customer (ticket awaits an agent). Owner wrote "sent by the user"; confirm this reading.
 - **Customer flow:** public portal ticket submission with required email; follow-up is by email only. No per-ticket customer access token; the confirmation email links to the portal, which opens the new-ticket page. Internal notes never reach customers.
 - **Gmail:** one connection per user, created by the single Google sign-in (Gmail scopes requested at login; declining them does not block login), refresh token encrypted, replies sent from the agent's own mailbox, customer mail matched by email headers (never subject), and only ticket-related mail stored. Inbound sync is Pub/Sub push (primary) plus a frontend "Sync latest mails" button; **no polling**. Match replies by headers, never subject; unmatched mail goes to review.
 - **Knowledge base:** in-app articles plus PDF/TXT uploads, **50 MB per-workspace upload quota** (atomic quota checks). KB categories start with generic defaults that users may add, rename and delete. Only published articles are searchable by AI. Ingestion/extraction details are designed with the LLM layer.

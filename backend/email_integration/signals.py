@@ -7,6 +7,7 @@ from django.dispatch import receiver
 from email_integration.services import connection_service
 from tickets.constants.enums import TicketSource
 from tickets.services import hooks as ticket_hooks
+from workspaces.services import hooks as workspace_hooks
 
 logger = logging.getLogger(__name__)
 
@@ -36,3 +37,15 @@ def on_ticket_event(sender, ticket_id, action, metadata, **kwargs) -> None:
         and metadata.get("source") == TicketSource.PORTAL
     ):
         transaction.on_commit(lambda: send_portal_confirmation.delay(str(ticket_id)))
+
+
+@receiver(workspace_hooks.invitations_created)
+def on_invitations_created(sender, workspace, actor, invitation_ids, **kwargs) -> None:
+    from email_integration.tasks import send_invitation_email
+
+    for invitation_id in invitation_ids:
+        transaction.on_commit(
+            lambda invitation_id=invitation_id: send_invitation_email.delay(
+                invitation_id
+            )
+        )

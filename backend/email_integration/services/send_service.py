@@ -2,6 +2,7 @@ import logging
 
 from django.conf import settings
 from django.db import transaction
+from django.utils import timezone
 
 from common.exception.domain import ConflictException, NotFoundException
 from email_integration import clients
@@ -24,7 +25,8 @@ from tickets.models import Ticket, TicketMessage
 from tickets.services import ticket_service
 from workspaces.constants import permissions
 from workspaces.constants.roles import MembershipStatus, Role
-from workspaces.models import WorkspaceMembership
+from workspaces.constants.settings import INVITATION_EXPIRY
+from workspaces.models import WorkspaceInvitation, WorkspaceMembership
 from workspaces.services import access
 
 logger = logging.getLogger(__name__)
@@ -115,7 +117,9 @@ def send_ticket_message(message_id, *, final_attempt: bool = False) -> None:
     """Email a QUEUED public reply from the agent's own mailbox. Idempotent."""
     with transaction.atomic():
         message = (
-            TicketMessage.objects.select_for_update()
+            # Lock only the message row: Postgres refuses FOR UPDATE on the nullable side of
+            # the outer join that select_related("sent_from_user") creates.
+            TicketMessage.objects.select_for_update(of=("self",))
             .select_related("ticket", "sent_from_user")
             .filter(pk=message_id)
             .first()
@@ -191,6 +195,55 @@ def send_portal_confirmation(ticket_id) -> None:
             ],
             final_attempt=True,
         )
+
+
+def send_invitation_email(invitation_id) -> None:
+    """Tell the invitee about an invitation, from the inviter's own Gmail. Best effort:
+    a missing or broken Gmail connection just means no email (the invitation itself
+    stays valid and shows up on the invitee's invitations page). Never raises, so the
+    task cannot retry-loop and invitation creation is never affected."""
+    invitation = (
+        WorkspaceInvitation.objects.select_related("workspace", "invited_by")
+        .filter(pk=invitation_id, notified_at__isnull=True)
+        .first()
+    )
+    if invitation is None or not invitation.is_usable():
+        return
+    inviter = invitation.invited_by
+    connection = connection_service.get_connection(inviter) if inviter else None
+    if connection is None or not connection.is_connected:
+        logger.info("Invitation %s email skipped: inviter has no Gmail", invitation.id)
+        return
+    inviter_name = inviter.display_name or inviter.email
+    workspace_name = invitation.workspace.name
+    link = settings.FRONTEND_URL.rstrip("/") + cfg.INVITATIONS_PATH
+    body = (
+        f'{inviter_name} invited you to join the workspace "{workspace_name}" '
+        "on ResolveAI.\n\n"
+        f"Sign in with this Google account and accept the invitation here:\n{link}\n\n"
+        f"The invitation expires in {INVITATION_EXPIRY.days} days. If you were not expecting it, ignore this email.\n"
+    )
+    raw = mime_service.build_reply(
+        from_name=inviter.display_name or "",
+        from_email=connection.mailbox_email,
+        to_email=invitation.email,
+        subject=f"{inviter_name} invited you to {workspace_name} on ResolveAI",
+        body=body,
+    )
+    try:
+        clients.get_gmail_client(connection).send(raw, None)
+    except GmailAuthError:
+        connection_service.mark_reauth_required(connection)
+        logger.warning(
+            "Invitation %s email not sent: Gmail re-auth needed", invitation.id
+        )
+        return
+    except GmailRejectedError, GmailTransientError:
+        logger.warning("Invitation %s email not sent: Gmail error", invitation.id)
+        return
+    WorkspaceInvitation.objects.filter(pk=invitation.pk).update(
+        notified_at=timezone.now()
+    )
 
 
 def resend(user, workspace_id, ticket_id, message_id) -> TicketMessage:

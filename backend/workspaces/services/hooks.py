@@ -7,6 +7,9 @@ from django.dispatch import Signal
 
 SENDER = "workspaces"
 workspace_event = Signal()  # kwargs: workspace, actor, action, metadata
+# kwargs: workspace, actor, invitation_ids. Lets the email app notify invitees without
+# `workspaces` importing it.
+invitations_created = Signal()
 
 ACTION_CREATED = "workspace.created"
 ACTION_UPDATED = "workspace.updated"
@@ -32,4 +35,13 @@ def emit(workspace, actor, action: str, **metadata) -> None:
         actor=actor,
         action=action,
         metadata=metadata,
+    )
+
+
+def emit_invitations_created(workspace, actor, invitation_ids: list[str]) -> None:
+    invitations_created.send(
+        sender=SENDER,
+        workspace=workspace,
+        actor=actor,
+        invitation_ids=invitation_ids,
     )

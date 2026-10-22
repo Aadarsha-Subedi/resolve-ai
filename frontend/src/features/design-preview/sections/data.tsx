@@ -1,14 +1,13 @@
 import { useMemo, useState } from "react"
 import { Assignee } from "@/components/patterns/assignee"
 import { DataTable, SortHeader, TableOptionsMenu, selectColumn, type DataColumn } from "@/components/patterns/data-table"
-import { FilterSelect } from "@/components/patterns/filter-select"
-import { SearchBox } from "@/components/patterns/search-box"
+import { FilterBar } from "@/components/patterns/filter-bar"
 import { StatCard } from "@/components/patterns/stat-card"
 import { ChannelLabel, HealthBadge, PriorityLabel, STATUS_OPTIONS, TicketStatusBadge } from "@/components/patterns/ticket-meta"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
-import { CheckCircle, Clock, DotsThree, Tray, Ticket, Trash, UserSwitch } from "@/icons"
+import { CheckCircle, CircleHalf, Clock, DotsThree, Tray, Ticket, Trash, UserSwitch } from "@/icons"
 import { TICKETS, type Ticket as TicketRow } from "../data"
 import { Section, Specimen } from "../section"
 
@@ -63,11 +62,12 @@ export function DataSection() {
             return (
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <SearchBox value={q} onCommit={(v) => setQ(v ?? "")} placeholder="Search tickets by subject, customer, or ID" />
-                  <div className="ml-auto flex flex-wrap items-center gap-2">
-                    <FilterSelect label="Status" value={status} onChange={setStatus} options={STATUS_OPTIONS} />
-                    <TableOptionsMenu table={table} />
-                  </div>
+                  <FilterBar
+                    search={{ value: q, onCommit: (v) => setQ(v ?? ""), placeholder: "Search tickets by subject, customer, or ID" }}
+                    filters={[{ id: "status", kind: "select", label: "Status", icon: CircleHalf, options: STATUS_OPTIONS, value: status, onChange: setStatus }]}
+                    onClearAll={() => { setStatus(undefined); setQ("") }}
+                    trailing={<span className="ml-auto"><TableOptionsMenu table={table} /></span>}
+                  />
                 </div>
                 <div className="flex h-9 items-center gap-2 text-sm" aria-live="polite">
                   {selected ? (

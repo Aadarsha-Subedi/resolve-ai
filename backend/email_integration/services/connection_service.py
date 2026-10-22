@@ -121,8 +121,9 @@ def ensure_watch(connection: GmailConnection) -> None:
     try:
         client = clients.get_gmail_client(connection)
         result = client.watch(settings.GMAIL_PUBSUB_TOPIC)
-    except GmailError:
-        logger.warning("Could not set up the Gmail watch")
+    except GmailError as exc:
+        # The text is Google's reason (for example a missing Pub/Sub publisher grant).
+        logger.warning("Could not set up the Gmail watch: %s", exc)
         return
     connection.watch_expires_at = result.expires_at
     if not connection.history_id:

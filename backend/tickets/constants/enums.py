@@ -62,6 +62,7 @@ class EventType(models.TextChoices):
     STATUS_CHANGED = "status_changed", "Status changed"
     PRIORITY_CHANGED = "priority_changed", "Priority changed"
     CATEGORY_CHANGED = "category_changed", "Category changed"
+    ASSIGNEE_CHANGED = "assignee_changed", "Assignee changed"
     DETAILS_CHANGED = "details_changed", "Details changed"
     PUBLIC_REPLY_ADDED = "public_reply_added", "Public reply added"
     INTERNAL_NOTE_ADDED = "internal_note_added", "Internal note added"

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { useReveal } from "@/motion"
 import { useIconMotion } from "@/motion/icon-motion"
 import { Actions } from "./sections/actions"
+import { AppPatterns } from "./sections/app-patterns"
 import { DataSection } from "./sections/data"
 import { Feedback } from "./sections/feedback"
 import { Forms } from "./sections/forms"
@@ -21,6 +22,7 @@ const TOC = [
   ["navigation", "Navigation and frame"],
   ["menus", "Menus and overlays"],
   ["feedback", "Feedback and states"],
+  ["app-patterns", "Screen patterns"],
   ["motion", "Motion"],
 ] as const
 
@@ -83,6 +85,7 @@ export function DesignPreview() {
           <Navigation />
           <Menus />
           <Feedback />
+          <AppPatterns />
           <MotionSection />
         </main>
       </div>

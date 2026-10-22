@@ -20,7 +20,7 @@ Accounts and sessions, audit log, workspaces, knowledge base, tickets and portal
 | API client and auth query | Done; uses the backend's `/api/me/`, `/api/csrf/` and `/api/auth/google/start/` |
 | Design system | Component library and tokens built, awaiting owner approval |
 | Public pages | Landing, sign in, sign up, terms, privacy drafted (UI only; legal text is a draft) |
-| Feature screens | Not started |
+| Feature screens | Built (not yet run against a live backend): dashboard, tickets, knowledge, members, settings, audit log, Gmail email, account, join, public portal |
 
 ## Conventions
 
@@ -29,8 +29,10 @@ Accounts and sessions, audit log, workspaces, knowledge base, tickets and portal
 - Never hard-code colors in components; use design tokens (CSS variables) and the `Tone` type for status colors.
 - Forms: library undecided; use the shadcn field components until chosen.
 - Icons only via `@/icons`; motion only via `src/motion`.
+- Filters: every table uses `FilterBar` (chips); never loose selects or checkboxes. Settings pages use `SettingRow`.
 - Tables: `DataTable` in `components/patterns` (TanStack Table v9). Columns and data must be referentially stable.
-- Authorization is enforced by the backend; the UI only hides what the user cannot do.
+- Authorization is enforced by the backend; the UI shows what the user cannot do as a disabled control with a tooltip (`Restricted`). Roles come from `GET /workspaces/`, ticket permissions from the overview.
+- Server data: no retries, no refetch on focus/reconnect/interval, no polling; screens call only endpoints for data they show; a write updates the affected cache entry or invalidates only the query on screen.
 - Every new reusable component is added to `/design-preview`.
 - Update DECISION.md for meaningful decisions and FLOW.md when a call path changes.
 

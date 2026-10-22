@@ -71,6 +71,15 @@ function buildUrl(path: string, query?: RequestOptions['query']) {
   return url.pathname + url.search
 }
 
+let csrfSeeded: Promise<unknown> | null = null
+
+/** The first write of a page load makes sure the csrftoken cookie exists (one GET, only when it is missing). */
+async function ensureCsrf() {
+  if (readCookie('csrftoken')) return
+  csrfSeeded ??= fetch(`${API_BASE}/csrf/`, { credentials: 'include' }).catch(() => null)
+  await csrfSeeded
+}
+
 export async function apiRequest<T>(
   path: string,
   options: RequestOptions = {},
@@ -79,6 +88,7 @@ export async function apiRequest<T>(
   const headers: Record<string, string> = { Accept: 'application/json' }
   if (options.body !== undefined) headers['Content-Type'] = 'application/json'
   if (UNSAFE_METHODS.has(method)) {
+    await ensureCsrf()
     const token = readCookie('csrftoken')
     if (token) headers['X-CSRFToken'] = decodeURIComponent(token)
   }
@@ -119,4 +129,32 @@ export const api = {
   put: <T>(path: string, body?: unknown) => apiRequest<T>(path, { method: 'PUT', body }),
   patch: <T>(path: string, body?: unknown) => apiRequest<T>(path, { method: 'PATCH', body }),
   delete: <T>(path: string) => apiRequest<T>(path, { method: 'DELETE' }),
+}
+
+/** A paginated list as the backend returns it: `data.items` plus `meta` (count, limit, offset). */
+export type ListMeta = { count: number; limit: number; offset: number; next: string | null; previous: string | null }
+export type Page<T> = { items: T[]; meta: ListMeta }
+
+export async function apiList<T>(
+  path: string,
+  query?: RequestOptions['query'],
+  signal?: AbortSignal,
+): Promise<Page<T>> {
+  const result = await api.get<{ items: T[] }>(path, query, signal)
+  return { items: result.data.items, meta: result.meta as unknown as ListMeta }
+}
+
+/** Field-level message from a 400 response, if the backend named the field. */
+export function fieldError(error: unknown, field: string): string | undefined {
+  if (!(error instanceof ApiError)) return undefined
+  return error.errors.find((e) => e.field === field)?.message
+}
+
+/** One-line message for toasts and inline errors. */
+export function errorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    const first = error.errors[0]
+    return first?.field ? `${first.field.replace(/_/g, ' ')}: ${first.message}` : error.message
+  }
+  return error instanceof Error ? error.message : 'Something went wrong.'
 }

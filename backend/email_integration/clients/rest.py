@@ -84,12 +84,13 @@ class RestGmailClient(GmailClient):
 
     @staticmethod
     def _check(response: requests.Response) -> dict:
+        detail = _reason(response)
         if response.status_code in (401, 403):
-            raise GmailAuthError(f"gmail returned {response.status_code}")
+            raise GmailAuthError(f"gmail returned {response.status_code}{detail}")
         if response.status_code == 429 or response.status_code >= 500:
-            raise GmailTransientError(f"gmail returned {response.status_code}")
+            raise GmailTransientError(f"gmail returned {response.status_code}{detail}")
         if response.status_code >= 400:
-            raise GmailRejectedError(f"gmail returned {response.status_code}")
+            raise GmailRejectedError(f"gmail returned {response.status_code}{detail}")
         return response.json() if response.content else {}
 
     # -- GmailClient ------------------------------------------------------------
@@ -177,6 +178,16 @@ class RestGmailClient(GmailClient):
             )
         except requests.RequestException as exc:
             raise GmailError("revoke failed") from exc
+
+
+def _reason(response: requests.Response) -> str:
+    """Google's own error text (for example which Pub/Sub permission is missing), bounded.
+    It never contains our tokens; it is only used in exception messages and logs."""
+    try:
+        message = response.json()["error"]["message"]
+    except ValueError, KeyError, TypeError:
+        return ""
+    return f": {str(message)[:200]}"
 
 
 def default_watch_deadline() -> datetime:

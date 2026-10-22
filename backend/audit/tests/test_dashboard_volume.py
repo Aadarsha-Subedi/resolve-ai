@@ -80,6 +80,13 @@ class VolumeTests(DashboardTestCase):
             1,
         )
 
+    def test_legacy_alias_buckets_like_the_canonical_name(self):
+        self.make(created_at=self.at("2026-03-11", 23, 30))
+        buckets = self.volume("?from=2026-03-10&to=2026-03-13&tz=Asia/Katmandu")[
+            "buckets"
+        ]
+        self.assertEqual([b["created"] for b in buckets], [0, 0, 1, 0])
+
     def test_negative_offset_zone(self):
         # 02:00 UTC on Mar 11 is 22:00 on Mar 10 in New York (EDT, UTC-4).
         self.make(created_at=self.at("2026-03-11", 2, 0))

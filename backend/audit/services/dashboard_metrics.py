@@ -1,10 +1,10 @@
 """Read queries behind the dashboard. Every function is one fixed query (or two) over
 canonical ticket records and is scoped by workspace; none loops per row."""
 
+from collections import Counter
 from datetime import date, timedelta
 
 from django.db.models import Count, F, Q
-from django.db.models.functions import TruncDate
 
 from audit.constants.dashboard import BUCKET_WEEK_DAYS, DAILY_BUCKET_MAX_DAYS
 from audit.services.dashboard_period import Period
@@ -71,14 +71,13 @@ def summary(workspace_id, period: Period) -> dict:
 
 
 def _daily_counts(workspace_id, period: Period, field: str) -> dict[date, int]:
-    rows = (
-        Ticket.objects.filter(_in_window(field, period), workspace_id=workspace_id)
-        .annotate(day=TruncDate(field, tzinfo=period.tz))
-        .values("day")
-        .annotate(total=Count("pk"))
-        .order_by()
-    )
-    return {row["day"]: row["total"] for row in rows}
+    """Tickets per local day. Days are worked out in Python with the validated zone, so the
+    database never receives a time zone name (Postgres does not know every legacy alias)."""
+    stamps = Ticket.objects.filter(
+        _in_window(field, period), workspace_id=workspace_id
+    ).values_list(field, flat=True)
+    tz = period.tz
+    return dict(Counter(stamp.astimezone(tz).date() for stamp in stamps.iterator()))
 
 
 def volume(workspace_id, period: Period) -> dict:

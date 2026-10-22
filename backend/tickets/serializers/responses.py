@@ -23,6 +23,11 @@ class TicketData(BaseResponseData):
             "category": t.category,
             "created_via": t.created_via,
             "waiting_for_reply": t.waiting_for_reply,
+            "assignee": (
+                {"id": str(t.assignee.id), "display_name": t.assignee.display_name}
+                if t.assignee_id
+                else None
+            ),
             "created_at": t.created_at.isoformat(),
             "updated_at": t.updated_at.isoformat(),
             "last_activity_at": t.last_activity_at.isoformat(),

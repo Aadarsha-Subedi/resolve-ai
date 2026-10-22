@@ -23,6 +23,9 @@ class WorkspaceInvitation(models.Model):
     accepted_at = models.DateTimeField(null=True, blank=True)
     # Set when the owner revokes the invitation or the invitee declines it.
     closed_at = models.DateTimeField(null=True, blank=True)
+    # Set when the invitation email left the inviter's Gmail; null means it was not
+    # sent (no connected Gmail, delivery failed) and the invitee finds it in the app.
+    notified_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "workspaces_invitation"

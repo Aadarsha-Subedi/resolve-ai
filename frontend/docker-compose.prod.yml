@@ -2,6 +2,7 @@
 # Usage: docker compose -f docker-compose.prod.yml up --build -d    (then open http://localhost:3000)
 services:
   web:
+    container_name: resolve-ai-frontend
     build:
       context: .
       dockerfile: Dockerfile.prod

@@ -856,7 +856,7 @@
                 ""
               ]
             },
-            "description": "Owner only, up to 20. Gmail addresses are matched by mailbox (dots, +tags and googlemail.com are ignored). Each result says created, already_invited or already_member. Invitations expire after 7 days.",
+            "description": "Owner only, up to 20. Gmail addresses are matched by mailbox (dots, +tags and googlemail.com are ignored). Each result says created, already_invited or already_member. Invitations expire after 7 days. Each new invitation is also emailed to the invitee from your own Gmail (needs the Celery worker; skipped when no Gmail is connected).",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"emails\": [\n    \"colleague@gmail.com\",\n    \"other@example.com\"\n  ]\n}"
@@ -1429,10 +1429,10 @@
                     ""
                   ]
                 },
-                "description": "PDF or TXT, 1 byte to 10 MB. size is in BYTES and must equal the real file size exactly. Reserves quota. Then PUT the raw bytes to upload_url (method PUT, body binary, header Content-Type exactly as returned, nothing else; create that request outside this collection), then call Confirm upload. Unconfirmed uploads are removed after 1 hour.",
+                "description": "PDF or TXT, 1 byte to 10 MB. size is in BYTES and must equal the real file size exactly. Reserves quota. Then PUT the raw bytes to upload_url (method PUT, body binary, header Content-Type exactly as returned, nothing else; create that request outside this collection), then call Confirm upload. Unconfirmed uploads are removed after 1 hour. category_id is required: the file is filed under that category.",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"filename\": \"guide.pdf\",\n  \"content_type\": \"application/pdf\",\n  \"size\": 12345\n}"
+                  "raw": "{\n  \"filename\": \"guide.pdf\",\n  \"content_type\": \"application/pdf\",\n  \"size\": 12345,\n  \"category_id\": \"{{categoryId}}\"\n}"
                 }
               },
               "event": [
@@ -1496,7 +1496,7 @@
                     ""
                   ]
                 },
-                "description": ""
+                "description": "Filters: category (id), filename (contains)."
               }
             },
             {
@@ -1654,7 +1654,7 @@
                 }
               ]
             },
-            "description": "Filters: status, priority, category, created_from, created_to (YYYY-MM-DD), q (contains in subject, customer email and name), waiting_for_reply=true|false, ordering (number, created_at, updated_at, last_activity_at, priority, status; prefix - for descending), plus limit/offset (25, max 100)."
+            "description": "Filters: status, priority, category, created_from, created_to (YYYY-MM-DD), q (contains in subject, customer email and name), waiting_for_reply=true|false, assignee=<user id>|me|unassigned, ordering (number, created_at, updated_at, last_activity_at, priority, status; prefix - for descending), plus limit/offset (25, max 100)."
           },
           "event": [
             {
@@ -1792,6 +1792,78 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"status\": \"in_progress\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Assign ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/assignee/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                "{{ticketId}}",
+                "assignee",
+                ""
+              ]
+            },
+            "description": "Assign to an ACTIVE member of the workspace (user id), 400 assignee_invalid otherwise. Owner and members may assign; on a CLOSED ticket only the owner (403 ticket_closed). Same assignee again changes nothing.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assignee\": \"{{userId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Unassign ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/assignee/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                "{{ticketId}}",
+                "assignee",
+                ""
+              ]
+            },
+            "description": "Clear the assignee.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assignee\": null\n}"
             }
           }
         },

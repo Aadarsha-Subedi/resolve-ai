@@ -14,6 +14,7 @@ from audit.constants.dashboard import (
     MIN_LIMIT,
     PERIOD_DAYS,
     SECTIONS,
+    TIMEZONE_ALIASES,
 )
 from common.serializers.base import StrictSerializer
 
@@ -59,6 +60,7 @@ class DashboardQuerySerializer(StrictSerializer):
         return super().to_internal_value(data)
 
     def validate_tz(self, value: str) -> str:
+        value = TIMEZONE_ALIASES.get(value.strip(), value.strip())
         try:
             ZoneInfo(value)
         except ValueError, OSError, KeyError:  # ZoneInfoNotFoundError is a KeyError

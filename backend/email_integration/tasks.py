@@ -36,6 +36,11 @@ def send_portal_confirmation(ticket_id: str) -> None:
     send_service.send_portal_confirmation(ticket_id)
 
 
+@shared_task(name=cfg.TASK_SEND_INVITATION)
+def send_invitation_email(invitation_id: str) -> None:
+    send_service.send_invitation_email(invitation_id)
+
+
 @shared_task(name=cfg.TASK_SYNC_MAILBOX)
 def sync_mailbox(connection_id: str) -> None:
     connection = GmailConnection.objects.filter(pk=connection_id).first()

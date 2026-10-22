@@ -17,9 +17,11 @@ WATCH_RENEW_BEFORE_DAYS = 2
 SEND_MAX_RETRIES = 3
 SEND_RETRY_BACKOFF_SECONDS = 30
 PORTAL_PATH = "/portal/{slug}"
+INVITATIONS_PATH = "/app/invitations"
 
 TASK_SEND_MESSAGE = "email_integration.send_ticket_message"
 TASK_SEND_CONFIRMATION = "email_integration.send_portal_confirmation"
+TASK_SEND_INVITATION = "email_integration.send_invitation_email"
 TASK_SYNC_MAILBOX = "email_integration.sync_mailbox"
 TASK_ENSURE_WATCH = "email_integration.ensure_gmail_watch"
 TASK_RENEW_WATCHES = "email_integration.renew_gmail_watches"

@@ -219,7 +219,12 @@ class KnowledgeEventTests(KnowledgeTestCase):
     def test_upload_events(self):
         body = self.owner_client.post(
             self.kurl("uploads/upload-url/"),
-            {"filename": "a.txt", "content_type": "text/plain", "size": 5},
+            {
+                "filename": "a.txt",
+                "content_type": "text/plain",
+                "size": 5,
+                "category_id": self.category_id(),
+            },
             format="json",
         ).data["data"]
         from knowledge.models import KnowledgeUpload

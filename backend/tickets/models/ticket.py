@@ -37,6 +37,15 @@ class Ticket(TimeStampModel):
     category = models.CharField(
         max_length=20, choices=TicketCategory.choices, default=DEFAULT_CATEGORY
     )
+    # Must be an active member when assigned; cleared automatically when that member
+    # leaves or is removed while the ticket is still active (see tickets/signals.py).
+    assignee = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="assigned_tickets",
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+"
     )
@@ -64,6 +73,7 @@ class Ticket(TimeStampModel):
             models.Index(fields=["workspace", "-last_activity_at"]),
             models.Index(fields=["workspace", "resolved_at"]),
             models.Index(fields=["workspace", "created_at"]),
+            models.Index(fields=["workspace", "assignee", "status"]),
         ]
 
     @property

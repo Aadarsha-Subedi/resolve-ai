@@ -3,9 +3,9 @@ import type { SelectOption } from "@/components/patterns/ticket-meta"
 import { cn } from "@/lib/utils"
 
 /** Select whose options each carry an icon; the trigger repeats the chosen option's icon. */
-export function OptionSelect({ id, value, onValueChange, options, placeholder, className, size }: { id?: string; value?: string; onValueChange?: (value: string) => void; options: SelectOption[]; placeholder?: string; className?: string; size?: "sm" | "default" }) {
+export function OptionSelect({ id, value, onValueChange, options, placeholder, className, size, disabled }: { id?: string; disabled?: boolean; value?: string; onValueChange?: (value: string) => void; options: SelectOption[]; placeholder?: string; className?: string; size?: "sm" | "default" }) {
   return (
-    <Select value={value} onValueChange={(v) => v != null && onValueChange?.(v)} items={options}>
+    <Select value={value} onValueChange={(v) => v != null && onValueChange?.(v)} items={options} disabled={disabled}>
       <SelectTrigger id={id} size={size} className={cn("w-full", className)}>
         <SelectValue placeholder={placeholder}>
           {(v: string | null) => {

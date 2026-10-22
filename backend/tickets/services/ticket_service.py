@@ -22,6 +22,8 @@ from tickets.constants.enums import (
     TicketStatus,
 )
 from tickets.constants.settings import (
+    ASSIGNEE_ME,
+    ASSIGNEE_UNASSIGNED,
     DEFAULT_ORDERING,
     ORDERING_FIELDS,
     PRIORITY_RANK,
@@ -30,6 +32,8 @@ from tickets.models import Ticket, TicketEvent, TicketMessage
 from tickets.services import hooks
 from tickets.services.numbering import next_ticket_number
 from workspaces.constants import permissions
+from workspaces.constants.roles import MembershipStatus
+from workspaces.models import WorkspaceMembership
 from workspaces.services import access
 
 _PROTECTED_FIELDS = (
@@ -121,7 +125,11 @@ def create_by_agent(user: User, workspace_id, data: dict) -> Ticket:
 
 
 def get_ticket(workspace_id, ticket_id) -> Ticket:
-    ticket = Ticket.objects.filter(workspace_id=workspace_id, pk=ticket_id).first()
+    ticket = (
+        Ticket.objects.select_related("assignee")
+        .filter(workspace_id=workspace_id, pk=ticket_id)
+        .first()
+    )
     if ticket is None:
         raise NotFoundException(messages.MESSAGE_TICKET_NOT_FOUND)
     return ticket
@@ -202,6 +210,104 @@ def change_status(user: User, workspace_id, ticket_id, new_status: str) -> Ticke
     return ticket
 
 
+def _person(user) -> dict | None:
+    return {"id": str(user.id), "display_name": user.display_name} if user else None
+
+
+def assign_ticket(user: User, workspace_id, ticket_id, assignee_id) -> Ticket:
+    """Set or clear (`assignee_id=None`) the assignee. The assignee must be an active
+    member. Re-assigning the current assignee is a no-op (no event)."""
+    membership = access.require_permission(
+        user, workspace_id, permissions.TICKETS_ASSIGN
+    )
+    with transaction.atomic():
+        ticket = (
+            Ticket.objects.select_for_update()
+            .filter(workspace_id=workspace_id, pk=ticket_id)
+            .first()
+        )
+        if ticket is None:
+            raise NotFoundException(messages.MESSAGE_TICKET_NOT_FOUND)
+        policies.TicketPolicy.ensure_can_change_assignee(membership, ticket)
+        new_user = None
+        if assignee_id is not None:
+            target = (
+                WorkspaceMembership.objects.select_related("user")
+                .filter(
+                    workspace_id=workspace_id,
+                    user_id=assignee_id,
+                    status=MembershipStatus.ACTIVE,
+                )
+                .first()
+            )
+            if target is None:
+                raise BadRequestException(
+                    messages.MESSAGE_ASSIGNEE_INVALID,
+                    error_code=errors.ERROR_ASSIGNEE_INVALID,
+                )
+            new_user = target.user
+        if ticket.assignee_id == (new_user.id if new_user else None):
+            return ticket
+        old_user = ticket.assignee
+        ticket.assignee = new_user
+        ticket.last_activity_at = timezone.now()
+        ticket.save()
+        record_event(
+            ticket,
+            user,
+            EventType.ASSIGNEE_CHANGED,
+            old=_person(old_user),
+            new=_person(new_user),
+        )
+    hooks.emit(
+        ticket,
+        user,
+        hooks.ACTION_ASSIGNEE_CHANGED,
+        previous_assignee_id=str(old_user.id) if old_user else None,
+        assignee_id=str(new_user.id) if new_user else None,
+    )
+    return ticket
+
+
+# Tickets in these statuses lose their assignee when that member leaves or is removed.
+UNASSIGN_ON_LEAVE_STATUSES = (
+    TicketStatus.OPEN,
+    TicketStatus.IN_PROGRESS,
+    TicketStatus.PENDING,
+)
+
+
+def unassign_departed_member(workspace_id, user_id, *, reason: str) -> int:
+    """Clear `user_id` from the workspace's active tickets (resolved and closed ones keep
+    their assignee as history). Each change is recorded as a system event."""
+    count = 0
+    with transaction.atomic():
+        tickets = (
+            Ticket.objects.select_for_update(of=("self",))
+            .select_related("assignee")
+            .filter(
+                workspace_id=workspace_id,
+                assignee_id=user_id,
+                status__in=UNASSIGN_ON_LEAVE_STATUSES,
+            )
+        )
+        for ticket in tickets:
+            old_user = ticket.assignee
+            ticket.assignee = None
+            ticket.last_activity_at = timezone.now()
+            ticket.save()
+            record_event(
+                ticket,
+                None,
+                EventType.ASSIGNEE_CHANGED,
+                old=_person(old_user),
+                new=None,
+                reason=reason,
+            )
+            count += 1
+    return count
+
+
 def list_tickets(
     user: User,
     workspace_id,
@@ -212,11 +318,20 @@ def list_tickets(
     created_to: date | None = None,
     q: str | None = None,
     waiting_for_reply: bool | None = None,
+    assignee: str | None = None,
     ordering: str | None = None,
 ) -> QuerySet[Ticket]:
     """Workspace-scoped list. Search is a plain 'contains' on subject, customer email and name."""
     access.require_permission(user, workspace_id, permissions.TICKETS_VIEW)
-    queryset = Ticket.objects.filter(workspace_id=workspace_id)
+    queryset = Ticket.objects.select_related("assignee").filter(
+        workspace_id=workspace_id
+    )
+    if assignee == ASSIGNEE_UNASSIGNED:
+        queryset = queryset.filter(assignee__isnull=True)
+    elif assignee == ASSIGNEE_ME:
+        queryset = queryset.filter(assignee=user)
+    elif assignee:
+        queryset = queryset.filter(assignee_id=assignee)
     if status:
         queryset = queryset.filter(status=status)
     if priority:

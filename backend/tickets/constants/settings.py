@@ -10,6 +10,9 @@ PORTAL_EMAIL_WINDOW_SECONDS = 3600
 PORTAL_EMAIL_CACHE_KEY = "portal:email:{workspace_id}:{email_hash}"
 PORTAL_FAKE_NUMBER_RANGE = (100, 999)
 
+ASSIGNEE_ME = "me"
+ASSIGNEE_UNASSIGNED = "unassigned"
+
 PRIORITY_RANK = {"low": 1, "medium": 2, "high": 3, "urgent": 4}
 ORDERING_FIELDS = {
     "number",

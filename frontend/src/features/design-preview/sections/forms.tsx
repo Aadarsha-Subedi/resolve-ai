@@ -7,10 +7,10 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { OptionSelect } from "@/components/patterns/option-select"
-import { FilterSelect } from "@/components/patterns/filter-select"
-import { SearchBox } from "@/components/patterns/search-box"
+import type { IsoRange } from "@/components/patterns/date-picker"
+import { FilterBar } from "@/components/patterns/filter-bar"
 import { PRIORITY_OPTIONS, STATUS_OPTIONS } from "@/components/patterns/ticket-meta"
-import { CreditCard, EnvelopeSimple, FloppyDisk, UserCircle, Wrench } from "@/icons"
+import { CalendarBlank, CircleHalf, Clock, CreditCard, EnvelopeSimple, FloppyDisk, Flame, UserCircle, Wrench } from "@/icons"
 import { Section, Specimen } from "../section"
 
 const CATEGORIES = [
@@ -24,6 +24,8 @@ export function Forms() {
   const [q, setQ] = useState("")
   const [status, setStatus] = useState<string | undefined>()
   const [priority, setPriority] = useState<string | undefined>()
+  const [range, setRange] = useState<IsoRange>({})
+  const [waiting, setWaiting] = useState<boolean | undefined>()
   return (
     <Section id="forms" title="Forms and filters" intro="Label above, hint below, error replaces the hint and names the recovery. Controls share one height so rows align.">
       <div className="grid gap-12 lg:grid-cols-2">
@@ -71,12 +73,18 @@ export function Forms() {
           </FieldGroup>
         </Specimen>
       </div>
-      <Specimen title="Search and filters" note="The toolbar controls from the reference: debounced search plus filter dropdowns. A filter shows its name until a value is chosen, then only the value; the first choice clears it.">
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border p-3">
-          <SearchBox value={q} onCommit={(v) => setQ(v ?? "")} placeholder="Search tickets by subject, customer, or ID" />
-          <FilterSelect label="Status" value={status} onChange={setStatus} options={STATUS_OPTIONS} />
-          <FilterSelect label="Priority" value={priority} onChange={setPriority} options={PRIORITY_OPTIONS} />
-          <span className="text-xs text-muted-foreground" aria-live="polite">{q ? `Searching “${q}”` : "No search"}</span>
+      <Specimen title="Filter bar" note="The one filter row every table uses: search, a single Filter button listing the filters not yet applied, and a removable chip per applied filter. Choosing a filter opens its value picker; date ranges offer 7 and 30 day presets; yes/no filters are chips with no value. Clear all appears while anything is on.">
+        <div className="rounded-lg border p-3">
+          <FilterBar
+            search={{ value: q, onCommit: (v) => setQ(v ?? ""), placeholder: "Search tickets by subject or customer" }}
+            filters={[
+              { id: "status", kind: "select", label: "Status", icon: CircleHalf, options: STATUS_OPTIONS, value: status, onChange: setStatus },
+              { id: "priority", kind: "select", label: "Priority", icon: Flame, options: PRIORITY_OPTIONS, value: priority, onChange: setPriority },
+              { id: "created", kind: "date-range", label: "Created", icon: CalendarBlank, value: range, onChange: setRange },
+              { id: "waiting", kind: "boolean", label: "Waiting for reply", icon: Clock, value: waiting, onChange: setWaiting },
+            ]}
+            onClearAll={() => { setQ(""); setStatus(undefined); setPriority(undefined); setRange({}); setWaiting(undefined) }}
+          />
         </div>
       </Specimen>
     </Section>

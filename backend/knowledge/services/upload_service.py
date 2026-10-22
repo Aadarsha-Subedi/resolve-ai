@@ -12,6 +12,7 @@ from common.exception.domain import (
     ConflictException,
     NotFoundException,
     ServiceUnavailableException,
+    ValidationException,
 )
 from common.storage import get_storage
 from common.storage.base import DirectUploadUnsupported
@@ -27,7 +28,7 @@ from knowledge.constants.settings import (
     UPLOAD_PENDING_TTL_SECONDS,
     UPLOAD_URL_EXPIRY_SECONDS,
 )
-from knowledge.models import KnowledgeUpload
+from knowledge.models import KnowledgeCategory, KnowledgeUpload
 from knowledge.services import hooks, quota_service
 from workspaces.constants import permissions
 from workspaces.services import access
@@ -44,10 +45,15 @@ def clean_filename(name: str, content_type: str) -> str:
 
 
 def create_upload(
-    user: User, workspace_id, filename: str, content_type: str, size: int
+    user: User, workspace_id, filename: str, content_type: str, size: int, category_id
 ) -> tuple[KnowledgeUpload, dict]:
-    """Reserve quota, create the PENDING row and hand out a signed PUT URL."""
+    """Reserve quota, create the PENDING row (filed under `category_id`) and hand out a signed PUT URL."""
     access.require_permission(user, workspace_id, permissions.KNOWLEDGE_MANAGE)
+    category = KnowledgeCategory.objects.filter(
+        workspace_id=workspace_id, pk=category_id
+    ).first()
+    if category is None:
+        raise ValidationException(messages.MESSAGE_UPLOAD_CATEGORY_INVALID)
     upload_id = uuid.uuid7()
     key = UPLOAD_KEY.format(
         workspace_id=workspace_id,
@@ -63,6 +69,7 @@ def create_upload(
             content_type=content_type,
             size_bytes=size,
             storage_key=key,
+            category=category,
             uploaded_by=user,
         )
         try:
@@ -82,9 +89,11 @@ def create_upload(
 
 
 def _get(workspace_id, upload_id) -> KnowledgeUpload:
-    upload = KnowledgeUpload.objects.filter(
-        workspace_id=workspace_id, pk=upload_id
-    ).first()
+    upload = (
+        KnowledgeUpload.objects.select_related("category")
+        .filter(workspace_id=workspace_id, pk=upload_id)
+        .first()
+    )
     if upload is None:
         raise NotFoundException(messages.MESSAGE_UPLOAD_NOT_FOUND)
     return upload
@@ -136,11 +145,18 @@ def confirm_upload(user: User, workspace_id, upload_id) -> KnowledgeUpload:
     return upload
 
 
-def list_uploads(user: User, workspace_id) -> QuerySet[KnowledgeUpload]:
+def list_uploads(
+    user: User, workspace_id, category=None, filename: str | None = None
+) -> QuerySet[KnowledgeUpload]:
     access.require_permission(user, workspace_id, permissions.KNOWLEDGE_VIEW)
-    return KnowledgeUpload.objects.filter(
+    queryset = KnowledgeUpload.objects.select_related("category").filter(
         workspace_id=workspace_id, status=UploadStatus.READY
-    ).order_by("-created_at", "id")
+    )
+    if category:
+        queryset = queryset.filter(category_id=category)
+    if filename:
+        queryset = queryset.filter(filename__icontains=filename)
+    return queryset.order_by("-created_at", "id")
 
 
 def download_url(user: User, workspace_id, upload_id) -> dict:

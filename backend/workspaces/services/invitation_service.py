@@ -79,6 +79,11 @@ def create_invitations(
         hooks.emit(
             membership.workspace, actor, hooks.ACTION_INVITATION_CREATED, count=created
         )
+        hooks.emit_invitations_created(
+            membership.workspace,
+            actor,
+            [str(r.invitation.id) for r in results if r.outcome == OUTCOME_CREATED],
+        )
     return results
 
 

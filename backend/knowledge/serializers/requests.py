@@ -68,3 +68,13 @@ class UploadUrlSerializer(StrictSerializer):
     filename = serializers.CharField(max_length=UPLOAD_FILENAME_MAX_LENGTH)
     content_type = serializers.ChoiceField(choices=list(UPLOAD_CONTENT_TYPES))
     size = serializers.IntegerField(min_value=1, max_value=UPLOAD_MAX_BYTES)
+    category_id = serializers.UUIDField()
+
+
+class UploadFilterSerializer(serializers.Serializer):
+    """Query-string filters for the file list."""
+
+    category = serializers.UUIDField(required=False)
+    filename = serializers.CharField(
+        required=False, max_length=UPLOAD_FILENAME_MAX_LENGTH
+    )

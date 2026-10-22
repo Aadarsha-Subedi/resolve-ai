@@ -19,22 +19,41 @@ function KbdGroup({ className, ...props }: React.ComponentProps<"span">) {
   return <span data-slot="kbd-group" className={cn("inline-flex items-center gap-1", className)} {...props} />
 }
 
-/** A shortcut as key caps. "G T" is a sequence (press in turn), "Mod+K" a chord. "Mod" shows as ⌘ on Apple platforms and Ctrl elsewhere. */
+/** A shortcut as key caps. "G T" is a sequence (press in turn), "Mod+K" a chord, "Meta+K, ?" lists alternatives separated by commas. "Mod" shows as ⌘ on Apple platforms and Ctrl elsewhere. */
 const isApple = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform)
 const SYMBOL: Record<string, string> = { mod: isApple ? "⌘" : "Ctrl", shift: "⇧", alt: isApple ? "⌥" : "Alt", enter: "↵", esc: "Esc" }
 
-function Shortcut({ keys, className, ...props }: { keys: string } & Omit<React.ComponentProps<"span">, "children">) {
-  const sequence = keys.split(" ")
+function Chord({ keys }: { keys: string }) {
   return (
-    <KbdGroup aria-label={keys} className={cn("gap-1.5", className)} {...props}>
-      {sequence.map((step, i) => (
+    <KbdGroup>
+      {keys.split("+").map((k) => (
+        <Kbd key={k}>{SYMBOL[k.toLowerCase()] ?? k}</Kbd>
+      ))}
+    </KbdGroup>
+  )
+}
+
+function Sequence({ keys }: { keys: string }) {
+  return (
+    <KbdGroup className="gap-1.5">
+      {keys.split(" ").map((step, i) => (
         <Fragment key={i}>
           {i > 0 && <span aria-hidden className="text-[0.6875rem] text-muted-foreground">then</span>}
-          <KbdGroup>
-            {step.split("+").map((k) => (
-              <Kbd key={k}>{SYMBOL[k.toLowerCase()] ?? k}</Kbd>
-            ))}
-          </KbdGroup>
+          <Chord keys={step} />
+        </Fragment>
+      ))}
+    </KbdGroup>
+  )
+}
+
+function Shortcut({ keys, className, ...props }: { keys: string } & Omit<React.ComponentProps<"span">, "children">) {
+  const alternatives = keys.split(",").map((k) => k.trim())
+  return (
+    <KbdGroup aria-label={alternatives.join(" or ")} className={cn("gap-1.5", className)} {...props}>
+      {alternatives.map((alt, i) => (
+        <Fragment key={alt}>
+          {i > 0 && <span aria-hidden className="-ml-1 text-xs text-muted-foreground">,</span>}
+          <Sequence keys={alt} />
         </Fragment>
       ))}
     </KbdGroup>

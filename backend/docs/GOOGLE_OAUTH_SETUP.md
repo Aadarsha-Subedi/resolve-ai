@@ -87,6 +87,7 @@ Without push, new customer mail is read only when an agent presses "Sync latest 
    RESOLVE_AI_PUBSUB_PUSH_AUDIENCE=https://<your public API origin>/api/email/gmail/push/
    RESOLVE_AI_PUBSUB_PUSH_SERVICE_ACCOUNT=gmail-push@<project>.iam.gserviceaccount.com
    ```
+   With a tunnel (ngrok), also: point the tunnel at the **API port (8000)**, not the frontend (Vite refuses unknown hosts and nothing reaches Django); add the tunnel host to `RESOLVE_AI_ALLOWED_HOSTS` (for example `localhost,127.0.0.1,your-name.ngrok-free.dev`, no scheme); and recreate **both** `api` and `celery` (`docker compose up -d`), because the worker is the process that registers the Gmail watch. Quick check: `curl -i -X POST https://<tunnel>/api/email/gmail/push/` must answer **401** (push on, no token), not 400 (host not allowed) or 404 (variables not loaded). ngrok's inspector at `http://127.0.0.1:4040` shows every request Google sends and what we answered.
 5. Sign in again (or `?reconnect=1`) so the watch is registered; it is renewed daily by Celery beat. Leaving the three variables empty turns push off. A Celery worker (and beat for renewals) must be running.
 
 ## Step 6: Verify

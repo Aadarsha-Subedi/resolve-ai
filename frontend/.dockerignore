@@ -8,3 +8,4 @@ dist
 .tanstack
 Dockerfile*
 docker-compose*.yml
+.pnpm-store

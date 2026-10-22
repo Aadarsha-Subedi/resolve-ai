@@ -55,6 +55,7 @@ ACTIONS: dict[str, ActionSpec] = {
     "ticket.created": ActionSpec("ticket"),
     "ticket.updated": ActionSpec("ticket"),
     "ticket.status_changed": ActionSpec("ticket"),
+    "ticket.assignee_changed": ActionSpec("ticket"),
     # account level (no workspace; stored for security investigations)
     "deletion_requested": ActionSpec(
         "user", default_target="actor", account_level=True

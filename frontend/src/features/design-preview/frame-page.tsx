@@ -1,7 +1,6 @@
-import { AppShell, BellButton, type NavItem } from "@/components/layout/app-shell"
+import { AppShell, type NavItem } from "@/components/layout/app-shell"
 import { PageHeader } from "@/components/patterns/page-header"
 import { StatCard } from "@/components/patterns/stat-card"
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
 import { Button } from "@/components/ui/button"
 import { BookOpen, ChartBar, Gear, Tray, MagnifyingGlass, Plus, Ticket, Users } from "@/icons"
 
@@ -20,16 +19,7 @@ export function FramePreview() {
     <AppShell
       nav={NAV}
       user={{ name: "Jason Duong", email: "jason@acme.test" }}
-      actions={<><Button variant="ghost" size="icon" label="Search" data-icon-motion="lift"><MagnifyingGlass /></Button><BellButton unread /></>}
-      breadcrumb={
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem><BreadcrumbLink href="/design-preview">Workspace</BreadcrumbLink></BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem><BreadcrumbPage>Tickets</BreadcrumbPage></BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      }
+      search={<Button variant="outline" size="sm" icon={<MagnifyingGlass />} className="text-muted-foreground">Search or jump to…</Button>}
     >
       <div className="space-y-6">
         <PageHeader title="Tickets" actions={<Button icon={<Plus weight="bold" />} data-icon-motion="spin">New Ticket</Button>} />

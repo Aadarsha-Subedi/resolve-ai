@@ -40,8 +40,8 @@ export function Actions() {
         </Specimen>
         <Specimen title="Button group">
           <ButtonGroup>
-            <Button slide={false} variant="outline" icon={<DownloadSimple />}>Export</Button>
-            <Button slide={false} variant="outline" icon={<Funnel />}>Filter</Button>
+            <Button variant="outline" icon={<DownloadSimple />}>Export</Button>
+            <Button variant="outline" icon={<Funnel />}>Filter</Button>
             <Button variant="outline" size="icon" label="More"><DotsThree weight="bold" /></Button>
           </ButtonGroup>
         </Specimen>

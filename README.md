@@ -7,8 +7,8 @@ A capstone project that uses AI to resolve customer queries: a multi-tenant supp
 | Area | State |
 | --- | --- |
 | Design (LLD) | Draft, owner decisions applied: [backend/docs/ResolveAI_LLD.md](backend/docs/ResolveAI_LLD.md) |
-| Backend | In progress. Reusable `common` app and project config done; feature apps next |
-| Frontend | Scaffold and reusable component library done; design system draft awaiting approval: [frontend/README.md](frontend/README.md) |
+| Backend | Features 1 to 7 built (accounts, workspaces, knowledge, tickets with assignment, Gmail incl. invitation emails, audit, dashboard); `ai` app next. `docker compose up -d --build` in `backend/` starts api, worker and beat |
+| Frontend | Screens built (not yet run against a live backend); design system awaiting approval: [frontend/README.md](frontend/README.md) |
 | LLM layer (full-text search, Gemini) | After frontend and backend scaffolding |
 
 ## Repository layout
@@ -52,7 +52,7 @@ API requests are kept in `backend/postman/` (collection and environment), update
 
 ## Frontend
 
-Not started. It will be added in `frontend/` after the backend foundation is in place.
+Built in `frontend/` (React 19, Vite, TanStack, Tailwind v4, Base UI): dashboard, tickets with assignment, knowledge base with a category graph view (`@xyflow/react`), members and invitations, settings, audit log, Gmail, public portal. All tables use one chip filter bar. See [frontend/README.md](frontend/README.md) and [frontend/PROJECT.md](frontend/PROJECT.md).
 
 ## Key product decisions
 

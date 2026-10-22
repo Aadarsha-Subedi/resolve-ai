@@ -12,6 +12,8 @@ export type StatTrend = {
   good: boolean
   /** Comparison label; defaults to "vs last week". */
   label?: string
+  /** Movement carries no judgement (for example tickets created): shown in muted ink instead of green or red. */
+  neutral?: boolean
 }
 
 /** Flat metric tile: label with icon, the number, its trend. One surface, no card inside a card. */
@@ -25,7 +27,7 @@ export function StatCard({ label, value, icon, trend, loading, className }: { la
       </div>
       {loading ? <Skeleton className="mt-3 h-9 w-16" /> : <div className="mt-2 text-3xl font-semibold tabular-nums">{value}</div>}
       {trend && !loading && (
-        <p className={cn("mt-1 flex items-center gap-1 text-xs tabular-nums", trend.good ? "text-success-text" : "text-danger-text")}>
+        <p className={cn("mt-1 flex items-center gap-1 text-xs tabular-nums", trend.neutral ? "text-muted-foreground" : trend.good ? "text-success-text" : "text-danger-text")}>
           <Arrow weight="bold" className="size-3.5" aria-hidden />
           {Math.abs(trend.change)} ({trend.percent}) {trend.label ?? "vs last week"}
         </p>

@@ -9,7 +9,7 @@ from common.response.domain import (
     SuccessResponse,
 )
 from knowledge.constants import messages
-from knowledge.serializers.requests import UploadUrlSerializer
+from knowledge.serializers.requests import UploadFilterSerializer, UploadUrlSerializer
 from knowledge.serializers.responses import DictData, UploadData
 from knowledge.services import quota_service, upload_service
 from workspaces.constants import permissions
@@ -17,10 +17,17 @@ from workspaces.services import access
 
 
 class UploadListView(APIView):
+    """GET filters: category (id), filename (contains)."""
+
     def get(self, request, workspace_id):
+        filters = UploadFilterSerializer(data=request.query_params)
+        filters.is_valid(raise_exception=True)
         paginator = OffsetBasedPagination()
         page = paginator.paginate_queryset(
-            upload_service.list_uploads(request.user, workspace_id), request
+            upload_service.list_uploads(
+                request.user, workspace_id, **filters.validated_data
+            ),
+            request,
         )
         return ResourceListResponse(
             data=ListResponseData(items=[UploadData(u) for u in page]),
@@ -40,6 +47,7 @@ class UploadUrlView(APIView):
             data["filename"],
             data["content_type"],
             data["size"],
+            data["category_id"],
         )
         return ResourceCreatedResponse(
             data=UploadData(upload, extra=signed), message=messages.MESSAGE_UPLOAD_URL

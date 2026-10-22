@@ -16,7 +16,12 @@ class WorkspacePurgeTests(KnowledgeTestCase):
         article = self.create_article(content="x" * 50)
         upload = self.owner_client.post(
             self.kurl("uploads/upload-url/"),
-            {"filename": "a.txt", "content_type": "text/plain", "size": 5},
+            {
+                "filename": "a.txt",
+                "content_type": "text/plain",
+                "size": 5,
+                "category_id": self.category_id(),
+            },
             format="json",
         ).data["data"]
         upload_key = KnowledgeUpload.objects.get(pk=upload["id"]).storage_key

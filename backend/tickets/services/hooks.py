@@ -9,6 +9,7 @@ ticket_signal = Signal()  # kwargs: workspace_id, ticket_id, actor, action, meta
 ACTION_CREATED = "ticket.created"
 ACTION_UPDATED = "ticket.updated"
 ACTION_STATUS_CHANGED = "ticket.status_changed"
+ACTION_ASSIGNEE_CHANGED = "ticket.assignee_changed"
 ACTION_REPLY_ADDED = "ticket.reply_added"
 ACTION_NOTE_ADDED = "ticket.note_added"
 

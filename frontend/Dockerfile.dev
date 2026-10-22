@@ -12,6 +12,9 @@ COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
 COPY . .
+RUN chmod +x docker-entrypoint.dev.sh
 
 EXPOSE 3000
+# The entrypoint reinstalls dependencies when the lockfile changed (see docker-entrypoint.dev.sh).
+ENTRYPOINT ["./docker-entrypoint.dev.sh"]
 CMD ["pnpm", "dev"]

@@ -242,9 +242,10 @@ Constraints/indexes: - Unique `(workspace_id, ticket_number)`. - Index
 `(workspace_id, customer_email)`. - All list/detail queries must be
 workspace-scoped.
 
-Ticket assignment is **not included in core v1** because it has not been
-confirmed as a requirement. If assignment is added later, introduce
-`assignee_id` and explicit assignment policies.
+Ticket assignment was not part of the first core v1 scope. Update 2026-10-21
+(owner decision): a nullable `assignee` (active member), assigned through
+`POST tickets/{id}/assignee/` with the `tickets.assign` permission and the same
+CLOSED-ticket ABAC lock as the protected fields. See `Project.MD`, Feature 5.
 
 ### 4.3 `TicketMessage`
 
@@ -814,7 +815,7 @@ should not contain large business workflows.
 
 -   DOCX and other upload formats beyond PDF/TXT.
 -   Vector embeddings or vector search.
--   Ticket assignment and assignment-based policies.
+-   Assignment-based policies beyond the basic assignee (built 2026-10-21).
 -   Multiple Gmail mailboxes per user.
 -   SMTP credentials and non-Google mail providers.
 -   Advanced analytics, SLA dashboards, automated workflows.

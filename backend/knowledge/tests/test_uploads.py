@@ -23,7 +23,12 @@ class UploadFlowTests(KnowledgeTestCase):
     ):
         return (client or self.owner_client).post(
             self.kurl("uploads/upload-url/"),
-            {"filename": filename, "content_type": content_type, "size": size},
+            {
+                "filename": filename,
+                "content_type": content_type,
+                "size": size,
+                "category_id": self.category_id(),
+            },
             format="json",
         )
 
@@ -200,7 +205,12 @@ class PermissionAndIsolationTests(KnowledgeTestCase):
     def test_other_workspace_cannot_use_my_uploads(self):
         body = self.owner_client.post(
             self.kurl("uploads/upload-url/"),
-            {"filename": "a.txt", "content_type": "text/plain", "size": 5},
+            {
+                "filename": "a.txt",
+                "content_type": "text/plain",
+                "size": 5,
+                "category_id": self.category_id(),
+            },
             format="json",
         ).data["data"]
         other = self.create_workspace(client=self.stranger_client, name="Theirs")["id"]
@@ -235,7 +245,12 @@ class PermissionAndIsolationTests(KnowledgeTestCase):
             ("categories/", {"name": "n"}),
             (
                 "uploads/upload-url/",
-                {"filename": "a.txt", "content_type": "text/plain", "size": 1},
+                {
+                    "filename": "a.txt",
+                    "content_type": "text/plain",
+                    "size": 1,
+                    "category_id": self.category_id(),
+                },
             ),
         ):
             self.assertEqual(
@@ -252,7 +267,12 @@ class QuotaTests(KnowledgeTestCase):
     def url_for(self, size):
         return self.owner_client.post(
             self.kurl("uploads/upload-url/"),
-            {"filename": "a.txt", "content_type": "text/plain", "size": size},
+            {
+                "filename": "a.txt",
+                "content_type": "text/plain",
+                "size": size,
+                "category_id": self.category_id(),
+            },
             format="json",
         )
 
@@ -320,3 +340,66 @@ class QuotaTests(KnowledgeTestCase):
             logo_key="workspaces/x/logo/a.png"
         )
         self.assertEqual(self.used(), 0)
+
+
+class UploadCategoryTests(UploadFlowTests):
+    """Every file is filed under a category of its own workspace."""
+
+    def test_category_is_required_and_returned(self):
+        no_category = self.owner_client.post(
+            self.kurl("uploads/upload-url/"),
+            {"filename": "a.pdf", "content_type": "application/pdf", "size": 10},
+            format="json",
+        )
+        self.assertEqual(no_category.status_code, 400)
+        body = self.request_url().data["data"]
+        self.assertEqual(body["category"]["id"], self.category_id())
+
+    def test_category_from_another_workspace_is_rejected(self):
+        other = self.create_workspace(client=self.stranger_client, name="Theirs")["id"]
+        from knowledge.services import category_service
+
+        category_service.seed_defaults(other)
+        response = self.owner_client.post(
+            self.kurl("uploads/upload-url/"),
+            {
+                "filename": "a.pdf",
+                "content_type": "application/pdf",
+                "size": 10,
+                "category_id": self.category_id(workspace_id=other),
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(self.used(), 0)
+
+    def test_list_filters_by_category_and_filename(self):
+        faq = self.category_id()
+        other = self.category_id("Billing") if self._has("Billing") else None
+        body, _ = self.upload(filename="Guide.pdf")
+        self.confirm(body["id"])
+        listed = self.owner_client.get(self.kurl(f"uploads/?category={faq}"))
+        self.assertEqual([u["id"] for u in listed.data["data"]["items"]], [body["id"]])
+        none = self.owner_client.get(self.kurl("uploads/?filename=zzz"))
+        self.assertEqual(none.data["data"]["items"], [])
+        if other:
+            empty = self.owner_client.get(self.kurl(f"uploads/?category={other}"))
+            self.assertEqual(empty.data["data"]["items"], [])
+        bad = self.owner_client.get(self.kurl("uploads/?category=nope"))
+        self.assertEqual(bad.status_code, 400)
+
+    def test_deleting_the_category_keeps_the_file_uncategorized(self):
+        body, _ = self.upload()
+        self.confirm(body["id"])
+        self.owner_client.delete(self.kurl(f"categories/{self.category_id()}/"))
+        upload = KnowledgeUpload.objects.get(pk=body["id"])
+        self.assertIsNone(upload.category)
+        listed = self.owner_client.get(self.kurl("uploads/")).data["data"]["items"]
+        self.assertIsNone(listed[0]["category"])
+
+    def _has(self, name):
+        from knowledge.models import KnowledgeCategory
+
+        return KnowledgeCategory.objects.filter(
+            workspace_id=self.workspace_id, name=name
+        ).exists()

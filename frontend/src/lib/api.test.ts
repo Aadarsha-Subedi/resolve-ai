@@ -53,4 +53,16 @@ describe('api client', () => {
     await expect(api.get('/x/')).rejects.toMatchObject({ status: 403, code: 'permission_denied' })
     await expect(api.get('/x/')).rejects.toBeInstanceOf(ApiError)
   })
+
+  it('seeds the CSRF cookie once before the first write when it is missing', async () => {
+    document.cookie = 'csrftoken=; max-age=0'
+    const fn = vi.fn().mockImplementation(async (url: string) => {
+      if (String(url).includes('/csrf/')) document.cookie = 'csrftoken=abc'
+      return new Response(JSON.stringify({ success: true, status_code: 200, message: 'ok', data: {}, meta: {} }), { status: 200 })
+    })
+    vi.stubGlobal('fetch', fn)
+    await api.post('/x/', {})
+    expect(String(fn.mock.calls[0][0])).toContain('/api/csrf/')
+    expect(fn.mock.calls[1][1].headers['X-CSRFToken']).toBe('abc')
+  })
 })

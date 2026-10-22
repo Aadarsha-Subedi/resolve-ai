@@ -25,6 +25,14 @@ class KnowledgeUpload(TimeStampModel):
     status = models.CharField(
         max_length=10, choices=UploadStatus.choices, default=UploadStatus.PENDING
     )
+    # Every file is filed under a category; a deleted category leaves the file uncategorized.
+    category = models.ForeignKey(
+        "knowledge.KnowledgeCategory",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="uploads",
+    )
     uploaded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+"
     )

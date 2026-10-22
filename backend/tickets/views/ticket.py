@@ -11,6 +11,7 @@ from common.response.domain import (
 from tickets.constants import messages
 from tickets.serializers.requests import (
     AddMessageSerializer,
+    AssignTicketSerializer,
     ChangeStatusSerializer,
     CreateTicketSerializer,
     OverviewQuerySerializer,
@@ -33,7 +34,8 @@ def _paged(request, queryset):
 
 class TicketListView(APIView):
     """GET filters: status, priority, category, created_from, created_to (dates), q
-    (contains in subject/email/name), waiting_for_reply, ordering."""
+    (contains in subject/email/name), waiting_for_reply, assignee (user id, "me" or
+    "unassigned"), ordering."""
 
     def get(self, request, workspace_id):
         # partial: a missing query parameter must not become False (DRF's HTML-input default)
@@ -103,6 +105,20 @@ class TicketStatusView(APIView):
         return SuccessResponse(
             data=TicketData(ticket, detail=True),
             message=messages.MESSAGE_STATUS_CHANGED,
+        )
+
+
+class TicketAssigneeView(APIView):
+    """POST {"assignee": <member user id> | null}: assign or unassign the ticket."""
+
+    def post(self, request, workspace_id, ticket_id):
+        data = AssignTicketSerializer.parse(request.data)
+        ticket = ticket_service.assign_ticket(
+            request.user, workspace_id, ticket_id, data["assignee"]
+        )
+        return SuccessResponse(
+            data=TicketData(ticket, detail=True),
+            message=messages.MESSAGE_ASSIGNEE_CHANGED,
         )
 
 

@@ -33,12 +33,17 @@ services:
 
   api:
     <<: *backend
+    container_name: resolve-ai-backend
     ports:
       - "8000:8000"
 
   celery:
     <<: *backend
     command: celery -A config worker -Q default -l info
+
+  celery-beat:
+    <<: *backend
+    command: celery -A config beat -l info
 
 volumes:
   db_data:

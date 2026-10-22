@@ -22,7 +22,11 @@ export default defineConfig(({ mode }) => {
       // Listen on all interfaces so a container's published port reaches the server.
       host: true,
       // Bind mounts from Docker Desktop do not deliver file events; set VITE_USE_POLLING=true there.
-      watch: env.VITE_USE_POLLING === 'true' ? { usePolling: true, interval: 300 } : undefined,
+      // Generated folders stay out of the watcher: polling a pnpm store or router cache inside the project slows every reload.
+      watch: {
+        ignored: ['**/.pnpm-store/**', '**/.tanstack/**', '**/dist/**'],
+        ...(env.VITE_USE_POLLING === 'true' ? { usePolling: true, interval: 300 } : {}),
+      },
       proxy: {
         '/api': {
           target: env.VITE_API_PROXY_TARGET ?? 'http://localhost:8000',

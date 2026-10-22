@@ -25,6 +25,11 @@ class TicketPolicy:
         return True
 
     @staticmethod
+    def can_change_assignee(membership: WorkspaceMembership, ticket: Ticket) -> bool:
+        """Same lock as the protected fields: only the owner touches a CLOSED ticket."""
+        return ticket.status != TicketStatus.CLOSED or membership.is_owner
+
+    @staticmethod
     def can_send_public_reply(ticket: Ticket) -> bool:
         return ticket.status != TicketStatus.CLOSED
 
@@ -37,6 +42,15 @@ class TicketPolicy:
         if not cls.can_edit_protected_fields(membership, ticket):
             raise PermissionDeniedException(
                 messages.MESSAGE_TICKET_CLOSED, error_code=errors.ERROR_TICKET_CLOSED
+            )
+
+    @classmethod
+    def ensure_can_change_assignee(
+        cls, membership: WorkspaceMembership, ticket: Ticket
+    ) -> None:
+        if not cls.can_change_assignee(membership, ticket):
+            raise PermissionDeniedException(
+                messages.MESSAGE_ASSIGNEE_LOCKED, error_code=errors.ERROR_TICKET_CLOSED
             )
 
     @classmethod

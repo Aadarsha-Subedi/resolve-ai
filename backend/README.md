@@ -17,13 +17,12 @@ uv run python manage.py runserver
 `Dockerfile.dev` builds the dev image; `docker-compose.yml` builds from it and bind-mounts the code into the container, so edits on your machine reload the dev server immediately.
 
 ```bash
-docker compose up --build                       # db, redis, api on http://localhost:8000
-docker compose --profile worker up --build      # also start the Celery worker
+docker compose up -d --build                   # db, redis, api, Celery worker and beat
 docker compose exec api python manage.py migrate
 docker compose exec api python manage.py test   # with RESOLVE_AI_USE_SQLITE=true, or against the db service
 ```
 
-The compose file overrides the DB host and Redis URL so the containers reach each other by service name. The Celery worker does not auto-reload; run `docker compose restart celery` after changing tasks. After changing dependencies, rebuild with `--build`.
+The compose file overrides the DB host and Redis URL so the containers reach each other by service name. The Celery worker does not auto-reload; run `docker compose restart celery celery-beat` after changing tasks. After changing dependencies, rebuild with `--build`.
 
 ### Production image
 
@@ -67,7 +66,7 @@ Postman: Google sign-in cannot finish inside Postman. Sign in with a browser, co
 
 ## Workspaces (feature 3)
 
-A user can create workspaces (becoming the owner), belong to several, and join through a join link (1 hour by default, 1 day or 7 days) or an invitation to their Google account. The owner removes members, transfers ownership, deletes the workspace (purged after 7 days) and sets the logo. Endpoint list and rules: [Project.MD](Project.MD), Feature 3. Postman folders: `Workspaces`, `Members`, `Join link`, `Invitations`. The logo upload needs the `RESOLVE_AI_R2_*` variables (the browser PUTs to a signed R2 URL, so allow your frontend origin in the bucket's CORS policy with the PUT method).
+A user can create workspaces (becoming the owner), belong to several, and join through a join link (1 hour by default, 1 day or 7 days) or an invitation to their Google account. The owner removes members, transfers ownership, deletes the workspace (purged after 7 days) and sets the logo. Endpoint list and rules: [Project.MD](Project.MD), Feature 3. New invitations are also emailed to the invitee from the owner's Gmail (needs the Celery worker). Postman folders: `Workspaces`, `Members`, `Join link`, `Invitations`. The logo upload needs the `RESOLVE_AI_R2_*` variables (the browser PUTs to a signed R2 URL, so allow your frontend origin in the bucket's CORS policy with the PUT method).
 
 ## Knowledge base (feature 4)
 
@@ -75,11 +74,11 @@ Articles (Markdown, up to 200 KB), categories (five defaults per workspace) and 
 
 ## Tickets and public portal (feature 5)
 
-Agents (owner and members) create and work tickets under `/api/workspaces/{id}/tickets/`: per-workspace numbers, fixed categories, priorities, five statuses, internal notes and public replies, history, and filters (status, priority, category, dates, search, waiting for reply). Customers use the public portal with no login: `GET /api/portal/{slug}/` and `POST /api/portal/{slug}/tickets/` (per-IP limit, 5 tickets per email per hour, hidden honeypot field `website`). `GET .../tickets/{id}/overview/` returns the whole ticket page in one request (ticket, conversation, history, your role and permissions, your Gmail status). Public replies are stored as `queued`; emailing them and the portal confirmation arrive with feature 6. Rules and endpoints: [Project.MD](Project.MD), Feature 5. Postman folders: `Tickets`, `Portal (public)`.
+Agents (owner and members) create and work tickets under `/api/workspaces/{id}/tickets/`: per-workspace numbers, fixed categories, priorities, five statuses, internal notes and public replies, an optional assignee (an active member; unassigned automatically when they leave), history, and filters (status, priority, category, dates, search, waiting for reply, assignee). Customers use the public portal with no login: `GET /api/portal/{slug}/` and `POST /api/portal/{slug}/tickets/` (per-IP limit, 5 tickets per email per hour, hidden honeypot field `website`). `GET .../tickets/{id}/overview/` returns the whole ticket page in one request (ticket, conversation, history, your role and permissions, your Gmail status). Public replies are stored as `queued`; emailing them and the portal confirmation arrive with feature 6. Rules and endpoints: [Project.MD](Project.MD), Feature 5. Postman folders: `Tickets`, `Portal (public)`.
 
 ## Gmail and email (feature 6)
 
-Gmail is connected by the same Google sign-in (no second flow): the login asks for Gmail send and read access, and the refresh token is stored encrypted. Agents' public replies are emailed from their own Gmail; the portal confirmation goes out from the owner's Gmail; customer replies come back through Pub/Sub push or the "Sync latest mails" button (newest 30 messages) and are matched to tickets by email headers. Only mail that belongs to tickets is stored. Rules, endpoints and the privacy model: [Project.MD](Project.MD), Feature 6; Google Cloud setup (scopes, Pub/Sub): [docs/GOOGLE_OAUTH_SETUP.md](docs/GOOGLE_OAUTH_SETUP.md). Postman folder: `Email (Gmail)`. A running Celery worker is needed for sending (`docker compose --profile worker up`).
+Gmail is connected by the same Google sign-in (no second flow): the login asks for Gmail send and read access, and the refresh token is stored encrypted. Agents' public replies are emailed from their own Gmail; the portal confirmation goes out from the owner's Gmail; customer replies come back through Pub/Sub push or the "Sync latest mails" button (newest 30 messages) and are matched to tickets by email headers. Only mail that belongs to tickets is stored. Rules, endpoints and the privacy model: [Project.MD](Project.MD), Feature 6; Google Cloud setup (scopes, Pub/Sub): [docs/GOOGLE_OAUTH_SETUP.md](docs/GOOGLE_OAUTH_SETUP.md). Postman folder: `Email (Gmail)`. A running Celery worker is needed for sending (`docker compose up -d --build` starts it).
 
 ## Dashboard (feature 7)
 
@@ -89,6 +88,6 @@ Served by the `audit` app (no separate app). `GET /api/workspaces/{id}/dashboard
 
 Sensitive actions (membership and ownership changes, join links, invitations, knowledge-base changes, ticket creation/edits/status changes, account and Gmail connection changes) are recorded automatically from the hook signals each feature emits. The workspace owner reads them at `GET /api/workspaces/{id}/audit/` (filters: action, action_prefix, actor, target, dates). The log is append-only, has no export, and never stores tokens, message text or email addresses. To audit a new action, add it to `audit/constants/actions.py` and emit it from the feature's `hooks.py`. Details: [Project.MD](Project.MD), Feature 2. Postman folder: `Audit`.
 
-Celery beat runs `accounts.purge_deleted_accounts`, `workspaces.purge_deleted_workspaces`, `knowledge.release_stale_uploads`, `email_integration.renew_gmail_watches`, `email_integration.purge_old_review_items` and `accounts.clear_expired_sessions` daily (`docker compose --profile worker` starts a worker; run a beat process for the schedule). Later features plug in through `accounts.services.hooks` (`register_ownership_check`, the `account_event` signal).
+Celery beat runs `accounts.purge_deleted_accounts`, `workspaces.purge_deleted_workspaces`, `knowledge.release_stale_uploads`, `email_integration.renew_gmail_watches`, `email_integration.purge_old_review_items` and `accounts.clear_expired_sessions` daily (`docker compose up -d --build` starts the worker and the `celery-beat` service). Later features plug in through `accounts.services.hooks` (`register_ownership_check`, the `account_event` signal).
 
 Docs: `Project.MD` (v1 feature map and build order), `CLAUDE.md` (rules), `DECISION.md` (decision log), `FLOW.md` (code paths).

@@ -265,3 +265,10 @@ Limits: at most 12% scale and 10 degrees rotation, about 160 ms in and 120 ms ou
 2. **Yellow:** #FFC800 is my read of the reference; send the brand hex if you have one.
 3. **Health** (On Track, Warning, Breached): assumed SLA-driven. Confirm.
 4. **Tabular numerals:** I haven't confirmed Anthropic Sans ships `tnum`; I'll check the font file when implementing.
+
+## Filter chips, setting rows, graph (2026-10-21)
+
+- **Filter bar:** search left, one `Filter` button, applied filters as small muted chips (`rounded-lg bg-muted`, icon, "Name: value", an X to remove). No loose selects or checkboxes in toolbars; "Clear all" is a ghost button that appears only while a chip or search text is on.
+- **Setting rows:** hairline-separated rows, title and description stacked left, control right, control below the text on narrow screens; the danger zone is last and its title is destructive-coloured.
+- **Knowledge graph:** category nodes use the primary fill, article nodes are plain bordered cards with a status badge; edges are muted hairlines. React Flow variables map to tokens in `tokens.css` (`.resolve-flow`), light and dark.
+- **Composer:** the reply/note composer has no border; it is a muted fill with a borderless textarea.

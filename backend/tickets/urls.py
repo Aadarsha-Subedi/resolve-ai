@@ -22,6 +22,11 @@ urlpatterns = [
         name="ticket_status",
     ),
     path(
+        _W + "<uuid:ticket_id>/assignee/",
+        ticket.TicketAssigneeView.as_view(),
+        name="ticket_assignee",
+    ),
+    path(
         _W + "<uuid:ticket_id>/messages/",
         ticket.TicketMessageListView.as_view(),
         name="ticket_messages",

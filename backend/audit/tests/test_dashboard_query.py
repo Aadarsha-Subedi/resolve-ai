@@ -28,6 +28,25 @@ class QueryValidationTests(DashboardTestCase):
         self.assertEqual(self.dash("?from=2025-01-01&to=2026-01-01").status_code, 200)
         self.assert_400("?from=2025-01-01&to=2026-01-02")
 
+    def test_legacy_timezone_aliases_are_canonicalised(self):
+        for legacy, canonical in (
+            ("Asia/Katmandu", "Asia/Kathmandu"),
+            ("Asia/Calcutta", "Asia/Kolkata"),
+            ("US/Eastern", "America/New_York"),
+        ):
+            period = self.data(f"?tz={legacy}")["period"]
+            self.assertEqual(period["tz"], canonical)
+
+    def test_valid_timezone_is_echoed(self):
+        self.assertEqual(
+            self.data("?tz=Europe/Berlin")["period"]["tz"], "Europe/Berlin"
+        )
+
+    def test_unknown_timezone_is_a_400_with_the_stable_code(self):
+        response = self.dash("?tz=Asia/Nowhere")
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["code"], "validation_error")
+
     def test_timezone(self):
         self.assertEqual(self.dash("?tz=Asia/Kathmandu").status_code, 200)
         self.assert_400("?tz=Mars/Base")

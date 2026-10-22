@@ -26,3 +26,9 @@ MESSAGE_PORTAL_SUBMITTED = (
 MESSAGE_PORTAL_RATE_LIMITED = (
     "Too many requests from this email address. Please try again later."
 )
+MESSAGE_ASSIGNEE_CHANGED = "Ticket assignee updated."
+MESSAGE_ASSIGNEE_INVALID = "The assignee must be an active member of this workspace."
+MESSAGE_ASSIGNEE_LOCKED = (
+    "This ticket is closed. Only the owner can change its assignee."
+)
+MESSAGE_ASSIGNEE_FILTER_INVALID = "Use a user id, me or unassigned."

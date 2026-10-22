@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { ArrowDown, ArrowUp, ChatCircle, CheckCircle, CircleDashed, CircleHalf, Clock, Envelope, Equals, Flame, Info, LockSimple, Pulse, SlackLogo, Warning, WarningOctagon } from "@/icons"
+import { ArrowDown, ArrowUp, ChatCircle, ChatsCircle, CheckCircle, CircleDashed, CircleHalf, Clock, CreditCard, DotsThree, Envelope, Equals, Flame, Globe, Info, Lightbulb, LockSimple, PlayCircle, Pulse, SlackLogo, UserCircle, UserGear, Warning, WarningOctagon, Wrench } from "@/icons"
 import type { IconProps } from "@/icons"
 import { cn } from "@/lib/utils"
 import type { ComponentType } from "react"
@@ -7,10 +7,11 @@ import type { ComponentType } from "react"
 /* Domain vocabulary shown in the ticket list. The backend owns the real values; these mirror the reference UI. */
 
 export type Tone = "neutral" | "info" | "success" | "warning" | "danger"
-export type TicketStatus = "open" | "pending" | "resolved" | "closed"
+export type TicketStatus = "open" | "in_progress" | "pending" | "resolved" | "closed"
 export type TicketPriority = "urgent" | "high" | "medium" | "low" | "none"
 export type TicketHealth = "on_track" | "warning" | "breached"
-export type TicketChannel = "email" | "chat" | "slack" | "portal"
+export type TicketChannel = "email" | "chat" | "slack" | "portal" | "agent"
+export type TicketCategory = "billing" | "technical" | "account" | "feature_request" | "general" | "other"
 
 const TONE: Record<Tone, string> = {
   neutral: "bg-muted text-muted-foreground",
@@ -41,6 +42,7 @@ export function SoftBadge({ tone = "neutral", icon, children, className }: { ton
 
 const STATUS: Record<TicketStatus, { label: string; tone: Tone; Icon: ComponentType<IconProps> }> = {
   open: { label: "Open", tone: "info", Icon: CircleHalf },
+  in_progress: { label: "In progress", tone: "info", Icon: PlayCircle },
   pending: { label: "Pending", tone: "warning", Icon: Clock },
   resolved: { label: "Resolved", tone: "success", Icon: CheckCircle },
   closed: { label: "Closed", tone: "neutral", Icon: LockSimple },
@@ -85,7 +87,8 @@ const CHANNEL: Record<TicketChannel, { label: string; Icon: ComponentType<IconPr
   email: { label: "Email", Icon: Envelope },
   chat: { label: "Chat", Icon: ChatCircle },
   slack: { label: "Slack", Icon: SlackLogo },
-  portal: { label: "Portal", Icon: ChatCircle },
+  portal: { label: "Portal", Icon: Globe },
+  agent: { label: "Agent", Icon: UserGear },
 }
 
 export function ChannelLabel({ channel, className }: { channel: TicketChannel; className?: string }) {
@@ -103,3 +106,24 @@ export type SelectOption = { value: string; label: string; icon?: ComponentType<
 export const STATUS_OPTIONS: SelectOption[] = (Object.keys(STATUS) as TicketStatus[]).map((v) => ({ value: v, label: STATUS[v].label, icon: STATUS[v].Icon }))
 export const PRIORITY_OPTIONS: SelectOption[] = (Object.keys(PRIORITY) as TicketPriority[]).map((v) => ({ value: v, label: PRIORITY[v].label, icon: PRIORITY[v].Icon }))
 export const CHANNEL_OPTIONS: SelectOption[] = (Object.keys(CHANNEL) as TicketChannel[]).map((v) => ({ value: v, label: CHANNEL[v].label, icon: CHANNEL[v].Icon }))
+
+const CATEGORY: Record<TicketCategory, { label: string; Icon: ComponentType<IconProps> }> = {
+  billing: { label: "Billing", Icon: CreditCard },
+  technical: { label: "Technical", Icon: Wrench },
+  account: { label: "Account", Icon: UserCircle },
+  feature_request: { label: "Feature request", Icon: Lightbulb },
+  general: { label: "General", Icon: ChatsCircle },
+  other: { label: "Other", Icon: DotsThree },
+}
+
+export function CategoryLabel({ category, className }: { category: TicketCategory; className?: string }) {
+  const { label, Icon } = CATEGORY[category]
+  return (
+    <span className={cn("inline-flex items-center gap-1.5", className)}>
+      <Icon className="size-4 text-muted-foreground" aria-hidden />
+      {label}
+    </span>
+  )
+}
+
+export const CATEGORY_OPTIONS: SelectOption[] = (Object.keys(CATEGORY) as TicketCategory[]).map((v) => ({ value: v, label: CATEGORY[v].label, icon: CATEGORY[v].Icon }))

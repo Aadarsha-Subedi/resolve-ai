@@ -10,16 +10,39 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppRouteImport } from './routes/app'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppWsRouteImport } from './routes/app.$ws'
+import { Route as AppAccountRouteImport } from './routes/app.account'
+import { Route as AppEmailRouteImport } from './routes/app.email'
+import { Route as AppInvitationsRouteImport } from './routes/app.invitations'
+import { Route as AppNewRouteImport } from './routes/app.new'
 import { Route as DesignPreviewIndexRouteImport } from './routes/design-preview.index'
 import { Route as DesignPreviewFrameRouteImport } from './routes/design-preview.frame'
+import { Route as JoinTokenRouteImport } from './routes/join.$token'
+import { Route as PortalSlugRouteImport } from './routes/portal.$slug'
+import { Route as AppWsIndexRouteImport } from './routes/app.$ws.index'
+import { Route as AppWsAuditRouteImport } from './routes/app.$ws.audit'
+import { Route as AppWsMembersRouteImport } from './routes/app.$ws.members'
+import { Route as AppWsSettingsRouteImport } from './routes/app.$ws.settings'
+import { Route as AppWsKnowledgeIndexRouteImport } from './routes/app.$ws.knowledge.index'
+import { Route as AppWsKnowledgeArticleIdRouteImport } from './routes/app.$ws.knowledge.$articleId'
+import { Route as AppWsKnowledgeNewRouteImport } from './routes/app.$ws.knowledge.new'
+import { Route as AppWsTicketsIndexRouteImport } from './routes/app.$ws.tickets.index'
+import { Route as AppWsTicketsIdRouteImport } from './routes/app.$ws.tickets.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -42,6 +65,36 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppWsRoute = AppWsRouteImport.update({
+  id: '/$ws',
+  path: '/$ws',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAccountRoute = AppAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEmailRoute = AppEmailRouteImport.update({
+  id: '/email',
+  path: '/email',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppInvitationsRoute = AppInvitationsRouteImport.update({
+  id: '/invitations',
+  path: '/invitations',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppNewRoute = AppNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => AppRoute,
+} as any)
 const DesignPreviewIndexRoute = DesignPreviewIndexRouteImport.update({
   id: '/design-preview/',
   path: '/design-preview/',
@@ -52,15 +105,88 @@ const DesignPreviewFrameRoute = DesignPreviewFrameRouteImport.update({
   path: '/design-preview/frame',
   getParentRoute: () => rootRouteImport,
 } as any)
+const JoinTokenRoute = JoinTokenRouteImport.update({
+  id: '/join/$token',
+  path: '/join/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PortalSlugRoute = PortalSlugRouteImport.update({
+  id: '/portal/$slug',
+  path: '/portal/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppWsIndexRoute = AppWsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppWsRoute,
+} as any)
+const AppWsAuditRoute = AppWsAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => AppWsRoute,
+} as any)
+const AppWsMembersRoute = AppWsMembersRouteImport.update({
+  id: '/members',
+  path: '/members',
+  getParentRoute: () => AppWsRoute,
+} as any)
+const AppWsSettingsRoute = AppWsSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppWsRoute,
+} as any)
+const AppWsKnowledgeIndexRoute = AppWsKnowledgeIndexRouteImport.update({
+  id: '/knowledge/',
+  path: '/knowledge/',
+  getParentRoute: () => AppWsRoute,
+} as any)
+const AppWsKnowledgeArticleIdRoute = AppWsKnowledgeArticleIdRouteImport.update({
+  id: '/knowledge/$articleId',
+  path: '/knowledge/$articleId',
+  getParentRoute: () => AppWsRoute,
+} as any)
+const AppWsKnowledgeNewRoute = AppWsKnowledgeNewRouteImport.update({
+  id: '/knowledge/new',
+  path: '/knowledge/new',
+  getParentRoute: () => AppWsRoute,
+} as any)
+const AppWsTicketsIndexRoute = AppWsTicketsIndexRouteImport.update({
+  id: '/tickets/',
+  path: '/tickets/',
+  getParentRoute: () => AppWsRoute,
+} as any)
+const AppWsTicketsIdRoute = AppWsTicketsIdRouteImport.update({
+  id: '/tickets/$id',
+  path: '/tickets/$id',
+  getParentRoute: () => AppWsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
+  '/app/$ws': typeof AppWsRouteWithChildren
+  '/app/account': typeof AppAccountRoute
+  '/app/email': typeof AppEmailRoute
+  '/app/invitations': typeof AppInvitationsRoute
+  '/app/new': typeof AppNewRoute
   '/design-preview/frame': typeof DesignPreviewFrameRoute
+  '/join/$token': typeof JoinTokenRoute
+  '/portal/$slug': typeof PortalSlugRoute
+  '/app/': typeof AppIndexRoute
   '/design-preview/': typeof DesignPreviewIndexRoute
+  '/app/$ws/audit': typeof AppWsAuditRoute
+  '/app/$ws/members': typeof AppWsMembersRoute
+  '/app/$ws/settings': typeof AppWsSettingsRoute
+  '/app/$ws/': typeof AppWsIndexRoute
+  '/app/$ws/knowledge/$articleId': typeof AppWsKnowledgeArticleIdRoute
+  '/app/$ws/knowledge/new': typeof AppWsKnowledgeNewRoute
+  '/app/$ws/tickets/$id': typeof AppWsTicketsIdRoute
+  '/app/$ws/knowledge/': typeof AppWsKnowledgeIndexRoute
+  '/app/$ws/tickets/': typeof AppWsTicketsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -68,29 +194,81 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
+  '/app/account': typeof AppAccountRoute
+  '/app/email': typeof AppEmailRoute
+  '/app/invitations': typeof AppInvitationsRoute
+  '/app/new': typeof AppNewRoute
   '/design-preview/frame': typeof DesignPreviewFrameRoute
+  '/join/$token': typeof JoinTokenRoute
+  '/portal/$slug': typeof PortalSlugRoute
+  '/app': typeof AppIndexRoute
   '/design-preview': typeof DesignPreviewIndexRoute
+  '/app/$ws/audit': typeof AppWsAuditRoute
+  '/app/$ws/members': typeof AppWsMembersRoute
+  '/app/$ws/settings': typeof AppWsSettingsRoute
+  '/app/$ws': typeof AppWsIndexRoute
+  '/app/$ws/knowledge/$articleId': typeof AppWsKnowledgeArticleIdRoute
+  '/app/$ws/knowledge/new': typeof AppWsKnowledgeNewRoute
+  '/app/$ws/tickets/$id': typeof AppWsTicketsIdRoute
+  '/app/$ws/knowledge': typeof AppWsKnowledgeIndexRoute
+  '/app/$ws/tickets': typeof AppWsTicketsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
+  '/app/$ws': typeof AppWsRouteWithChildren
+  '/app/account': typeof AppAccountRoute
+  '/app/email': typeof AppEmailRoute
+  '/app/invitations': typeof AppInvitationsRoute
+  '/app/new': typeof AppNewRoute
   '/design-preview/frame': typeof DesignPreviewFrameRoute
+  '/join/$token': typeof JoinTokenRoute
+  '/portal/$slug': typeof PortalSlugRoute
+  '/app/': typeof AppIndexRoute
   '/design-preview/': typeof DesignPreviewIndexRoute
+  '/app/$ws/audit': typeof AppWsAuditRoute
+  '/app/$ws/members': typeof AppWsMembersRoute
+  '/app/$ws/settings': typeof AppWsSettingsRoute
+  '/app/$ws/': typeof AppWsIndexRoute
+  '/app/$ws/knowledge/$articleId': typeof AppWsKnowledgeArticleIdRoute
+  '/app/$ws/knowledge/new': typeof AppWsKnowledgeNewRoute
+  '/app/$ws/tickets/$id': typeof AppWsTicketsIdRoute
+  '/app/$ws/knowledge/': typeof AppWsKnowledgeIndexRoute
+  '/app/$ws/tickets/': typeof AppWsTicketsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/app'
     | '/login'
     | '/privacy'
     | '/signup'
     | '/terms'
+    | '/app/$ws'
+    | '/app/account'
+    | '/app/email'
+    | '/app/invitations'
+    | '/app/new'
     | '/design-preview/frame'
+    | '/join/$token'
+    | '/portal/$slug'
+    | '/app/'
     | '/design-preview/'
+    | '/app/$ws/audit'
+    | '/app/$ws/members'
+    | '/app/$ws/settings'
+    | '/app/$ws/'
+    | '/app/$ws/knowledge/$articleId'
+    | '/app/$ws/knowledge/new'
+    | '/app/$ws/tickets/$id'
+    | '/app/$ws/knowledge/'
+    | '/app/$ws/tickets/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -98,26 +276,63 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/signup'
     | '/terms'
+    | '/app/account'
+    | '/app/email'
+    | '/app/invitations'
+    | '/app/new'
     | '/design-preview/frame'
+    | '/join/$token'
+    | '/portal/$slug'
+    | '/app'
     | '/design-preview'
+    | '/app/$ws/audit'
+    | '/app/$ws/members'
+    | '/app/$ws/settings'
+    | '/app/$ws'
+    | '/app/$ws/knowledge/$articleId'
+    | '/app/$ws/knowledge/new'
+    | '/app/$ws/tickets/$id'
+    | '/app/$ws/knowledge'
+    | '/app/$ws/tickets'
   id:
     | '__root__'
     | '/'
+    | '/app'
     | '/login'
     | '/privacy'
     | '/signup'
     | '/terms'
+    | '/app/$ws'
+    | '/app/account'
+    | '/app/email'
+    | '/app/invitations'
+    | '/app/new'
     | '/design-preview/frame'
+    | '/join/$token'
+    | '/portal/$slug'
+    | '/app/'
     | '/design-preview/'
+    | '/app/$ws/audit'
+    | '/app/$ws/members'
+    | '/app/$ws/settings'
+    | '/app/$ws/'
+    | '/app/$ws/knowledge/$articleId'
+    | '/app/$ws/knowledge/new'
+    | '/app/$ws/tickets/$id'
+    | '/app/$ws/knowledge/'
+    | '/app/$ws/tickets/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
   PrivacyRoute: typeof PrivacyRoute
   SignupRoute: typeof SignupRoute
   TermsRoute: typeof TermsRoute
   DesignPreviewFrameRoute: typeof DesignPreviewFrameRoute
+  JoinTokenRoute: typeof JoinTokenRoute
+  PortalSlugRoute: typeof PortalSlugRoute
   DesignPreviewIndexRoute: typeof DesignPreviewIndexRoute
 }
 
@@ -128,6 +343,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -158,6 +380,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/': {
+      id: '/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/$ws': {
+      id: '/app/$ws'
+      path: '/$ws'
+      fullPath: '/app/$ws'
+      preLoaderRoute: typeof AppWsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/account': {
+      id: '/app/account'
+      path: '/account'
+      fullPath: '/app/account'
+      preLoaderRoute: typeof AppAccountRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/email': {
+      id: '/app/email'
+      path: '/email'
+      fullPath: '/app/email'
+      preLoaderRoute: typeof AppEmailRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/invitations': {
+      id: '/app/invitations'
+      path: '/invitations'
+      fullPath: '/app/invitations'
+      preLoaderRoute: typeof AppInvitationsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/new': {
+      id: '/app/new'
+      path: '/new'
+      fullPath: '/app/new'
+      preLoaderRoute: typeof AppNewRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/design-preview/': {
       id: '/design-preview/'
       path: '/design-preview'
@@ -172,16 +436,142 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DesignPreviewFrameRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/join/$token': {
+      id: '/join/$token'
+      path: '/join/$token'
+      fullPath: '/join/$token'
+      preLoaderRoute: typeof JoinTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portal/$slug': {
+      id: '/portal/$slug'
+      path: '/portal/$slug'
+      fullPath: '/portal/$slug'
+      preLoaderRoute: typeof PortalSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/$ws/': {
+      id: '/app/$ws/'
+      path: '/'
+      fullPath: '/app/$ws/'
+      preLoaderRoute: typeof AppWsIndexRouteImport
+      parentRoute: typeof AppWsRoute
+    }
+    '/app/$ws/audit': {
+      id: '/app/$ws/audit'
+      path: '/audit'
+      fullPath: '/app/$ws/audit'
+      preLoaderRoute: typeof AppWsAuditRouteImport
+      parentRoute: typeof AppWsRoute
+    }
+    '/app/$ws/members': {
+      id: '/app/$ws/members'
+      path: '/members'
+      fullPath: '/app/$ws/members'
+      preLoaderRoute: typeof AppWsMembersRouteImport
+      parentRoute: typeof AppWsRoute
+    }
+    '/app/$ws/settings': {
+      id: '/app/$ws/settings'
+      path: '/settings'
+      fullPath: '/app/$ws/settings'
+      preLoaderRoute: typeof AppWsSettingsRouteImport
+      parentRoute: typeof AppWsRoute
+    }
+    '/app/$ws/knowledge/': {
+      id: '/app/$ws/knowledge/'
+      path: '/knowledge'
+      fullPath: '/app/$ws/knowledge/'
+      preLoaderRoute: typeof AppWsKnowledgeIndexRouteImport
+      parentRoute: typeof AppWsRoute
+    }
+    '/app/$ws/knowledge/$articleId': {
+      id: '/app/$ws/knowledge/$articleId'
+      path: '/knowledge/$articleId'
+      fullPath: '/app/$ws/knowledge/$articleId'
+      preLoaderRoute: typeof AppWsKnowledgeArticleIdRouteImport
+      parentRoute: typeof AppWsRoute
+    }
+    '/app/$ws/knowledge/new': {
+      id: '/app/$ws/knowledge/new'
+      path: '/knowledge/new'
+      fullPath: '/app/$ws/knowledge/new'
+      preLoaderRoute: typeof AppWsKnowledgeNewRouteImport
+      parentRoute: typeof AppWsRoute
+    }
+    '/app/$ws/tickets/': {
+      id: '/app/$ws/tickets/'
+      path: '/tickets'
+      fullPath: '/app/$ws/tickets/'
+      preLoaderRoute: typeof AppWsTicketsIndexRouteImport
+      parentRoute: typeof AppWsRoute
+    }
+    '/app/$ws/tickets/$id': {
+      id: '/app/$ws/tickets/$id'
+      path: '/tickets/$id'
+      fullPath: '/app/$ws/tickets/$id'
+      preLoaderRoute: typeof AppWsTicketsIdRouteImport
+      parentRoute: typeof AppWsRoute
+    }
   }
 }
 
+interface AppWsRouteChildren {
+  AppWsAuditRoute: typeof AppWsAuditRoute
+  AppWsMembersRoute: typeof AppWsMembersRoute
+  AppWsSettingsRoute: typeof AppWsSettingsRoute
+  AppWsIndexRoute: typeof AppWsIndexRoute
+  AppWsKnowledgeArticleIdRoute: typeof AppWsKnowledgeArticleIdRoute
+  AppWsKnowledgeNewRoute: typeof AppWsKnowledgeNewRoute
+  AppWsTicketsIdRoute: typeof AppWsTicketsIdRoute
+  AppWsKnowledgeIndexRoute: typeof AppWsKnowledgeIndexRoute
+  AppWsTicketsIndexRoute: typeof AppWsTicketsIndexRoute
+}
+
+const AppWsRouteChildren: AppWsRouteChildren = {
+  AppWsAuditRoute: AppWsAuditRoute,
+  AppWsMembersRoute: AppWsMembersRoute,
+  AppWsSettingsRoute: AppWsSettingsRoute,
+  AppWsIndexRoute: AppWsIndexRoute,
+  AppWsKnowledgeArticleIdRoute: AppWsKnowledgeArticleIdRoute,
+  AppWsKnowledgeNewRoute: AppWsKnowledgeNewRoute,
+  AppWsTicketsIdRoute: AppWsTicketsIdRoute,
+  AppWsKnowledgeIndexRoute: AppWsKnowledgeIndexRoute,
+  AppWsTicketsIndexRoute: AppWsTicketsIndexRoute,
+}
+
+const AppWsRouteWithChildren = AppWsRoute._addFileChildren(AppWsRouteChildren)
+
+interface AppRouteChildren {
+  AppWsRoute: typeof AppWsRouteWithChildren
+  AppAccountRoute: typeof AppAccountRoute
+  AppEmailRoute: typeof AppEmailRoute
+  AppInvitationsRoute: typeof AppInvitationsRoute
+  AppNewRoute: typeof AppNewRoute
+  AppIndexRoute: typeof AppIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppWsRoute: AppWsRouteWithChildren,
+  AppAccountRoute: AppAccountRoute,
+  AppEmailRoute: AppEmailRoute,
+  AppInvitationsRoute: AppInvitationsRoute,
+  AppNewRoute: AppNewRoute,
+  AppIndexRoute: AppIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
   PrivacyRoute: PrivacyRoute,
   SignupRoute: SignupRoute,
   TermsRoute: TermsRoute,
   DesignPreviewFrameRoute: DesignPreviewFrameRoute,
+  JoinTokenRoute: JoinTokenRoute,
+  PortalSlugRoute: PortalSlugRoute,
   DesignPreviewIndexRoute: DesignPreviewIndexRoute,
 }
 export const routeTree = rootRouteImport

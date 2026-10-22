@@ -12,7 +12,7 @@ export function ThemeToggle() {
   const next = ORDER[(ORDER.indexOf(theme) + 1) % ORDER.length]
   const Icon = ICON[theme]
   return (
-    <Button variant="outline" size="icon" label={`Theme: ${NAME[theme]}. Switch to ${NAME[next]}`} onClick={() => setTheme(next)}>
+    <Button variant="ghost" size="icon" label={`Theme: ${NAME[theme]}. Switch to ${NAME[next]}`} onClick={() => setTheme(next)}>
       <Icon />
     </Button>
   )

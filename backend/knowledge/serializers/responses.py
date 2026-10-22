@@ -56,6 +56,7 @@ class UploadData(BaseResponseData):
             "content_type": u.content_type,
             "size_bytes": u.size_bytes,
             "status": u.status,
+            "category": _category(u.category) if u.category_id else None,
             "uploaded_by": str(u.uploaded_by_id) if u.uploaded_by_id else None,
             "created_at": u.created_at.isoformat(),
             **(self.extra or {}),

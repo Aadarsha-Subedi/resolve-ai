@@ -1,3 +1,5 @@
+import uuid
+
 from rest_framework import serializers
 
 from common.serializers.base import StrictSerializer
@@ -10,6 +12,8 @@ from tickets.constants.enums import (
     TicketStatus,
 )
 from tickets.constants.settings import (
+    ASSIGNEE_ME,
+    ASSIGNEE_UNASSIGNED,
     CUSTOMER_NAME_MAX_LENGTH,
     DEFAULT_CATEGORY,
     DEFAULT_PRIORITY,
@@ -71,6 +75,12 @@ class ChangeStatusSerializer(StrictSerializer):
     status = serializers.ChoiceField(choices=TicketStatus.choices)
 
 
+class AssignTicketSerializer(StrictSerializer):
+    """`assignee` is a member's user id, or null to unassign."""
+
+    assignee = serializers.UUIDField(allow_null=True)
+
+
 class AddMessageSerializer(StrictSerializer):
     body = _text()
     visibility = serializers.ChoiceField(choices=MessageVisibility.choices)
@@ -86,7 +96,17 @@ class TicketFilterSerializer(serializers.Serializer):
     created_to = serializers.DateField(required=False)
     q = serializers.CharField(required=False, max_length=100)
     waiting_for_reply = serializers.BooleanField(required=False)
+    assignee = serializers.CharField(required=False, max_length=40)
     ordering = serializers.CharField(required=False, max_length=30)
+
+    def validate_assignee(self, value: str) -> str:
+        """A user id, `me` or `unassigned`."""
+        if value in (ASSIGNEE_ME, ASSIGNEE_UNASSIGNED):
+            return value
+        try:
+            return str(uuid.UUID(value))
+        except ValueError:
+            raise serializers.ValidationError(messages.MESSAGE_ASSIGNEE_FILTER_INVALID)
 
 
 class OverviewQuerySerializer(serializers.Serializer):

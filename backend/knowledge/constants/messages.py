@@ -13,6 +13,7 @@ MESSAGE_ARTICLE_IS_ARCHIVED = (
 MESSAGE_ARTICLE_TOO_LARGE = "The article is larger than {limit_kb} KB."
 MESSAGE_INVALID_TRANSITION = "An article cannot move from {current} to {target}."
 MESSAGE_NOTHING_TO_UPDATE = "Provide at least one field to update."
+MESSAGE_UPLOAD_CATEGORY_INVALID = "Choose a category from this workspace for the file."
 MESSAGE_CATEGORY_NOT_FOUND = "Category not found."
 MESSAGE_CATEGORIES_INVALID = "One or more categories do not exist in this workspace."
 MESSAGE_CATEGORY_EXISTS = "A category with that name already exists."
