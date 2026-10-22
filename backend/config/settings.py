@@ -293,6 +293,12 @@ GMAIL_REVIEW_RETENTION_DAYS = 30
 
 ENCRYPTION_KEYS = env_list("RESOLVE_AI_ENCRYPTION_KEYS")
 
+# LLM calls. The Gemini key serves "Resolve AI" mode (empty disables it); the model is chosen
+# by the user from common/llm/constants.py. The call limit is per user, per workspace, per day,
+# and only counts calls on the Resolve AI key.
+GEMINI_API_KEY = env("RESOLVE_AI_GEMINI_API_KEY")
+LLM_CALL_LIMIT = int(env("RESOLVE_AI_LLM_CALL_LIMIT"))
+
 # File storage (Cloudflare R2; empty bucket falls back to local disk)
 
 R2_ENDPOINT_URL = env("RESOLVE_AI_R2_ENDPOINT_URL")
@@ -306,8 +312,8 @@ R2_PUBLIC_BASE_URL = env("RESOLVE_AI_R2_PUBLIC_BASE_URL")
 WORKSPACE_STORAGE_QUOTA_BYTES = 50 * 1024 * 1024
 # Most knowledge articles (any status) one workspace can hold.
 WORKSPACE_MAX_ARTICLES = 100
-# Most workspaces one user can own (membership in other people's workspaces is not counted).
-USER_MAX_OWNED_WORKSPACES = 5
+# Most workspaces one user can belong to, counting both created and joined ones.
+USER_MAX_WORKSPACES = 5
 
 # Sentry (error monitoring only; empty DSN disables it)
 

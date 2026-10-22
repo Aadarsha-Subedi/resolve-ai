@@ -39,7 +39,7 @@ def create_workspace(user: User, name: str, slug: str | None) -> Workspace:
         candidate = slug or _derive_slug(name)
         try:
             with transaction.atomic():
-                limits.ensure_can_own_another(
+                limits.ensure_can_join_another(
                     user.id,
                     messages.MESSAGE_WORKSPACE_LIMIT_REACHED,
                     errors.ERROR_WORKSPACE_LIMIT_REACHED,

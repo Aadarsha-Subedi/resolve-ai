@@ -6,11 +6,12 @@ from django.test import override_settings
 from django.utils import timezone
 
 from accounts.services import deletion_service
+from common.exception.domain import ConflictException
 from common.storage.memory import InMemoryStorage
 from workspaces.constants.roles import MembershipStatus, Role
 from workspaces.constants.settings import SEARCH_LANGUAGE_CHOICES
 from workspaces.models import Workspace, WorkspaceMembership
-from workspaces.services import workspace_service
+from workspaces.services import member_service, workspace_service
 from workspaces.tasks import purge_deleted_workspaces
 from workspaces.tests.base import WorkspaceTestCase
 
@@ -198,11 +199,25 @@ class SearchLanguageTests(WorkspaceTestCase):
         self.assertEqual(offered - available, set())
 
 
-@override_settings(USER_MAX_OWNED_WORKSPACES=2)
-class OwnedWorkspaceLimitTests(WorkspaceTestCase):
+@override_settings(USER_MAX_WORKSPACES=2)
+class WorkspaceLimitTests(WorkspaceTestCase):
+    """A user belongs to at most USER_MAX_WORKSPACES workspaces, created or joined."""
+
     def create(self, client=None, name="W"):
         return (client or self.owner_client).post(
             "/api/workspaces/", {"name": name}, format="json"
+        )
+
+    def join_token(self, workspace_id):
+        return self.owner_client.post(
+            self.url(workspace_id, "join-link/"), {}, format="json"
+        ).data["data"]["token"]
+
+    def redeem(self, client, workspace_id):
+        return client.post(
+            "/api/join-links/redeem/",
+            {"token": self.join_token(workspace_id)},
+            format="json",
         )
 
     def test_creating_past_the_limit_is_rejected(self):
@@ -215,11 +230,45 @@ class OwnedWorkspaceLimitTests(WorkspaceTestCase):
         )
         self.assertEqual(Workspace.objects.count(), 2)
 
-    def test_joined_workspaces_do_not_count(self):
-        for _ in range(2):
-            self.workspace_with_member()  # member joins two workspaces owned by owner
-        self.assertEqual(self.create(self.member_client).status_code, 201)
-        self.assertEqual(self.create(self.member_client).status_code, 201)
+    def test_joined_workspaces_count_toward_the_limit(self):
+        first = self.create()
+        second = self.create()
+        self.assertEqual(
+            self.redeem(self.member_client, first.data["data"]["id"]).status_code, 200
+        )
+        self.assertEqual(
+            self.redeem(self.member_client, second.data["data"]["id"]).status_code, 200
+        )
+        self.assertEqual(self.create(self.member_client).status_code, 409)
+
+    def test_joining_past_the_limit_is_rejected(self):
+        self.create(self.member_client)
+        self.create(self.member_client)
+        workspace_id = self.create().data["data"]["id"]
+        response = self.redeem(self.member_client, workspace_id)
+        self.assertEqual(
+            (response.status_code, response.data["code"]),
+            (409, "workspace_limit_reached"),
+        )
+        self.assertFalse(
+            WorkspaceMembership.objects.filter(
+                workspace_id=workspace_id, user=self.member
+            ).exists()
+        )
+
+    def test_accepting_an_invitation_past_the_limit_is_rejected(self):
+        self.create(self.member_client)
+        self.create(self.member_client)
+        workspace = Workspace.objects.get(pk=self.create().data["data"]["id"])
+        with self.assertRaises(ConflictException) as raised:
+            member_service.add_member(workspace, self.member)
+        self.assertEqual(raised.exception.error_code, "workspace_limit_reached")
+
+    def test_redeeming_again_when_already_a_member_still_works_at_the_limit(self):
+        workspace_id = self.create().data["data"]["id"]
+        self.assertEqual(self.redeem(self.member_client, workspace_id).status_code, 200)
+        self.create(self.member_client)
+        self.assertEqual(self.redeem(self.member_client, workspace_id).status_code, 200)
 
     def test_deleted_workspaces_do_not_count(self):
         first = self.create().data["data"]["id"]
@@ -227,25 +276,23 @@ class OwnedWorkspaceLimitTests(WorkspaceTestCase):
         self.owner_client.delete(self.url(first))
         self.assertEqual(self.create().status_code, 201)
 
-    def test_transfer_to_a_user_at_the_limit_is_rejected(self):
+    def test_leaving_frees_a_slot(self):
+        workspace_id = self.create().data["data"]["id"]
+        self.redeem(self.member_client, workspace_id)
         self.create(self.member_client)
-        self.create(self.member_client)
+        self.assertEqual(self.create(self.member_client).status_code, 409)
+        self.member_client.post(self.url(workspace_id, "leave/"))
+        self.assertEqual(self.create(self.member_client).status_code, 201)
+
+    def test_transfer_to_an_existing_member_is_not_blocked(self):
         workspace_id = self.workspace_with_member()
+        self.create(self.member_client)
         response = self.owner_client.post(
             self.url(workspace_id, "transfer-ownership/"),
             {"user_id": str(self.member.id)},
             format="json",
         )
-        self.assertEqual(
-            (response.status_code, response.data["code"]),
-            (409, "transfer_target_at_limit"),
-        )
-        self.assertEqual(
-            WorkspaceMembership.objects.get(
-                workspace_id=workspace_id, user=self.owner
-            ).role,
-            Role.OWNER,
-        )
+        self.assertEqual(response.status_code, 200)
 
 
 class DeleteWorkspaceTests(WorkspaceTestCase):

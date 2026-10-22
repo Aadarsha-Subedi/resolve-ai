@@ -87,11 +87,6 @@ def transfer_ownership(actor: User, workspace_id, new_owner_id) -> None:
                 messages.MESSAGE_TRANSFER_TARGET_INVALID,
                 error_code=errors.ERROR_TRANSFER_TARGET_INVALID,
             )
-        limits.ensure_can_own_another(
-            new_owner_id,
-            messages.MESSAGE_TRANSFER_TARGET_AT_LIMIT,
-            errors.ERROR_TRANSFER_TARGET_AT_LIMIT,
-        )
         # Demote first: only one ACTIVE owner may exist at any moment.
         current.role = Role.MEMBER
         current.save(update_fields=["role", "updated_at"])
@@ -107,14 +102,24 @@ def transfer_ownership(actor: User, workspace_id, new_owner_id) -> None:
 
 def add_member(workspace, user: User) -> tuple[WorkspaceMembership, bool]:
     """Make `user` an active MEMBER (re-activating a removed one). Returns (membership, created)."""
-    membership, created = WorkspaceMembership.objects.get_or_create(
-        workspace=workspace, user=user, defaults={"role": Role.MEMBER}
-    )
-    if not created and membership.status != MembershipStatus.ACTIVE:
-        membership.status = MembershipStatus.ACTIVE
-        membership.role = Role.MEMBER
-        membership.save(update_fields=["status", "role", "updated_at"])
-        created = True
+    with transaction.atomic():
+        existing = WorkspaceMembership.objects.filter(
+            workspace=workspace, user=user
+        ).first()
+        if existing is None or existing.status != MembershipStatus.ACTIVE:
+            limits.ensure_can_join_another(
+                user.id,
+                messages.MESSAGE_WORKSPACE_LIMIT_REACHED,
+                errors.ERROR_WORKSPACE_LIMIT_REACHED,
+            )
+        membership, created = WorkspaceMembership.objects.get_or_create(
+            workspace=workspace, user=user, defaults={"role": Role.MEMBER}
+        )
+        if not created and membership.status != MembershipStatus.ACTIVE:
+            membership.status = MembershipStatus.ACTIVE
+            membership.role = Role.MEMBER
+            membership.save(update_fields=["status", "role", "updated_at"])
+            created = True
     if created:
         hooks.emit(workspace, user, hooks.ACTION_MEMBER_JOINED)
     return membership, created

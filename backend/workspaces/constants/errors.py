@@ -1,7 +1,6 @@
 ERROR_SLUG_TAKEN = "slug_taken"
 ERROR_SLUG_RESERVED = "slug_reserved"
 ERROR_WORKSPACE_LIMIT_REACHED = "workspace_limit_reached"
-ERROR_TRANSFER_TARGET_AT_LIMIT = "transfer_target_at_limit"
 ERROR_OWNER_CANNOT_LEAVE = "owner_cannot_leave"
 ERROR_CANNOT_REMOVE_OWNER = "cannot_remove_owner"
 ERROR_TRANSFER_TO_SELF = "transfer_to_self"

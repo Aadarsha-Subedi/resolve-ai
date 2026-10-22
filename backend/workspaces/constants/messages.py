@@ -8,10 +8,7 @@ MESSAGE_WORKSPACE_DELETED = (
 MESSAGE_WORKSPACE_NOT_FOUND = "Workspace not found."
 MESSAGE_SLUG_TAKEN = "That workspace address is already taken."
 MESSAGE_SLUG_RESERVED = "That workspace address is reserved."
-MESSAGE_WORKSPACE_LIMIT_REACHED = "You can own at most {limit} workspaces."
-MESSAGE_TRANSFER_TARGET_AT_LIMIT = (
-    "That member already owns the maximum of {limit} workspaces."
-)
+MESSAGE_WORKSPACE_LIMIT_REACHED = "You can belong to at most {limit} workspaces."
 MESSAGE_NOTHING_TO_UPDATE = "Provide at least one field to update."
 
 MESSAGE_MEMBERS_LISTED = "Members retrieved successfully."
