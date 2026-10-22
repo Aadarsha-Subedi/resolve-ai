@@ -1578,6 +1578,229 @@
       ]
     },
     {
+      "name": "AI settings",
+      "item": [
+        {
+          "name": "Get my AI settings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/llm/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "llm",
+                ""
+              ]
+            },
+            "description": "Your own mode, model and key summary (last 4 only) in this workspace, plus the allowed models."
+          }
+        },
+        {
+          "name": "Switch to Resolve AI",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/llm/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "llm",
+                ""
+              ]
+            },
+            "description": "Use the Resolve AI Gemini key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"resolve_ai\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Pick Resolve AI model",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/llm/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "llm",
+                ""
+              ]
+            },
+            "description": "Only the cheap models offered in options.resolve_ai.models.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resolve_ai_model\": \"gemini-3.1-flash-lite\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Save own key",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/llm/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "llm",
+                ""
+              ]
+            },
+            "description": "The key is checked with the provider, stored encrypted and never returned.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"own_provider\": \"openai\",\n  \"own_model\": \"gpt-5-mini\",\n  \"api_key\": \"<your provider API key>\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Switch to own key",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/llm/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "llm",
+                ""
+              ]
+            },
+            "description": "Needs a saved key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"own_key\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Change own model",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/llm/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "llm",
+                ""
+              ]
+            },
+            "description": "Re-checks the stored key against the new model.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"own_model\": \"gpt-4.1\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Remove own key",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/llm/key/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "llm",
+                "key",
+                ""
+              ]
+            },
+            "description": "Forgets the key and falls back to Resolve AI mode."
+          }
+        }
+      ]
+    },
+    {
       "name": "Tickets",
       "item": [
         {

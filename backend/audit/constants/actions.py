@@ -51,6 +51,10 @@ ACTIONS: dict[str, ActionSpec] = {
     "category.deleted": ActionSpec("category", target_key="target_id"),
     "upload.confirmed": ActionSpec("upload", target_key="target_id"),
     "upload.deleted": ActionSpec("upload", target_key="target_id"),
+    # AI settings (never the key itself)
+    "llm.mode_changed": ActionSpec("llm_settings", default_target="actor"),
+    "llm.key_saved": ActionSpec("llm_settings", default_target="actor"),
+    "llm.key_removed": ActionSpec("llm_settings", default_target="actor"),
     # tickets (status changes carry old and new, so closing and reopening are visible)
     "ticket.created": ActionSpec("ticket"),
     "ticket.updated": ActionSpec("ticket"),

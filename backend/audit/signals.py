@@ -6,6 +6,7 @@ and what they point at, is decided in `constants/actions.py`."""
 from django.dispatch import receiver
 
 from accounts.services import hooks as account_hooks
+from ai.services import hooks as ai_hooks
 from audit.constants.actions import ACTIONS
 from audit.services import recorder
 from email_integration.services import hooks as email_hooks
@@ -82,3 +83,8 @@ def on_account_event(sender, user, action, metadata, **kwargs) -> None:
 @receiver(email_hooks.email_event)
 def on_email_event(sender, user, action, metadata, **kwargs) -> None:
     _record(action, user, None, metadata)
+
+
+@receiver(ai_hooks.ai_event)
+def on_ai_event(sender, workspace, actor, action, metadata, **kwargs) -> None:
+    _record(action, actor, workspace, metadata)

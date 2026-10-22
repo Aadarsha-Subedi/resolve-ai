@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "accounts",
     "workspaces",
     "knowledge",
+    "ai",
     "tickets",
     "email_integration",
     "audit",
@@ -190,6 +191,7 @@ STRICT_THROTTLE_RATES = {
     "portal_ticket": "10/hour",  # public ticket submission, per IP
     "join_link": "20/hour",  # join-link redemption, per IP
     "ai": "30/min",  # AI calls, per user
+    "llm_settings": "10/min",  # AI settings reads and key checks, per user
     "dashboard": "30/min",  # dashboard reads, per user
     "webhook": "300/min",
 }
