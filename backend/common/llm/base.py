@@ -26,6 +26,13 @@ class LLMRateLimitedError(LLMError):
     message = "The provider rate limit or quota was reached."
 
 
+class LLMInsufficientQuotaError(LLMRateLimitedError):
+    """The account itself is out of credit or quota (not a per-minute limit)."""
+
+    code = "llm_insufficient_quota"
+    message = "The provider account has no credit or quota left."
+
+
 class LLMTimeoutError(LLMError):
     code = "llm_timeout"
     message = "The provider did not answer in time."

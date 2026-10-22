@@ -162,11 +162,11 @@ Endpoints (under `/api/`): `workspaces/` (GET list, POST create), `workspaces/{i
 Models: `KnowledgeArticle` (draft/published/archived; metadata in the database, the Markdown body is an object in R2), `KnowledgeCategory` (per workspace, unique slug), `KnowledgeArticleCategory` (many-to-many), `KnowledgeUpload` (PDF/TXT metadata; PENDING until the browser upload is confirmed, then READY). `Workspace.storage_used_bytes` holds the quota counter.
 
 Rules (owner answers D5, D6 and the defaults of 2026-10-20):
-- **Storage:** the same R2 bucket as the logo, one prefix per workspace: `workspaces/{id}/knowledge/articles/{article_id}.md` and `.../uploads/{upload_id}.pdf|txt`. Keys never contain user-supplied names; the display filename is kept in the database. Articles and uploads (not the logo) all count toward the 50 MB per-workspace quota.
+- **Storage:** article Markdown lives in `KnowledgeArticle.content` (since 2026-10-22); uploaded files go to the same R2 bucket as the logo, one prefix per workspace: `workspaces/{id}/knowledge/uploads/{upload_id}.pdf|txt`. Keys never contain user-supplied names; the display filename is kept in the database. Articles and uploads (not the logo) all count toward the 50 MB per-workspace quota.
 - **Quota:** one conditional `UPDATE` reserves space (articles on save, uploads when the upload URL is issued) so concurrent writers cannot overshoot; it answers 413 `storage_quota_exceeded` when full. Deleting or shrinking frees space. Uploads never confirmed within 1 hour are removed by the hourly task `knowledge.release_stale_uploads`.
 - **Articles:** title up to 200 characters, body up to 200 KB (UTF-8 bytes), up to 10 categories. Status changes go through `publish`, `unpublish` (back to draft) and `archive`; PATCH cannot change status. ABAC rule: archived articles are read-only until moved back to draft. Delete is permanent and removes the stored object. A storage failure rolls the row and the quota change back.
 - **Uploads:** every file is filed under one category of its workspace (`category_id` required when asking for the upload URL; a deleted category leaves the file uncategorized; `GET uploads/?category=&filename=`). PDF or TXT, 1 byte to 10 MB, signed direct upload then confirm. Confirm checks exact size and content type (PDFs must start with `%PDF-`) and discards anything else. Downloads are signed URLs that force a download, valid 5 minutes. No text extraction.
-- **Filters:** `?title=` (contains), `?status=`, `?category=<id>`, `?ordering=` (title, created_at, updated_at, published_at), plus limit/offset. No full-text search in v1.
+- **Filters:** `?title=` (contains), `?status=`, `?category=<id>`, `?ordering=` (title, created_at, updated_at, published_at), plus limit/offset. Passage search for tickets and chat is a separate endpoint (Feature 8); the article list has no full-text filter.
 - **Categories:** defaults General, Getting started, Billing, Troubleshooting, FAQ are created with each workspace (and by a data migration for existing ones). Owner and members may add, rename and delete them; names are unique per workspace (case-insensitive through the slug); deleting a category only unlinks it.
 - **Access:** both roles may view and manage the knowledge base (`knowledge.view`, `knowledge.manage`); non-members get 404.
 - When a workspace is purged, its stored article and upload objects are deleted. Audit hook: `knowledge.services.hooks.knowledge_event`.
@@ -217,9 +217,13 @@ One read endpoint, `GET /api/workspaces/{workspace_id}/dashboard/`, implemented 
 - **Performance:** cached 30 seconds in Redis per workspace and normalised query (the cache key uses the resolved dates, time zone, sections and limits, not the raw query string); a fixed number of queries (about 10, none per row) whatever the data size; throttle scope `dashboard`, 30 per minute per user. `meta.cached` tells whether the response came from the cache.
 - **Not included (deferred with the AI phase):** most-used articles and AI usage metrics. Audit-log rows are not mixed into `activity`.
 
+### Feature 8: Context search and LLM settings (`ai`, `common/llm`, `common/search`, `knowledge`, `tickets`), built 2026-10-22
+
+Endpoints: `POST /api/workspaces/{id}/knowledge/ask/`, `POST /api/workspaces/{id}/knowledge/context/`, `POST /api/workspaces/{id}/tickets/{ticket_id}/context/`, `GET/PATCH /api/workspaces/{id}/llm/`, `DELETE /api/workspaces/{id}/llm/key/`. Permissions: `knowledge.view`, `tickets.view`, `ai.use`. Rules, limits and the reasons for them: DECISION.md, entry of 2026-10-22; request flow: FLOW.md, section 13. Out of scope: multiple languages per workspace, ticket search, embeddings, reranking, LLM-written answers, chat follow-ups.
+
 ## Deferred (not in v1)
 
-- **AI/RAG phase (after the backend and frontend exist):** PostgreSQL full-text search, text extraction and indexing for uploads, Gemini client, retrieval and citations, AI assistant Q&A and conversations, reply drafts, paraphrase, ticket summaries, category/priority suggestions, AI feedback (1 to 5 stars), AI usage logging, AI dashboard metrics, most-used articles.
+- **AI/RAG phase (rest):** text extraction and indexing for uploads, AI assistant Q&A and conversations, reply drafts, paraphrase, ticket summaries, category/priority suggestions, AI feedback (1 to 5 stars), AI usage logging, AI dashboard metrics, most-used articles.
 - Multiple mailboxes per user, SMTP or non-Google mail, per-member permission customization, advanced analytics and SLAs, customer ticket pages or tokens, DOCX uploads.
 
 ## Open points still to resolve before their feature starts

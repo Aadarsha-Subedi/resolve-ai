@@ -26,6 +26,7 @@ import { Route as DesignPreviewFrameRouteImport } from './routes/design-preview.
 import { Route as JoinTokenRouteImport } from './routes/join.$token'
 import { Route as PortalSlugRouteImport } from './routes/portal.$slug'
 import { Route as AppWsIndexRouteImport } from './routes/app.$ws.index'
+import { Route as AppWsAskRouteImport } from './routes/app.$ws.ask'
 import { Route as AppWsAuditRouteImport } from './routes/app.$ws.audit'
 import { Route as AppWsMembersRouteImport } from './routes/app.$ws.members'
 import { Route as AppWsSettingsRouteImport } from './routes/app.$ws.settings'
@@ -120,6 +121,11 @@ const AppWsIndexRoute = AppWsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppWsRoute,
 } as any)
+const AppWsAskRoute = AppWsAskRouteImport.update({
+  id: '/ask',
+  path: '/ask',
+  getParentRoute: () => AppWsRoute,
+} as any)
 const AppWsAuditRoute = AppWsAuditRouteImport.update({
   id: '/audit',
   path: '/audit',
@@ -178,6 +184,7 @@ export interface FileRoutesByFullPath {
   '/portal/$slug': typeof PortalSlugRoute
   '/app/': typeof AppIndexRoute
   '/design-preview/': typeof DesignPreviewIndexRoute
+  '/app/$ws/ask': typeof AppWsAskRoute
   '/app/$ws/audit': typeof AppWsAuditRoute
   '/app/$ws/members': typeof AppWsMembersRoute
   '/app/$ws/settings': typeof AppWsSettingsRoute
@@ -203,6 +210,7 @@ export interface FileRoutesByTo {
   '/portal/$slug': typeof PortalSlugRoute
   '/app': typeof AppIndexRoute
   '/design-preview': typeof DesignPreviewIndexRoute
+  '/app/$ws/ask': typeof AppWsAskRoute
   '/app/$ws/audit': typeof AppWsAuditRoute
   '/app/$ws/members': typeof AppWsMembersRoute
   '/app/$ws/settings': typeof AppWsSettingsRoute
@@ -231,6 +239,7 @@ export interface FileRoutesById {
   '/portal/$slug': typeof PortalSlugRoute
   '/app/': typeof AppIndexRoute
   '/design-preview/': typeof DesignPreviewIndexRoute
+  '/app/$ws/ask': typeof AppWsAskRoute
   '/app/$ws/audit': typeof AppWsAuditRoute
   '/app/$ws/members': typeof AppWsMembersRoute
   '/app/$ws/settings': typeof AppWsSettingsRoute
@@ -260,6 +269,7 @@ export interface FileRouteTypes {
     | '/portal/$slug'
     | '/app/'
     | '/design-preview/'
+    | '/app/$ws/ask'
     | '/app/$ws/audit'
     | '/app/$ws/members'
     | '/app/$ws/settings'
@@ -285,6 +295,7 @@ export interface FileRouteTypes {
     | '/portal/$slug'
     | '/app'
     | '/design-preview'
+    | '/app/$ws/ask'
     | '/app/$ws/audit'
     | '/app/$ws/members'
     | '/app/$ws/settings'
@@ -312,6 +323,7 @@ export interface FileRouteTypes {
     | '/portal/$slug'
     | '/app/'
     | '/design-preview/'
+    | '/app/$ws/ask'
     | '/app/$ws/audit'
     | '/app/$ws/members'
     | '/app/$ws/settings'
@@ -457,6 +469,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppWsIndexRouteImport
       parentRoute: typeof AppWsRoute
     }
+    '/app/$ws/ask': {
+      id: '/app/$ws/ask'
+      path: '/ask'
+      fullPath: '/app/$ws/ask'
+      preLoaderRoute: typeof AppWsAskRouteImport
+      parentRoute: typeof AppWsRoute
+    }
     '/app/$ws/audit': {
       id: '/app/$ws/audit'
       path: '/audit'
@@ -517,6 +536,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppWsRouteChildren {
+  AppWsAskRoute: typeof AppWsAskRoute
   AppWsAuditRoute: typeof AppWsAuditRoute
   AppWsMembersRoute: typeof AppWsMembersRoute
   AppWsSettingsRoute: typeof AppWsSettingsRoute
@@ -529,6 +549,7 @@ interface AppWsRouteChildren {
 }
 
 const AppWsRouteChildren: AppWsRouteChildren = {
+  AppWsAskRoute: AppWsAskRoute,
   AppWsAuditRoute: AppWsAuditRoute,
   AppWsMembersRoute: AppWsMembersRoute,
   AppWsSettingsRoute: AppWsSettingsRoute,

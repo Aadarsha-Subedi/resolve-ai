@@ -25,8 +25,17 @@ class UpdateSettingsSerializer(StrictSerializer):
     resolve_ai_model = serializers.CharField(
         max_length=MODEL_MAX_LENGTH, required=False
     )
-    own_provider = serializers.ChoiceField(choices=list(PROVIDERS), required=False)
-    own_model = serializers.CharField(max_length=MODEL_MAX_LENGTH, required=False)
+    active_provider = serializers.ChoiceField(choices=list(PROVIDERS), required=False)
+
+    def validate(self, attrs):
+        if not attrs:
+            raise serializers.ValidationError(messages.MESSAGE_NOTHING_TO_UPDATE)
+        return attrs
+
+
+class SaveKeySerializer(StrictSerializer):
+    """Add a key (`api_key` required the first time) or edit it (a new key, a new model)."""
+
     api_key = serializers.CharField(
         min_length=API_KEY_MIN_LENGTH,
         max_length=API_KEY_MAX_LENGTH,
@@ -35,6 +44,7 @@ class UpdateSettingsSerializer(StrictSerializer):
         write_only=True,
         required=False,
     )
+    model = serializers.CharField(max_length=MODEL_MAX_LENGTH, required=False)
 
     def validate(self, attrs):
         if not attrs:

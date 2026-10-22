@@ -42,6 +42,14 @@ class ChunkerStructureTests(SimpleTestCase):
         self.assertEqual(paths(chunks), ["T > A"])
         self.assertIn("# not a heading", chunks[0].text)
 
+    def test_a_first_heading_that_repeats_the_title_is_not_doubled(self):
+        chunks = chunk_markdown("Refund policy", "# Refund policy\n\n## Annual\nText.")
+        self.assertEqual(paths(chunks), ["Refund policy > Annual"])
+        chunks = chunk_markdown("Refund Policy", "# refund policy\nText.")
+        self.assertEqual(paths(chunks), ["Refund Policy"])
+        chunks = chunk_markdown("Billing", "# Refunds\n## Refund policy\nText.")
+        self.assertEqual(paths(chunks), ["Billing > Refunds > Refund policy"])
+
     def test_heading_path_is_capped(self):
         chunks = chunk_markdown("T" * 200, "# " + "h" * 400 + "\nbody")
         self.assertEqual(len(chunks[0].heading_path), CHUNK_HEADING_PATH_MAX_LENGTH)

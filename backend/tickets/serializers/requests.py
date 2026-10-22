@@ -137,3 +137,7 @@ class PortalTicketSerializer(serializers.Serializer):
                 {n: "Unknown field." for n in sorted(unknown)}
             )
         return super().to_internal_value(data)
+
+
+class TicketContextSerializer(StrictSerializer):
+    message_id = serializers.UUIDField(required=False)

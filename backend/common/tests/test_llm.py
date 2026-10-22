@@ -54,13 +54,13 @@ class FactoryTests(SimpleTestCase):
         with self.assertRaises(ValueError):
             create_provider("gemini", "key", "gemini-unknown")
         with self.assertRaises(ValueError):
-            create_provider("openai", "key", "gemini-3.8-flash")
+            create_provider("openai", "key", "gemini-3.1-flash-lite")
 
     @override_settings(GEMINI_API_KEY="server-key")
     def test_resolve_ai_provider_only_serves_cheap_models(self):
         self.assertEqual(resolve_ai_provider().model, DEFAULT_MODELS["gemini"])
         self.assertEqual(
-            resolve_ai_provider("gemini-3.8-flash").model, "gemini-3.8-flash"
+            resolve_ai_provider("gemini-3.1-flash-lite").model, "gemini-3.1-flash-lite"
         )
         with self.assertRaises(ValueError):
             resolve_ai_provider("gemini-4-argon")
@@ -101,6 +101,44 @@ class GeminiProviderTests(SimpleTestCase):
         self.assertEqual(kwargs["contents"], "hello")
         self.assertEqual(kwargs["config"].system_instruction, "be brief")
         self.assertEqual(kwargs["config"].response_mime_type, "application/json")
+
+    def test_thinking_is_kept_to_a_minimum(self):
+        from google.genai import types
+
+        from common.llm.gemini import _thinking_config
+
+        self.assertEqual(
+            _thinking_config("gemini-3.5-flash-lite").thinking_level,
+            types.ThinkingLevel.MINIMAL,
+        )
+        self.assertEqual(
+            _thinking_config("gemini-3.1-pro-preview").thinking_level,
+            types.ThinkingLevel.LOW,
+        )
+        self.assertEqual(_thinking_config("gemini-2.5-flash").thinking_budget, 0)
+        self.assertEqual(_thinking_config("gemini-2.5-pro").thinking_budget, 128)
+        provider = self.provider()
+        self.models.generate_content.return_value = mock.Mock(
+            text="x", usage_metadata=None
+        )
+        provider.generate(REQUEST)
+        config = self.models.generate_content.call_args.kwargs["config"]
+        self.assertEqual(
+            config.thinking_config.thinking_level, types.ThinkingLevel.MINIMAL
+        )
+
+    def test_retries_without_thinking_when_the_model_rejects_it(self):
+        from google.genai import errors
+
+        provider = self.provider()
+        self.models.generate_content.side_effect = [
+            errors.ClientError(400, {"error": {"message": "bad thinking level"}}),
+            mock.Mock(text="ok", usage_metadata=None),
+        ]
+        self.assertEqual(provider.generate(REQUEST).text, "ok")
+        self.assertIsNone(
+            self.models.generate_content.call_args.kwargs["config"].thinking_config
+        )
 
     def test_empty_answer_is_a_bad_response(self):
         provider = self.provider()
@@ -244,3 +282,48 @@ class FakeProviderTests(SimpleTestCase):
         fake.key_valid = False
         with self.assertRaises(LLMInvalidKeyError):
             fake.validate_key()
+
+
+class OpenAIReasoningTests(SimpleTestCase):
+    def call(self, model):
+        with mock.patch("common.llm.openai_provider.openai.OpenAI"):
+            provider = OpenAIProvider("secret-key", model)
+        provider._client.chat.completions.create.return_value = mock.Mock(
+            choices=[mock.Mock(message=mock.Mock(content="ok"))], usage=None
+        )
+        provider.generate(REQUEST)
+        return provider._client.chat.completions.create.call_args.kwargs
+
+    def test_gpt5_thinks_minimally_and_gets_more_room(self):
+        kwargs = self.call("gpt-5-mini")
+        self.assertEqual(kwargs["reasoning_effort"], "minimal")
+        self.assertEqual(kwargs["max_completion_tokens"], REQUEST.max_output_tokens * 4)
+
+    def test_other_models_are_left_alone(self):
+        kwargs = self.call("gpt-4.1-mini")
+        self.assertNotIn("reasoning_effort", kwargs)
+        self.assertEqual(kwargs["max_completion_tokens"], REQUEST.max_output_tokens)
+
+
+class OpenAIQuotaTests(SimpleTestCase):
+    def test_a_429_for_no_credit_is_told_apart_from_a_rate_limit(self):
+        from common.llm import LLMInsufficientQuotaError
+
+        with mock.patch("common.llm.openai_provider.openai.OpenAI"):
+            provider = OpenAIProvider("secret-key", "gpt-5-mini")
+        response = httpx.Response(
+            429, request=httpx.Request("POST", "https://api.openai.com/v1/x")
+        )
+        out_of_credit = openai.RateLimitError(
+            "no", response=response, body={"code": "insufficient_quota"}
+        )
+        provider._client.chat.completions.create.side_effect = out_of_credit
+        with self.assertRaises(LLMInsufficientQuotaError):
+            provider.generate(REQUEST)
+        busy = openai.RateLimitError(
+            "slow down", response=response, body={"code": "rate_limit_exceeded"}
+        )
+        provider._client.chat.completions.create.side_effect = busy
+        with self.assertRaises(LLMRateLimitedError) as caught:
+            provider.generate(REQUEST)
+        self.assertNotIsInstance(caught.exception, LLMInsufficientQuotaError)

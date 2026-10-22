@@ -8,3 +8,5 @@ MESSAGE_MODEL_NOT_ALLOWED = "That model is not available. Choose one from the li
 MESSAGE_INVALID_KEY = "The provider rejected that API key."
 MESSAGE_KEY_CHECK_FAILED = "The API key could not be checked right now. Try again."
 MESSAGE_KEY_FORMAT = "The API key must not contain spaces."
+MESSAGE_KEY_SAVED = "API key saved."
+MESSAGE_PROVIDER_NOT_FOUND = "Unknown provider."

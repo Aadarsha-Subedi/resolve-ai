@@ -87,18 +87,36 @@ def order_by_relevance(
     return queryset.order_by("-rank", *tiebreak)
 
 
+def search_with_query(queryset: QuerySet, query, *, vector_field: str) -> QuerySet:
+    """Like `search`, for a prebuilt `SearchQuery` (for example the OR query from
+    `common.search.context`). Postgres only: the caller handles other databases."""
+    from django.contrib.postgres.search import SearchRank
+
+    return queryset.filter(**{vector_field: query}).annotate(
+        rank=SearchRank(
+            F(vector_field),
+            query,
+            weights=constants.RANK_WEIGHTS,
+            normalization=constants.RANK_NORMALIZATION,
+            cover_density=True,
+        )
+    )
+
+
 def with_headline(
     queryset: QuerySet,
     *,
     text_field: str,
-    q: str,
+    q: str | None = None,
     config: str,
     name: str = "headline",
+    tsquery=None,
 ) -> QuerySet:
     """Annotate a snippet of `text_field` with matches wrapped in the highlight markers.
 
     `ts_headline` is expensive: call this only on the page of results being returned
     (for example on a queryset limited to the page's ids), never on all matches.
+    Pass `tsquery` (a `SearchQuery`) instead of `q` to highlight a prebuilt query.
     """
     if not _is_postgres(queryset):
         return queryset.annotate(**{name: Value("")})
@@ -108,7 +126,7 @@ def with_headline(
         **{
             name: SearchHeadline(
                 text_field,
-                _tsquery(q, config),
+                tsquery if tsquery is not None else _tsquery(q, config),
                 config=config,
                 start_sel=constants.HIGHLIGHT_START,
                 stop_sel=constants.HIGHLIGHT_STOP,

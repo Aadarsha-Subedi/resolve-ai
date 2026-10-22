@@ -10,6 +10,7 @@ import { Field, FieldError } from '@/components/ui/field'
 import { SettingGroup, SettingRow } from '@/components/patterns/setting-row'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
+import { AiSettings } from '@/features/ai/ai-settings'
 import { OWNER_ONLY, useWorkspace } from '@/features/app/workspace-context'
 import { WorkspaceMark } from '@/features/app/workspace-mark'
 import { ManageCategoriesDialog } from '@/features/knowledge/category-controls'
@@ -96,6 +97,8 @@ export function SettingsPage() {
           <Button variant="outline" icon={<Tag />} onClick={() => setManagingCategories(true)}>Manage categories</Button>
         </SettingRow>
       </SettingGroup>
+
+      <AiSettings workspaceId={workspace.id} />
 
       <SettingGroup id="danger" title="Danger zone">
         <SettingRow danger title="Delete workspace" description="Everyone loses access immediately. The workspace and its tickets are removed after a grace period.">

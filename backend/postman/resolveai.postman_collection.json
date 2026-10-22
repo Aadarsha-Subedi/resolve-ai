@@ -1574,6 +1574,166 @@
             },
             "description": "used_bytes, limit_bytes (50 MB) and remaining_bytes for articles plus uploads. The logo is not counted."
           }
+        },
+        {
+          "name": "Find context for a question",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/context/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "knowledge",
+                "context",
+                ""
+              ]
+            },
+            "description": "Passages of published articles with citations. Up to 3 rewrites of the question are searched too; `rewritten` says whether they were used. 30 requests per minute.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"How do I get a refund for my annual plan?\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Ask a question (answer with citations)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/ask/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "knowledge",
+                "ask",
+                ""
+              ]
+            },
+            "description": "Same passages as 'Find context for a question', plus `answer`: a paraphrase written only from those passages, with [n] markers that match `results[].citation`. `status` is answered, not_covered (passages do not answer it), unavailable (LLM failed; passages still returned) or no_results. Uses up to 2 Resolve AI calls (rewrite and answer). 30 requests per minute. The exchange is saved in your chat history; add `conversation_id` to continue a chat (omit it to start a new one).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"How do I get a refund for my annual plan?\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List my Ask conversations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/ask/conversations/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "knowledge",
+                "ask",
+                "conversations",
+                ""
+              ]
+            },
+            "description": "Your saved chats in this workspace, newest first. Paginated (limit, offset)."
+          }
+        },
+        {
+          "name": "Get an Ask conversation",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/ask/conversations/{{conversationId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "knowledge",
+                "ask",
+                "conversations",
+                "{{conversationId}}",
+                ""
+              ]
+            },
+            "description": "One of your chats with all its questions and answers. Another user's chat is 404."
+          }
+        },
+        {
+          "name": "Delete an Ask conversation",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/ask/conversations/{{conversationId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "knowledge",
+                "ask",
+                "conversations",
+                "{{conversationId}}",
+                ""
+              ]
+            },
+            "description": "Deletes the chat and its answers."
+          }
         }
       ]
     },
@@ -1670,9 +1830,9 @@
           }
         },
         {
-          "name": "Save own key",
+          "name": "Add or replace a key (OpenAI)",
           "request": {
-            "method": "PATCH",
+            "method": "PUT",
             "header": [
               {
                 "key": "Content-Type",
@@ -1684,7 +1844,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/llm/",
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/llm/keys/openai/",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1693,18 +1853,25 @@
                 "workspaces",
                 "{{workspaceId}}",
                 "llm",
+                "keys",
+                "openai",
                 ""
               ]
             },
             "description": "The key is checked with the provider, stored encrypted and never returned.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"own_provider\": \"openai\",\n  \"own_model\": \"gpt-5-mini\",\n  \"api_key\": \"<your provider API key>\"\n}"
+              "raw": "{\n  \"api_key\": \"<your OpenAI API key>\",\n  \"model\": \"gpt-5-mini\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           }
         },
         {
-          "name": "Switch to own key",
+          "name": "Use the Gemini key",
           "request": {
             "method": "PATCH",
             "header": [
@@ -1733,14 +1900,19 @@
             "description": "Needs a saved key.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"mode\": \"own_key\"\n}"
+              "raw": "{\n  \"mode\": \"own_key\",\n  \"active_provider\": \"gemini\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           }
         },
         {
-          "name": "Change own model",
+          "name": "Change the model of a key (OpenAI)",
           "request": {
-            "method": "PATCH",
+            "method": "PUT",
             "header": [
               {
                 "key": "Content-Type",
@@ -1752,7 +1924,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/llm/",
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/llm/keys/openai/",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1761,18 +1933,25 @@
                 "workspaces",
                 "{{workspaceId}}",
                 "llm",
+                "keys",
+                "openai",
                 ""
               ]
             },
             "description": "Re-checks the stored key against the new model.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"own_model\": \"gpt-4.1\"\n}"
+              "raw": "{\n  \"model\": \"gpt-5-nano\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           }
         },
         {
-          "name": "Remove own key",
+          "name": "Delete the OpenAI key",
           "request": {
             "method": "DELETE",
             "header": [
@@ -1782,7 +1961,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/llm/key/",
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/llm/keys/openai/",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1791,7 +1970,8 @@
                 "workspaces",
                 "{{workspaceId}}",
                 "llm",
-                "key",
+                "keys",
+                "openai",
                 ""
               ]
             },
@@ -2206,6 +2386,78 @@
               ]
             },
             "description": "Created, status/priority/category/details changed, reply and note added. Never contains message text."
+          }
+        },
+        {
+          "name": "Find context for a ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/context/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                "{{ticketId}}",
+                "context",
+                ""
+              ]
+            },
+            "description": "Uses the ticket subject and description. Send {\"message_id\": \"...\"} to use one public customer message instead. Internal notes are never used.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "Find context for a customer message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/context/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                "{{ticketId}}",
+                "context",
+                ""
+              ]
+            },
+            "description": "Only public customer messages are accepted; any other id returns 404.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message_id\": \"{{messageId}}\"\n}"
+            }
           }
         }
       ]

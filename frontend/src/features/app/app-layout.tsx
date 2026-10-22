@@ -12,7 +12,7 @@ import { useGoShortcuts } from '@/features/app/go-shortcuts'
 import { ErrorPanel } from '@/features/app/page-states'
 import { WorkspaceSwitcher } from '@/features/app/workspace-switcher'
 import { getLastWorkspace, useWorkspaces } from '@/features/workspaces/api'
-import { ClockCounterClockwise, EnvelopeSimple, Gear, Notebook, SquaresFour, Ticket, UserCircle, UsersThree } from '@/icons'
+import { ClockCounterClockwise, EnvelopeSimple, Gear, Notebook, Robot, SquaresFour, Ticket, UserCircle, UsersThree } from '@/icons'
 
 const USER_MENU: UserMenuItem[] = [
   { label: 'Email (Gmail)', href: '/app/email', icon: EnvelopeSimple },
@@ -54,6 +54,7 @@ export function AppLayout() {
       { label: 'Dashboard', href: base, icon: SquaresFour },
       { label: 'Tickets', href: `${base}/tickets`, icon: Ticket },
       { label: 'Knowledge', href: `${base}/knowledge`, icon: Notebook },
+      { label: 'Ask', href: `${base}/ask`, icon: Robot },
       { label: 'Members', href: `${base}/members`, icon: UsersThree },
       { label: 'Audit log', href: `${base}/audit`, icon: ClockCounterClockwise, disabledReason: current.role === 'owner' ? undefined : 'Only the workspace owner can read the audit log.' },
       { label: 'Settings', href: `${base}/settings`, icon: Gear },

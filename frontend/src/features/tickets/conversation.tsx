@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { ErrorPanel } from '@/features/app/page-states'
 import { useAddMessage, useOlder, useResendMessage } from '@/features/tickets/api'
-import { ArrowClockwise, ArrowUp, Clock, EnvelopeSimple, LockSimple, PaperPlaneTilt, WarningCircle } from '@/icons'
+import { ArrowClockwise, ArrowUp, Clock, EnvelopeSimple, LockSimple, MagnifyingGlass, PaperPlaneTilt, WarningCircle } from '@/icons'
 import { errorMessage } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import type { GmailConnection, TicketMessage } from '@/lib/types'
@@ -22,7 +22,7 @@ function DeliveryBadge({ message }: { message: TicketMessage }) {
   return <SoftBadge tone="neutral" icon={Clock}>Sending</SoftBadge>
 }
 
-function MessageItem({ message, onResend, resending }: { message: TicketMessage; onResend: () => void; resending: boolean }) {
+function MessageItem({ message, onResend, resending, onFindContext, finding }: { message: TicketMessage; onResend: () => void; resending: boolean; onFindContext: () => void; finding: boolean }) {
   const internal = message.visibility === 'internal'
   const customer = message.author_type === 'customer'
   const name = message.author?.display_name ?? (customer ? 'Customer' : 'ResolveAI')
@@ -39,6 +39,9 @@ function MessageItem({ message, onResend, resending }: { message: TicketMessage;
         </time>
       </div>
       <p className="mt-2 max-w-prose text-sm leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere]">{message.body}</p>
+      {customer && !internal && (
+        <Button className="mt-2" variant="ghost" size="sm" icon={<MagnifyingGlass />} loading={finding} onClick={onFindContext}>Find context</Button>
+      )}
       {message.delivery_status === 'failed' && message.visibility === 'public' && (
         <Button className="mt-2" variant="outline" size="sm" icon={<ArrowClockwise />} loading={resending} onClick={onResend}>Resend</Button>
       )}
@@ -59,13 +62,16 @@ function replyBlock(rules: ComposerRules): string | null {
   return null
 }
 
-export function Conversation({ workspaceId, ticketId, messages, total, returned, rules }: {
+export function Conversation({ workspaceId, ticketId, messages, total, returned, rules, onFindContext, findingMessageId }: {
   workspaceId: string
   ticketId: string
   messages: TicketMessage[]
   total: number
   returned: number
   rules: ComposerRules
+  onFindContext: (messageId: string) => void
+  /** The customer message whose context search is running, if any. */
+  findingMessageId: string | null
 }) {
   const older = useOlder<TicketMessage>(`/workspaces/${workspaceId}/tickets/${ticketId}/messages/`, total, returned)
   const add = useAddMessage(workspaceId, ticketId)
@@ -100,6 +106,8 @@ export function Conversation({ workspaceId, ticketId, messages, total, returned,
             key={message.id}
             message={message}
             resending={resend.isPending && resendingId === message.id}
+            finding={findingMessageId === message.id}
+            onFindContext={() => onFindContext(message.id)}
             onResend={() => {
               setResendingId(message.id)
               resend.mutate(message.id, { onSuccess: () => toast.success('Reply queued again.'), onError: (e) => toast.error(errorMessage(e)) })

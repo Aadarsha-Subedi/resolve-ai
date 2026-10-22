@@ -45,7 +45,10 @@ def chunk_markdown(title: str, content: str) -> list[ChunkDraft]:
 
 
 def _heading_path(title: str, stack: list[tuple[int, str]]) -> str:
-    parts = [title.strip(), *(name for _, name in stack)]
+    names = [name for _, name in stack]
+    if names and names[0].casefold() == title.strip().casefold():
+        names = names[1:]  # a "# Title" heading that repeats the article title
+    parts = [title.strip(), *names]
     return CHUNK_HEADING_SEPARATOR.join(parts)[:CHUNK_HEADING_PATH_MAX_LENGTH]
 
 

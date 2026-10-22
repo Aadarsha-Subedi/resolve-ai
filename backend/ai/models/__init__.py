@@ -1,3 +1,3 @@
-from ai.models.llm_settings import UserWorkspaceLLMSettings
+from ai.models.llm_settings import UserWorkspaceLLMKey, UserWorkspaceLLMSettings
 
-__all__ = ["UserWorkspaceLLMSettings"]
+__all__ = ["UserWorkspaceLLMKey", "UserWorkspaceLLMSettings"]

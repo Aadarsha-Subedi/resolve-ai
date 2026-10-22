@@ -42,6 +42,13 @@ Route component -> `src/components/layout/app-shell.tsx::AppShell` (collapsible 
 - **Knowledge graph:** graph view `?view=graph` -> lazy `knowledge-graph.tsx` -> `useArticleGraph` + `useCategories` -> `graph-layout.ts::buildKnowledgeGraph` -> React Flow. `knowledge-page.tsx` (Articles tab, or Files tab mounting `files-tab.tsx`), `article-page.tsx` (`NewArticlePage`, `ArticlePage`) with `article-editor.tsx` and `components/patterns/markdown.tsx` (react-markdown + rehype-sanitize). Upload: `useUploadFile` = `POST uploads/upload-url/`, direct `PUT` to the signed URL, `POST uploads/{id}/confirm/`.
 - **Members and settings:** `members-page.tsx` (tabs mount `join-link-panel.tsx` and `invitations-panel.tsx` only when selected), `settings-page.tsx` (rename, portal toggle, logo via `useUploadLogo`, delete). **Audit:** `audit-page.tsx` (owner only; members get an explanation and no request). **Email:** `features/email/email-page.tsx` and `attach-dialog.tsx`. **Account:** `features/account/account-page.tsx`. **Join:** `routes/join.$token.tsx` (the click redeems, nothing is automatic). **Portal:** `routes/portal.$slug.tsx` -> `features/portal/portal-page.tsx` (public, honeypot field `website`, success shows the ticket number only).
 
-## 9. Planned flows (not implemented yet)
+## 9. AI settings and context search (implemented)
+
+- **Settings:** `features/workspaces/settings-page.tsx` renders `features/ai/ai-settings.tsx` -> `useLlmSettings` (GET `/workspaces/{id}/llm/`) -> `useUpdateLlmSettings` (PATCH) / `useRemoveLlmKey` (DELETE `.../llm/key/`); each write returns the new settings, which replace the cached query.
+- **Ticket context:** `features/tickets/ticket-page.tsx` owns `useTicketContext` (POST `.../tickets/{id}/context/`, optional `message_id`). The header button, the per-message button in `conversation.tsx` and `features/ai/context-panel.tsx` all use that one mutation; Each search marks the cached AI settings stale so the usage count refreshes on the next visit.
+- **Ask page:** `routes/app.$ws.ask.tsx` -> `features/ai/ask-page.tsx`. History (three-dots menu -> `ask-history-dialog.tsx`): `useConversations` (GET `.../knowledge/ask/conversations/`), `useConversation` (GET `.../{id}/`), `useDeleteConversation` (DELETE). Asking: `useAskQuestion` (POST `.../knowledge/ask/` with the open chat's `conversation_id`) appends the returned turn to the cached chat, marks the list stale and refetches the AI usage shown above the box. `ask-messages.tsx` draws the bubbles and the thinking indicator; `splitCitations` turns `[n]` into links to the Sources list rendered by `ContextResults` (anchors `src-{turn}-{n}`).
+- **Rendering:** `context-api.ts::splitHighlights` turns `⟦ ⟧` markers into parts; `context-panel.tsx` renders them as text and `<mark>`.
+
+## 10. Planned flows (not implemented yet)
 
 AI-assisted reply drafts and knowledge search (deferred with the backend AI phase).

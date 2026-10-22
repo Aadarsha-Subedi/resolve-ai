@@ -79,7 +79,7 @@ def rewrite_query(user: User, workspace_id, text: str) -> list[str]:
         response = llm_service.generate(user, workspace_id, request)
     except (LLMError, AppException) as exc:
         # AppException: for example the encryption keys are not configured.
-        logger.info(
+        logger.warning(
             "Query rewriting skipped: %s",
             getattr(exc, "code", None) or getattr(exc, "error_code", ""),
         )

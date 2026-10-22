@@ -2,8 +2,8 @@ from dataclasses import dataclass
 
 from django.conf import settings
 
-from ai.models import UserWorkspaceLLMSettings
 from ai.services import allowance
+from ai.services.settings_service import SettingsView
 from common.llm.constants import (
     ALLOWED_MODELS,
     DEFAULT_MODELS,
@@ -31,23 +31,24 @@ def _options() -> dict:
 
 @dataclass(frozen=True)
 class LLMSettingsData(BaseResponseData):
-    row: UserWorkspaceLLMSettings
+    view: SettingsView
 
     def to_dict(self) -> dict:
-        r = self.row
+        r = self.view.row
         usage = allowance.usage(r.workspace_id, r.user_id)
         return {
             "mode": r.mode,
             "resolve_ai_model": r.resolve_ai_model,
-            "own_key": {
-                "has_key": r.has_key,
-                "provider": r.own_provider or None,
-                "model": r.own_model or None,
-                "last4": r.own_key_last4 or None,
-                "checked_at": r.own_key_checked_at.isoformat()
-                if r.own_key_checked_at
-                else None,
-            },
+            "active_provider": r.active_provider or None,
+            "keys": [
+                {
+                    "provider": k.provider,
+                    "model": k.model,
+                    "last4": k.key_last4,
+                    "checked_at": k.checked_at.isoformat(),
+                }
+                for k in self.view.keys
+            ],
             "usage": {
                 "used_today": usage.used,
                 "limit": usage.limit,

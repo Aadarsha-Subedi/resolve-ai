@@ -1,7 +1,14 @@
 from dataclasses import dataclass
 
 from common.response.domain import BaseResponseData
-from knowledge.models import KnowledgeArticle, KnowledgeCategory, KnowledgeUpload
+from knowledge.models import (
+    AskConversation,
+    KnowledgeArticle,
+    KnowledgeCategory,
+    KnowledgeUpload,
+)
+from knowledge.services.answer_service import AnswerResult
+from knowledge.services.context_service import ContextResult
 
 
 def _category(category: KnowledgeCategory) -> dict:
@@ -69,3 +76,84 @@ class DictData(BaseResponseData):
 
     def to_dict(self) -> dict:
         return self.payload
+
+
+@dataclass(frozen=True)
+class ContextData(BaseResponseData):
+    result: ContextResult
+
+    def to_dict(self) -> dict:
+        r = self.result
+        return {
+            "terms": r.terms,
+            "queries": r.rewrites,
+            "rewritten": r.rewritten,
+            "results": [
+                {
+                    "citation": number,
+                    "score": p.score,
+                    "article": {"id": p.article_id, "title": p.article_title},
+                    "section": p.section,
+                    "chunk_id": p.chunk_id,
+                    "snippet": p.snippet,
+                }
+                for number, p in enumerate(r.results, start=1)
+            ],
+        }
+
+
+def answer_payload(result: AnswerResult) -> dict:
+    """What one Ask turn shows: the context payload plus the answer. This is also what is stored."""
+    return {
+        **ContextData(result.context).to_dict(),
+        "status": result.status,
+        "reason": result.reason or None,
+        "answer": result.answer or None,
+        "cited": result.cited,
+    }
+
+
+@dataclass(frozen=True)
+class AnswerData(BaseResponseData):
+    """A new turn: the payload plus where it was stored. `status` says why `answer` is empty."""
+
+    result: AnswerResult
+
+    def to_dict(self) -> dict:
+        turn = self.result.turn
+        return {
+            "conversation_id": str(turn.conversation_id),
+            "turn_id": str(turn.id),
+            "question": turn.question,
+            "created_at": turn.created_at.isoformat(),
+            **answer_payload(self.result),
+        }
+
+
+def _turn(turn) -> dict:
+    return {
+        "turn_id": str(turn.id),
+        "question": turn.question,
+        "created_at": turn.created_at.isoformat(),
+        **turn.result,
+    }
+
+
+@dataclass(frozen=True)
+class ConversationData(BaseResponseData):
+    conversation: AskConversation
+    with_turns: bool = False
+
+    def to_dict(self) -> dict:
+        c = self.conversation
+        data = {
+            "id": str(c.id),
+            "title": c.title,
+            "created_at": c.created_at.isoformat(),
+            "updated_at": c.updated_at.isoformat(),
+        }
+        if self.with_turns:
+            data["turns"] = [_turn(t) for t in c.turns.all()]
+        else:
+            data["turn_count"] = getattr(c, "turn_count", None)
+        return data

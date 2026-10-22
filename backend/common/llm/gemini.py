@@ -1,5 +1,7 @@
 """Gemini through the official google-genai SDK."""
 
+import logging
+
 import httpx
 from google import genai
 from google.genai import errors, types
@@ -17,8 +19,16 @@ from common.llm.base import (
 )
 from common.llm.constants import PROVIDER_GEMINI, REQUEST_TIMEOUT_SECONDS
 
+logger = logging.getLogger(__name__)
+
 
 def _map_error(exc: Exception) -> LLMError:
+    # Class and status only: Google's message can quote the key.
+    logger.warning(
+        "Gemini request failed: %s code=%s",
+        type(exc).__name__,
+        getattr(exc, "code", None),
+    )
     if isinstance(exc, httpx.TimeoutException):
         return LLMTimeoutError()
     if isinstance(exc, errors.APIError):
@@ -32,6 +42,17 @@ def _map_error(exc: Exception) -> LLMError:
         if status == 408 or status == 504:
             return LLMTimeoutError()
     return LLMUnavailableError()
+
+
+def _thinking_config(model: str) -> types.ThinkingConfig:
+    """Keep reasoning to a minimum. Searching and paraphrasing need none, and the default
+    dynamic thinking made each call take 25 to 35 s (and its tokens count against the output cap)."""
+    if model.startswith("gemini-2.5"):
+        # 2.5 Pro cannot switch thinking off; the smallest budget it accepts is 128.
+        return types.ThinkingConfig(thinking_budget=128 if "pro" in model else 0)
+    # Gemini 3 and later: Pro models do not accept "minimal".
+    level = types.ThinkingLevel.LOW if "pro" in model else types.ThinkingLevel.MINIMAL
+    return types.ThinkingConfig(thinking_level=level)
 
 
 class GeminiProvider(LLMProvider):
@@ -48,16 +69,31 @@ class GeminiProvider(LLMProvider):
         )
 
     def generate(self, request: LLMRequest) -> LLMResponse:
-        config = types.GenerateContentConfig(
-            system_instruction=request.system or None,
-            temperature=request.temperature,
-            max_output_tokens=request.max_output_tokens,
-            response_mime_type="application/json" if request.json_output else None,
-        )
-        try:
-            response = self._client.models.generate_content(
-                model=self.model, contents=request.prompt, config=config
+        def config(thinking: bool) -> types.GenerateContentConfig:
+            return types.GenerateContentConfig(
+                system_instruction=request.system or None,
+                temperature=request.temperature,
+                max_output_tokens=request.max_output_tokens,
+                thinking_config=_thinking_config(self.model) if thinking else None,
+                response_mime_type="application/json" if request.json_output else None,
             )
+
+        try:
+            try:
+                response = self._client.models.generate_content(
+                    model=self.model, contents=request.prompt, config=config(True)
+                )
+            except errors.ClientError as exc:
+                # A 400 can mean this model rejects the thinking setting. Try once without
+                # it; a bad key or an exhausted quota is not a 400 we should retry.
+                if exc.code != 400 or "api key" in (exc.message or "").lower():
+                    raise
+                logger.warning(
+                    "Gemini rejected the thinking setting; retrying without it"
+                )
+                response = self._client.models.generate_content(
+                    model=self.model, contents=request.prompt, config=config(False)
+                )
             text = response.text
         except Exception as exc:  # noqa: BLE001 - any SDK failure maps to an LLMError
             raise _map_error(exc) from None

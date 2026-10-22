@@ -32,3 +32,4 @@ MESSAGE_ASSIGNEE_LOCKED = (
     "This ticket is closed. Only the owner can change its assignee."
 )
 MESSAGE_ASSIGNEE_FILTER_INVALID = "Use a user id, me or unassigned."
+MESSAGE_CONTEXT_MESSAGE_NOT_FOUND = "Message not found."

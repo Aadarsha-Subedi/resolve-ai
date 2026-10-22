@@ -45,6 +45,7 @@ uv run ruff check . && uv run ruff format .
 - `knowledge/` feature 4: articles, categories, PDF/TXT uploads and the shared storage quota (same layout)
 - `tickets/` feature 5: tickets, messages, history and the public portal (same layout)
 - `email_integration/` feature 6: Gmail grant at sign-in, sending replies and confirmations, inbound sync and push, review list (same layout, plus `clients/`)
+- `ai/` per-user, per-workspace LLM settings, encrypted keys and the daily Resolve AI allowance (same layout); the provider code is in `common/llm/`, the search helpers in `common/search/`
 - `audit/` feature 2: append-only audit log fed by every feature's hook signals, owner-only read endpoint
 - Feature apps are added one at a time (see the root README)
 
@@ -68,9 +69,13 @@ Postman: Google sign-in cannot finish inside Postman. Sign in with a browser, co
 
 A user can create workspaces (becoming the owner), belong to several, and join through a join link (1 hour by default, 1 day or 7 days) or an invitation to their Google account. The owner removes members, transfers ownership, deletes the workspace (purged after 7 days) and sets the logo. Endpoint list and rules: [Project.MD](Project.MD), Feature 3. New invitations are also emailed to the invitee from the owner's Gmail (needs the Celery worker). Postman folders: `Workspaces`, `Members`, `Join link`, `Invitations`. The logo upload needs the `RESOLVE_AI_R2_*` variables (the browser PUTs to a signed R2 URL, so allow your frontend origin in the bucket's CORS policy with the PUT method).
 
+## Context search (AI)
+
+`POST /api/workspaces/{id}/knowledge/context/` (`{"query": "..."}`) and `POST /api/workspaces/{id}/tickets/{ticket_id}/context/` (optional `{"message_id"}`) return the best passages from published articles with citations. `POST /api/workspaces/{id}/knowledge/ask/` also returns an answer paraphrased from those passages with `[n]` citations (the frontend's Ask page) and keeps each user's chats per workspace (`GET/DELETE .../knowledge/ask/conversations/`; run `migrate` after pulling). Users choose Resolve AI or their own Gemini/OpenAI key at `GET/PATCH /api/workspaces/{id}/llm/`. Environment: `RESOLVE_AI_GEMINI_API_KEY` (the Resolve AI key; leave empty to disable it, search still works without query rewriting) and `RESOLVE_AI_LLM_CALL_LIMIT` (calls per user per workspace per day, default 100). The Gemini and OpenAI SDKs are new dependencies: after pulling, run `docker compose build api celery celery-beat` and `docker compose up -d`. Articles that existed before chunking need `docker compose exec api python manage.py reindex_knowledge` once. Rules: [DECISION.md](DECISION.md) (2026-10-22) and [FLOW.md](FLOW.md), section 13. Postman requests: `Knowledge` and `Tickets` folders.
+
 ## Knowledge base (feature 4)
 
-Articles (Markdown, up to 200 KB), categories (five defaults per workspace) and PDF/TXT uploads (up to 10 MB). Everything is stored in the R2 bucket under `workspaces/{id}/knowledge/` and counts toward the 50 MB per-workspace quota (the logo does not). Uploads use a signed URL: request it (`size` in exact bytes), PUT the file with method PUT and the returned Content-Type, then confirm. Filters: title, status, category. Rules and endpoints: [Project.MD](Project.MD), Feature 4. Postman folder: `Knowledge`. Needs the `RESOLVE_AI_R2_*` variables for uploads (articles also need storage: with an empty bucket they use local disk under `media/`).
+Articles (Markdown, up to 200 KB), categories (five defaults per workspace) and PDF/TXT uploads (up to 10 MB). Article text is stored in the database (up to 100 KB each, 100 articles per workspace); uploaded files are stored in the R2 bucket under `workspaces/{id}/knowledge/`. Both count toward the 50 MB per-workspace quota (the logo does not). Uploads use a signed URL: request it (`size` in exact bytes), PUT the file with method PUT and the returned Content-Type, then confirm. Filters: title, status, category. Rules and endpoints: [Project.MD](Project.MD), Feature 4. Postman folder: `Knowledge`. Needs the `RESOLVE_AI_R2_*` variables for uploads (articles also need storage: with an empty bucket they use local disk under `media/`).
 
 ## Tickets and public portal (feature 5)
 

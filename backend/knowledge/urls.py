@@ -1,6 +1,6 @@
 from django.urls import path
 
-from knowledge.views import article, category, upload
+from knowledge.views import article, category, context, upload
 
 _W = "workspaces/<uuid:workspace_id>/knowledge/"
 
@@ -48,6 +48,18 @@ urlpatterns = [
         _W + "uploads/<uuid:upload_id>/",
         upload.UploadDetailView.as_view(),
         name="upload_detail",
+    ),
+    path(_W + "context/", context.ContextView.as_view(), name="knowledge_context"),
+    path(_W + "ask/", context.AskView.as_view(), name="knowledge_ask"),
+    path(
+        _W + "ask/conversations/",
+        context.AskConversationListView.as_view(),
+        name="ask_conversation_list",
+    ),
+    path(
+        _W + "ask/conversations/<uuid:conversation_id>/",
+        context.AskConversationDetailView.as_view(),
+        name="ask_conversation_detail",
     ),
     path(_W + "storage/", upload.StorageUsageView.as_view(), name="storage_usage"),
 ]

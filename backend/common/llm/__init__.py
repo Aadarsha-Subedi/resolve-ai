@@ -3,6 +3,7 @@
 from common.llm.base import (
     LLMBadResponseError,
     LLMError,
+    LLMInsufficientQuotaError,
     LLMInvalidKeyError,
     LLMProvider,
     LLMRateLimitedError,
@@ -16,6 +17,7 @@ from common.llm.factory import create_provider, resolve_ai_provider
 __all__ = [
     "LLMBadResponseError",
     "LLMError",
+    "LLMInsufficientQuotaError",
     "LLMInvalidKeyError",
     "LLMProvider",
     "LLMRateLimitedError",

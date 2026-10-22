@@ -6,6 +6,8 @@ from knowledge.constants.enums import ArticleStatus
 from knowledge.constants.settings import (
     ARTICLE_TITLE_MAX_LENGTH,
     CATEGORY_NAME_MAX_LENGTH,
+    CONTEXT_QUERY_MAX_LENGTH,
+    CONTEXT_QUERY_MIN_LENGTH,
     MAX_CATEGORIES_PER_ARTICLE,
     UPLOAD_CONTENT_TYPES,
     UPLOAD_FILENAME_MAX_LENGTH,
@@ -87,3 +89,16 @@ class UploadFilterSerializer(serializers.Serializer):
     filename = serializers.CharField(
         required=False, max_length=UPLOAD_FILENAME_MAX_LENGTH
     )
+
+
+class ContextQuestionSerializer(StrictSerializer):
+    query = serializers.CharField(
+        min_length=CONTEXT_QUERY_MIN_LENGTH,
+        max_length=CONTEXT_QUERY_MAX_LENGTH,
+        trim_whitespace=True,
+        validators=[_no_nul],
+    )
+
+
+class AskQuestionSerializer(ContextQuestionSerializer):
+    conversation_id = serializers.UUIDField(required=False)

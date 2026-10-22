@@ -1,10 +1,13 @@
 """OpenAI through the official openai SDK."""
 
+import logging
+
 import openai
 
 from common.llm.base import (
     LLMBadResponseError,
     LLMError,
+    LLMInsufficientQuotaError,
     LLMInvalidKeyError,
     LLMProvider,
     LLMRateLimitedError,
@@ -15,14 +18,35 @@ from common.llm.base import (
 )
 from common.llm.constants import PROVIDER_OPENAI, REQUEST_TIMEOUT_SECONDS
 
+logger = logging.getLogger(__name__)
+
+# Reasoning models spend part of the token budget thinking. With a small budget they can
+# think all of it away and return no text, so they think as little as possible and get room.
+REASONING_MODEL_PREFIX = "gpt-5"
+REASONING_EFFORT = "minimal"
+REASONING_TOKEN_FACTOR = 4
+
+
+def _log_failure(exc: Exception) -> None:
+    """Class, HTTP status and OpenAI's error code only. The message can quote the API key."""
+    logger.warning(
+        "OpenAI request failed: %s status=%s code=%s",
+        type(exc).__name__,
+        getattr(exc, "status_code", None),
+        getattr(exc, "code", None),
+    )
+
 
 def _map_error(exc: Exception) -> LLMError:
+    _log_failure(exc)
     if isinstance(exc, openai.APITimeoutError):
         return LLMTimeoutError()
     if isinstance(exc, (openai.AuthenticationError, openai.PermissionDeniedError)):
         return LLMInvalidKeyError()
     if isinstance(exc, openai.RateLimitError):
-        # Also raised when the account has run out of credit (insufficient_quota).
+        # The same 429 also means the account has run out of credit.
+        if getattr(exc, "code", None) == "insufficient_quota":
+            return LLMInsufficientQuotaError()
         return LLMRateLimitedError()
     return LLMUnavailableError()
 
@@ -42,6 +66,10 @@ class OpenAIProvider(LLMProvider):
             messages.append({"role": "system", "content": request.system})
         messages.append({"role": "user", "content": request.prompt})
         options = {}
+        max_tokens = request.max_output_tokens
+        if self.model.startswith(REASONING_MODEL_PREFIX):
+            options["reasoning_effort"] = REASONING_EFFORT
+            max_tokens *= REASONING_TOKEN_FACTOR
         if request.json_output:
             options["response_format"] = {"type": "json_object"}
         try:
@@ -49,7 +77,7 @@ class OpenAIProvider(LLMProvider):
             response = self._client.chat.completions.create(
                 model=self.model,
                 messages=messages,
-                max_completion_tokens=request.max_output_tokens,
+                max_completion_tokens=max_tokens,
                 **options,
             )
         except Exception as exc:  # noqa: BLE001 - any SDK failure maps to an LLMError
@@ -57,6 +85,10 @@ class OpenAIProvider(LLMProvider):
         choice = response.choices[0] if response.choices else None
         text = choice.message.content if choice else None
         if not text or not text.strip():
+            logger.warning(
+                "OpenAI returned no text: finish_reason=%s",
+                getattr(choice, "finish_reason", None),
+            )
             raise LLMBadResponseError()
         usage = response.usage
         return LLMResponse(

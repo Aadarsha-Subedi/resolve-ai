@@ -1,6 +1,6 @@
 from django.urls import path
 
-from tickets.views import portal, ticket
+from tickets.views import context, portal, ticket
 
 _W = "workspaces/<uuid:workspace_id>/tickets/"
 
@@ -30,6 +30,11 @@ urlpatterns = [
         _W + "<uuid:ticket_id>/messages/",
         ticket.TicketMessageListView.as_view(),
         name="ticket_messages",
+    ),
+    path(
+        _W + "<uuid:ticket_id>/context/",
+        context.TicketContextView.as_view(),
+        name="ticket_context",
     ),
     path(
         _W + "<uuid:ticket_id>/events/",
