@@ -12,7 +12,7 @@ from workspaces.services import workspace_service
 
 
 class WorkspacePurgeTests(KnowledgeTestCase):
-    def test_purging_a_workspace_removes_all_its_stored_objects(self):
+    def test_purging_a_workspace_removes_its_uploads_and_article_rows(self):
         article = self.create_article(content="x" * 50)
         upload = self.owner_client.post(
             self.kurl("uploads/upload-url/"),
@@ -26,8 +26,7 @@ class WorkspacePurgeTests(KnowledgeTestCase):
         ).data["data"]
         upload_key = KnowledgeUpload.objects.get(pk=upload["id"]).storage_key
         self.storage.simulate_browser_put(upload_key, b"hello")
-        keep = self.storage
-        self.assertEqual(len(keep.objects), 2)
+        self.assertEqual(len(self.storage.objects), 1)  # articles are not in storage
 
         self.owner_client.delete(f"/api/workspaces/{self.workspace_id}/")
         Workspace.all_objects.filter(pk=self.workspace_id).update(

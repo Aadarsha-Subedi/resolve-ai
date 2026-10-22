@@ -11,13 +11,11 @@ class KnowledgeTestCase(WorkspaceTestCase):
     def setUp(self):
         super().setUp()
         self.storage = InMemoryStorage()
-        for target in (
-            "knowledge.services.article_service.get_storage",
-            "knowledge.services.upload_service.get_storage",
-        ):
-            patcher = mock.patch(target, return_value=self.storage)
-            patcher.start()
-            self.addCleanup(patcher.stop)
+        patcher = mock.patch(
+            "knowledge.services.upload_service.get_storage", return_value=self.storage
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
         self.workspace_id = self.workspace_with_member()
         from knowledge.services import category_service
 

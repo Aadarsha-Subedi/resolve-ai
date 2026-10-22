@@ -1,6 +1,5 @@
 ARTICLE_TITLE_MAX_LENGTH = 200
 ARTICLE_MAX_BYTES = 200 * 1024
-ARTICLE_CONTENT_TYPE = "text/markdown; charset=utf-8"
 CATEGORY_NAME_MAX_LENGTH = 60
 CATEGORY_SLUG_MAX_LENGTH = 70
 MAX_CATEGORIES_PER_ARTICLE = 10
@@ -16,7 +15,6 @@ DOWNLOAD_URL_EXPIRY_SECONDS = 300
 PDF_MAGIC = b"%PDF-"
 
 KEY_PREFIX = "workspaces/{workspace_id}/knowledge/"
-ARTICLE_KEY = KEY_PREFIX + "articles/{article_id}.md"
 UPLOAD_KEY = KEY_PREFIX + "uploads/{upload_id}.{extension}"
 
 TASK_RELEASE_STALE_UPLOADS = "knowledge.release_stale_uploads"

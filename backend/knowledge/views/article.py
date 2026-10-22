@@ -61,7 +61,7 @@ class ArticleDetailView(APIView):
         )
         article = article_service.get_article(workspace_id, article_id)
         return SuccessResponse(
-            data=ArticleData(article, content=article_service.read_content(article)),
+            data=ArticleData(article, content=article.content),
             message=messages.MESSAGE_ARTICLE_RETRIEVED,
         )
 
@@ -76,7 +76,7 @@ class ArticleDetailView(APIView):
             data.get("category_ids"),
         )
         return ResourceUpdatedResponse(
-            data=ArticleData(article, content=article_service.read_content(article)),
+            data=ArticleData(article, content=article.content),
             message=messages.MESSAGE_ARTICLE_UPDATED,
         )
 

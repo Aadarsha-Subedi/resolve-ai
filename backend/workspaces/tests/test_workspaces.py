@@ -2,6 +2,7 @@ from datetime import timedelta
 from unittest import mock, skipUnless
 
 from django.db import connection
+from django.test import override_settings
 from django.utils import timezone
 
 from accounts.services import deletion_service
@@ -195,6 +196,56 @@ class SearchLanguageTests(WorkspaceTestCase):
             available = {row[0] for row in cursor.fetchall()}
         offered = {value for value, _ in SEARCH_LANGUAGE_CHOICES}
         self.assertEqual(offered - available, set())
+
+
+@override_settings(USER_MAX_OWNED_WORKSPACES=2)
+class OwnedWorkspaceLimitTests(WorkspaceTestCase):
+    def create(self, client=None, name="W"):
+        return (client or self.owner_client).post(
+            "/api/workspaces/", {"name": name}, format="json"
+        )
+
+    def test_creating_past_the_limit_is_rejected(self):
+        self.assertEqual(self.create().status_code, 201)
+        self.assertEqual(self.create().status_code, 201)
+        response = self.create()
+        self.assertEqual(
+            (response.status_code, response.data["code"]),
+            (409, "workspace_limit_reached"),
+        )
+        self.assertEqual(Workspace.objects.count(), 2)
+
+    def test_joined_workspaces_do_not_count(self):
+        for _ in range(2):
+            self.workspace_with_member()  # member joins two workspaces owned by owner
+        self.assertEqual(self.create(self.member_client).status_code, 201)
+        self.assertEqual(self.create(self.member_client).status_code, 201)
+
+    def test_deleted_workspaces_do_not_count(self):
+        first = self.create().data["data"]["id"]
+        self.create()
+        self.owner_client.delete(self.url(first))
+        self.assertEqual(self.create().status_code, 201)
+
+    def test_transfer_to_a_user_at_the_limit_is_rejected(self):
+        self.create(self.member_client)
+        self.create(self.member_client)
+        workspace_id = self.workspace_with_member()
+        response = self.owner_client.post(
+            self.url(workspace_id, "transfer-ownership/"),
+            {"user_id": str(self.member.id)},
+            format="json",
+        )
+        self.assertEqual(
+            (response.status_code, response.data["code"]),
+            (409, "transfer_target_at_limit"),
+        )
+        self.assertEqual(
+            WorkspaceMembership.objects.get(
+                workspace_id=workspace_id, user=self.owner
+            ).role,
+            Role.OWNER,
+        )
 
 
 class DeleteWorkspaceTests(WorkspaceTestCase):

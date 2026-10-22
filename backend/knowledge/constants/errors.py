@@ -1,5 +1,6 @@
 ERROR_STORAGE_QUOTA_EXCEEDED = "storage_quota_exceeded"
 ERROR_ARTICLE_TOO_LARGE = "article_too_large"
+ERROR_ARTICLE_LIMIT_REACHED = "article_limit_reached"
 ERROR_ARTICLE_ARCHIVED = "article_archived"
 ERROR_INVALID_TRANSITION = "invalid_status_transition"
 ERROR_CATEGORY_EXISTS = "category_exists"

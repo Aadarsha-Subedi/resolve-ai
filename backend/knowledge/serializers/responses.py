@@ -22,7 +22,7 @@ class CategoryData(BaseResponseData):
 @dataclass(frozen=True)
 class ArticleData(BaseResponseData):
     article: KnowledgeArticle
-    content: str | None = None  # only the detail view loads the body from storage
+    content: str | None = None  # only the detail view returns the body
 
     def to_dict(self) -> dict:
         a = self.article

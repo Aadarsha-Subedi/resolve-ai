@@ -3,6 +3,9 @@ MESSAGE_ARTICLE_RETRIEVED = "Article retrieved successfully."
 MESSAGE_ARTICLES_LISTED = "Articles retrieved successfully."
 MESSAGE_ARTICLE_UPDATED = "Article updated successfully."
 MESSAGE_ARTICLE_DELETED = "Article deleted."
+MESSAGE_ARTICLE_LIMIT_REACHED = (
+    "A workspace can hold at most {limit} articles. Delete one to add another."
+)
 MESSAGE_ARTICLE_NOT_FOUND = "Article not found."
 MESSAGE_ARTICLE_PUBLISHED = "Article published."
 MESSAGE_ARTICLE_UNPUBLISHED = "Article moved back to draft."
@@ -13,6 +16,7 @@ MESSAGE_ARTICLE_IS_ARCHIVED = (
 MESSAGE_ARTICLE_TOO_LARGE = "The article is larger than {limit_kb} KB."
 MESSAGE_INVALID_TRANSITION = "An article cannot move from {current} to {target}."
 MESSAGE_NOTHING_TO_UPDATE = "Provide at least one field to update."
+MESSAGE_CONTENT_INVALID = "Content must not contain NUL characters."
 MESSAGE_UPLOAD_CATEGORY_INVALID = "Choose a category from this workspace for the file."
 MESSAGE_CATEGORY_NOT_FOUND = "Category not found."
 MESSAGE_CATEGORIES_INVALID = "One or more categories do not exist in this workspace."

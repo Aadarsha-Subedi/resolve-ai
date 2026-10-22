@@ -26,11 +26,20 @@ def _category_ids(**kwargs):
     )
 
 
+def _no_nul(value: str) -> str:
+    # Postgres text columns cannot store NUL characters.
+    if "\x00" in value:
+        raise serializers.ValidationError(messages.MESSAGE_CONTENT_INVALID)
+    return value
+
+
 class CreateArticleSerializer(StrictSerializer):
     title = serializers.CharField(
         max_length=ARTICLE_TITLE_MAX_LENGTH, trim_whitespace=True
     )
-    content = serializers.CharField(allow_blank=True, trim_whitespace=False)
+    content = serializers.CharField(
+        allow_blank=True, trim_whitespace=False, validators=[_no_nul]
+    )
     category_ids = _category_ids(required=False, default=list)
 
 
@@ -39,7 +48,7 @@ class UpdateArticleSerializer(StrictSerializer):
         required=False, max_length=ARTICLE_TITLE_MAX_LENGTH, trim_whitespace=True
     )
     content = serializers.CharField(
-        required=False, allow_blank=True, trim_whitespace=False
+        required=False, allow_blank=True, trim_whitespace=False, validators=[_no_nul]
     )
     category_ids = _category_ids(required=False)
 

@@ -9,8 +9,8 @@ from knowledge.constants.settings import ARTICLE_TITLE_MAX_LENGTH
 
 
 class KnowledgeArticle(TimeStampModel):
-    """Metadata lives here (so filters are plain queries); the Markdown body is an
-    object in storage under `storage_key` and counts toward the workspace quota."""
+    """The Markdown body lives in `content`. Its UTF-8 size (`size_bytes`) counts toward
+    the workspace quota, which is enforced by `quota_service`."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     workspace = models.ForeignKey(
@@ -22,7 +22,7 @@ class KnowledgeArticle(TimeStampModel):
     status = models.CharField(
         max_length=10, choices=ArticleStatus.choices, default=ArticleStatus.DRAFT
     )
-    storage_key = models.CharField(max_length=300)
+    content = models.TextField(blank=True, default="")
     size_bytes = models.PositiveIntegerField(default=0)
     categories = models.ManyToManyField(
         "knowledge.KnowledgeCategory",

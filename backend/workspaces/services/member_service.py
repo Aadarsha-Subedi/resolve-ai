@@ -10,7 +10,7 @@ from common.exception.domain import (
 from workspaces.constants import errors, messages, permissions
 from workspaces.constants.roles import MembershipStatus, Role
 from workspaces.models import WorkspaceMembership
-from workspaces.services import access, hooks
+from workspaces.services import access, hooks, limits
 
 
 def list_members(user: User, workspace_id) -> QuerySet[WorkspaceMembership]:
@@ -87,6 +87,11 @@ def transfer_ownership(actor: User, workspace_id, new_owner_id) -> None:
                 messages.MESSAGE_TRANSFER_TARGET_INVALID,
                 error_code=errors.ERROR_TRANSFER_TARGET_INVALID,
             )
+        limits.ensure_can_own_another(
+            new_owner_id,
+            messages.MESSAGE_TRANSFER_TARGET_AT_LIMIT,
+            errors.ERROR_TRANSFER_TARGET_AT_LIMIT,
+        )
         # Demote first: only one ACTIVE owner may exist at any moment.
         current.role = Role.MEMBER
         current.save(update_fields=["role", "updated_at"])

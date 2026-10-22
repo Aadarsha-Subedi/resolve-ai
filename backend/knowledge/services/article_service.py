@@ -7,18 +7,12 @@ from common.exception.domain import (
     BadRequestException,
     ConflictException,
     NotFoundException,
-    ServiceUnavailableException,
     ValidationException,
 )
-from common.storage import get_storage
 from knowledge import policies
 from knowledge.constants import errors, messages
 from knowledge.constants.enums import ArticleStatus
-from knowledge.constants.settings import (
-    ARTICLE_CONTENT_TYPE,
-    ARTICLE_KEY,
-    ARTICLE_MAX_BYTES,
-)
+from knowledge.constants.settings import ARTICLE_MAX_BYTES
 from knowledge.models import (
     KnowledgeArticle,
     KnowledgeArticleCategory,
@@ -42,16 +36,6 @@ def _size(content: str) -> int:
             error_code=errors.ERROR_ARTICLE_TOO_LARGE,
         )
     return size
-
-
-def _write(key: str, content: str) -> None:
-    try:
-        get_storage().upload(key, content.encode("utf-8"), ARTICLE_CONTENT_TYPE)
-    except Exception as exc:
-        raise ServiceUnavailableException(
-            messages.MESSAGE_STORAGE_UNAVAILABLE,
-            error_code=errors.ERROR_STORAGE_UNAVAILABLE,
-        ) from exc
 
 
 def _categories(workspace_id, category_ids) -> list[KnowledgeCategory]:
@@ -82,10 +66,6 @@ def get_article(workspace_id, article_id) -> KnowledgeArticle:
     return article
 
 
-def read_content(article: KnowledgeArticle) -> str:
-    return get_storage().read(article.storage_key).decode("utf-8")
-
-
 def create_article(
     user: User, workspace_id, title: str, content: str, category_ids
 ) -> KnowledgeArticle:
@@ -95,22 +75,18 @@ def create_article(
     size = _size(content)
     categories = _categories(workspace_id, category_ids)
     with transaction.atomic():
+        quota_service.ensure_article_capacity(workspace_id)
         quota_service.reserve(workspace_id, size)
         article = KnowledgeArticle(
             workspace_id=workspace_id,
             title=title,
+            content=content,
             size_bytes=size,
             created_by=user,
             updated_by=user,
         )
-        article.storage_key = ARTICLE_KEY.format(
-            workspace_id=workspace_id, article_id=article.id
-        )
         article.save()
         _set_categories(article, categories)
-        _write(
-            article.storage_key, content
-        )  # last: a failure undoes the rows and quota
     hooks.emit(
         membership.workspace,
         user,
@@ -154,11 +130,10 @@ def update_article(
                 quota_service.reserve(workspace_id, delta)
             else:
                 quota_service.release(workspace_id, -delta)
+            article.content = content
             article.size_bytes = new_size
         article.updated_by = user
         article.save()
-        if content is not None:
-            _write(article.storage_key, content)
     hooks.emit(
         membership.workspace,
         user,
@@ -180,10 +155,9 @@ def delete_article(user: User, workspace_id, article_id) -> None:
         )
         if article is None:
             raise NotFoundException(messages.MESSAGE_ARTICLE_NOT_FOUND)
-        key, size = article.storage_key, article.size_bytes
+        size = article.size_bytes
         article.delete()
         quota_service.release(workspace_id, size)
-        transaction.on_commit(lambda: get_storage().delete(key))
     hooks.emit(
         membership.workspace,
         user,
@@ -256,13 +230,10 @@ def list_articles(
         raise BadRequestException(
             f"Order by one of: {', '.join(sorted(ORDERING_FIELDS))}."
         )
-    return queryset.prefetch_related("categories").order_by(ordering, "id").distinct()
-
-
-def purge_workspace_objects(workspace_id) -> None:
-    """Remove every stored article object of a workspace that is being purged."""
-    storage = get_storage()
-    for key in KnowledgeArticle.objects.filter(workspace_id=workspace_id).values_list(
-        "storage_key", flat=True
-    ):
-        storage.delete(key)
+    # Lists never show the body, so do not load up to 200 KB per row.
+    return (
+        queryset.defer("content")
+        .prefetch_related("categories")
+        .order_by(ordering, "id")
+        .distinct()
+    )

@@ -3,20 +3,15 @@ from knowledge.tests.base import KnowledgeTestCase
 
 
 class ArticleCrudTests(KnowledgeTestCase):
-    def test_create_stores_body_in_storage_and_counts_quota(self):
+    def test_create_stores_body_in_database_and_counts_quota(self):
         data = self.create_article(
             content="héllo", category_ids=[self.category_id("FAQ")]
         )
         self.assertEqual(data["status"], "draft")
         self.assertEqual(data["size_bytes"], 6)  # UTF-8 bytes, not characters
         self.assertEqual(data["categories"][0]["name"], "FAQ")
-        article = KnowledgeArticle.objects.get()
-        self.assertTrue(
-            article.storage_key.startswith(
-                f"workspaces/{self.workspace_id}/knowledge/articles/"
-            )
-        )
-        self.assertEqual(self.storage.objects[article.storage_key][0], "héllo".encode())
+        self.assertEqual(KnowledgeArticle.objects.get().content, "héllo")
+        self.assertEqual(self.storage.objects, {})  # nothing is written to R2
         self.assertEqual(self.used(), 6)
 
     def test_detail_returns_content_list_does_not(self):
@@ -41,20 +36,13 @@ class ArticleCrudTests(KnowledgeTestCase):
         )
         self.assertEqual(response.data["data"]["content"], "z" * 40)
         self.assertEqual((response.data["data"]["title"], self.used()), ("New", 40))
-        self.assertEqual(
-            self.storage.objects[KnowledgeArticle.objects.get().storage_key][0],
-            b"z" * 40,
-        )
+        self.assertEqual(KnowledgeArticle.objects.get().content, "z" * 40)
 
-    def test_delete_frees_quota_and_object(self):
+    def test_delete_frees_quota_and_row(self):
         data = self.create_article(content="x" * 100)
-        key = KnowledgeArticle.objects.get().storage_key
-        with self.captureOnCommitCallbacks(
-            execute=True
-        ):  # the object is deleted after commit
-            response = self.member_client.delete(self.kurl(f"articles/{data['id']}/"))
+        response = self.member_client.delete(self.kurl(f"articles/{data['id']}/"))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual((self.used(), key in self.storage.objects), (0, False))
+        self.assertEqual((self.used(), KnowledgeArticle.objects.count()), (0, 0))
         self.assertEqual(
             self.owner_client.get(self.kurl(f"articles/{data['id']}/")).status_code, 404
         )
@@ -112,16 +100,24 @@ class ArticleCrudTests(KnowledgeTestCase):
             400,
         )
 
-    def test_storage_failure_rolls_everything_back(self):
-        self.storage.upload = lambda *a, **k: (_ for _ in ()).throw(
-            RuntimeError("down")
-        )
+    def test_nul_characters_are_rejected(self):
         response = self.owner_client.post(
-            self.kurl("articles/"), {"title": "t", "content": "abc"}, format="json"
+            self.kurl("articles/"),
+            {"title": "t", "content": "a\x00b"},
+            format="json",
         )
-        self.assertEqual(
-            (response.status_code, response.data["code"]), (503, "storage_unavailable")
-        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(KnowledgeArticle.objects.count(), 0)
+        self.assertEqual(self.used(), 0)
+
+    def test_over_quota_save_writes_nothing(self):
+        with self.settings(WORKSPACE_STORAGE_QUOTA_BYTES=10):
+            response = self.owner_client.post(
+                self.kurl("articles/"),
+                {"title": "t", "content": "x" * 11},
+                format="json",
+            )
+        self.assertEqual(response.status_code, 413)
         self.assertEqual(KnowledgeArticle.objects.count(), 0)
         self.assertEqual(self.used(), 0)
 

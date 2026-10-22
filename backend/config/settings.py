@@ -303,6 +303,10 @@ R2_PUBLIC_BASE_URL = env("RESOLVE_AI_R2_PUBLIC_BASE_URL")
 # Per-workspace knowledge-base upload limit (decided: 50 MB)
 
 WORKSPACE_STORAGE_QUOTA_BYTES = 50 * 1024 * 1024
+# Most knowledge articles (any status) one workspace can hold.
+WORKSPACE_MAX_ARTICLES = 100
+# Most workspaces one user can own (membership in other people's workspaces is not counted).
+USER_MAX_OWNED_WORKSPACES = 5
 
 # Sentry (error monitoring only; empty DSN disables it)
 

@@ -8,13 +8,27 @@ from django.conf import settings
 from django.db.models import F, Value
 from django.db.models.functions import Greatest
 
-from common.exception.domain import PayloadTooLargeException
+from common.exception.domain import ConflictException, PayloadTooLargeException
 from knowledge.constants import errors, messages
+from knowledge.models import KnowledgeArticle
 from workspaces.models import Workspace
 
 
 def limit_bytes() -> int:
     return settings.WORKSPACE_STORAGE_QUOTA_BYTES
+
+
+def ensure_article_capacity(workspace_id) -> None:
+    """Raise 409 when the workspace already holds the maximum number of articles.
+    Call inside a transaction: the workspace row is locked so two simultaneous creates
+    cannot both pass the check."""
+    Workspace.all_objects.select_for_update().filter(pk=workspace_id).first()
+    limit = settings.WORKSPACE_MAX_ARTICLES
+    if KnowledgeArticle.objects.filter(workspace_id=workspace_id).count() >= limit:
+        raise ConflictException(
+            messages.MESSAGE_ARTICLE_LIMIT_REACHED.format(limit=limit),
+            error_code=errors.ERROR_ARTICLE_LIMIT_REACHED,
+        )
 
 
 def reserve(workspace_id, size: int) -> None:

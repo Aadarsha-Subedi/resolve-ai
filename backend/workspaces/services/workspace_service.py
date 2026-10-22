@@ -19,7 +19,7 @@ from workspaces.constants.settings import (
     SLUG_SUFFIX_BYTES,
 )
 from workspaces.models import Workspace, WorkspaceMembership
-from workspaces.services import access, hooks
+from workspaces.services import access, hooks, limits
 
 
 def _derive_slug(name: str) -> str:
@@ -39,6 +39,11 @@ def create_workspace(user: User, name: str, slug: str | None) -> Workspace:
         candidate = slug or _derive_slug(name)
         try:
             with transaction.atomic():
+                limits.ensure_can_own_another(
+                    user.id,
+                    messages.MESSAGE_WORKSPACE_LIMIT_REACHED,
+                    errors.ERROR_WORKSPACE_LIMIT_REACHED,
+                )
                 workspace = Workspace.objects.create(
                     name=name, slug=candidate, created_by=user
                 )
