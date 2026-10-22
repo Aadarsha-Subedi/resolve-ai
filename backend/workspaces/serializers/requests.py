@@ -10,6 +10,7 @@ from workspaces.constants.settings import (
     LOGO_CONTENT_TYPES,
     LOGO_MAX_BYTES,
     NAME_MAX_LENGTH,
+    SEARCH_LANGUAGE_CHOICES,
     SLUG_PATTERN,
 )
 
@@ -33,6 +34,9 @@ class UpdateWorkspaceSerializer(StrictSerializer):
         required=False, max_length=NAME_MAX_LENGTH, trim_whitespace=True
     )
     portal_enabled = serializers.BooleanField(required=False)
+    search_language = serializers.ChoiceField(
+        required=False, choices=list(SEARCH_LANGUAGE_CHOICES)
+    )
 
     def validate(self, attrs):
         if not attrs:

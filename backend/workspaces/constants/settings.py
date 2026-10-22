@@ -14,6 +14,28 @@ RESERVED_SLUGS = frozenset(
 )  # fmt: skip
 NAME_MAX_LENGTH = 80
 
+# Postgres text search configurations a workspace may pick for full-text search. Every
+# value must exist in `pg_ts_config` (a Postgres-only test checks this); "simple" does no
+# stemming and drops no words, which suits mixed or unsupported languages.
+SEARCH_LANGUAGE_CHOICES = (
+    ("english", "English"),
+    ("simple", "Simple (no stemming)"),
+    ("spanish", "Spanish"),
+    ("french", "French"),
+    ("german", "German"),
+    ("portuguese", "Portuguese"),
+    ("italian", "Italian"),
+    ("dutch", "Dutch"),
+    ("danish", "Danish"),
+    ("norwegian", "Norwegian"),
+    ("swedish", "Swedish"),
+    ("finnish", "Finnish"),
+    ("russian", "Russian"),
+    ("turkish", "Turkish"),
+)
+DEFAULT_SEARCH_LANGUAGE = "english"
+SEARCH_LANGUAGE_MAX_LENGTH = 20
+
 JOIN_LINK_EXPIRY_CHOICES: dict[str, timedelta] = {
     "1h": timedelta(hours=1),
     "1d": timedelta(days=1),

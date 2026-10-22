@@ -55,6 +55,7 @@ class WorkspaceDetailView(APIView):
             workspace_id,
             data.get("name"),
             data.get("portal_enabled"),
+            data.get("search_language"),
         )
         return ResourceUpdatedResponse(
             data=WorkspaceData(membership), message=messages.MESSAGE_WORKSPACE_UPDATED

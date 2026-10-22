@@ -68,7 +68,11 @@ def list_workspaces(user: User) -> QuerySet[WorkspaceMembership]:
 
 
 def update_workspace(
-    user: User, workspace_id, name: str | None, portal_enabled: bool | None
+    user: User,
+    workspace_id,
+    name: str | None,
+    portal_enabled: bool | None,
+    search_language: str | None = None,
 ) -> WorkspaceMembership:
     membership = access.require_permission(
         user, workspace_id, permissions.WORKSPACE_UPDATE
@@ -81,6 +85,9 @@ def update_workspace(
     if portal_enabled is not None and portal_enabled != workspace.portal_enabled:
         workspace.portal_enabled = portal_enabled
         changed.append("portal_enabled")
+    if search_language is not None and search_language != workspace.search_language:
+        workspace.search_language = search_language
+        changed.append("search_language")
     if changed:
         workspace.save(update_fields=[*changed, "updated_at"])
         hooks.emit(workspace, user, hooks.ACTION_UPDATED, fields=changed)

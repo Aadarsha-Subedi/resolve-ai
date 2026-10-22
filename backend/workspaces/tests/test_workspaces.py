@@ -1,11 +1,13 @@
 from datetime import timedelta
-from unittest import mock
+from unittest import mock, skipUnless
 
+from django.db import connection
 from django.utils import timezone
 
 from accounts.services import deletion_service
 from common.storage.memory import InMemoryStorage
 from workspaces.constants.roles import MembershipStatus, Role
+from workspaces.constants.settings import SEARCH_LANGUAGE_CHOICES
 from workspaces.models import Workspace, WorkspaceMembership
 from workspaces.services import workspace_service
 from workspaces.tasks import purge_deleted_workspaces
@@ -150,6 +152,49 @@ class UpdateWorkspaceTests(WorkspaceTestCase):
             )
             self.assertEqual(response.status_code, 400, body)
         self.assertEqual(Workspace.objects.get(pk=data["id"]).slug, data["slug"])
+
+
+class SearchLanguageTests(WorkspaceTestCase):
+    def test_defaults_to_english(self):
+        data = self.create_workspace()
+        self.assertEqual(data["search_language"], "english")
+
+    def test_owner_changes_language(self):
+        workspace_id = self.create_workspace()["id"]
+        response = self.owner_client.patch(
+            self.url(workspace_id), {"search_language": "spanish"}, format="json"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["data"]["search_language"], "spanish")
+        self.assertEqual(
+            Workspace.objects.get(pk=workspace_id).search_language, "spanish"
+        )
+
+    def test_unknown_language_rejected(self):
+        workspace_id = self.create_workspace()["id"]
+        for bad in ("klingon", "", "ENGLISH; DROP TABLE x"):
+            response = self.owner_client.patch(
+                self.url(workspace_id), {"search_language": bad}, format="json"
+            )
+            self.assertEqual(response.status_code, 400, bad)
+        self.assertEqual(
+            Workspace.objects.get(pk=workspace_id).search_language, "english"
+        )
+
+    def test_member_cannot_change_language(self):
+        workspace_id = self.workspace_with_member()
+        response = self.member_client.patch(
+            self.url(workspace_id), {"search_language": "simple"}, format="json"
+        )
+        self.assertEqual(response.status_code, 403)
+
+    @skipUnless(connection.vendor == "postgresql", "needs pg_ts_config")
+    def test_every_choice_is_a_postgres_text_search_config(self):
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT cfgname FROM pg_ts_config")
+            available = {row[0] for row in cursor.fetchall()}
+        offered = {value for value, _ in SEARCH_LANGUAGE_CHOICES}
+        self.assertEqual(offered - available, set())
 
 
 class DeleteWorkspaceTests(WorkspaceTestCase):
