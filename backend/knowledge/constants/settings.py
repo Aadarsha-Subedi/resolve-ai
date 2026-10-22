@@ -26,3 +26,4 @@ KEY_PREFIX = "workspaces/{workspace_id}/knowledge/"
 UPLOAD_KEY = KEY_PREFIX + "uploads/{upload_id}.{extension}"
 
 TASK_RELEASE_STALE_UPLOADS = "knowledge.release_stale_uploads"
+TASK_REINDEX_WORKSPACE = "knowledge.reindex_workspace"

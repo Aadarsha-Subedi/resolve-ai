@@ -12,7 +12,7 @@ class ChunkModelTests(KnowledgeTestCase):
     def setUp(self):
         super().setUp()
         self.article = KnowledgeArticle.objects.get(
-            pk=self.create_article(title="Billing", content="x")["id"]
+            pk=self.create_article(title="Billing", content="")["id"]
         )
 
     def chunk(self, position, text="Refunds take five days.", **extra):

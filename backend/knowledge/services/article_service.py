@@ -18,7 +18,7 @@ from knowledge.models import (
     KnowledgeArticleCategory,
     KnowledgeCategory,
 )
-from knowledge.services import hooks, quota_service
+from knowledge.services import chunk_service, hooks, quota_service
 from workspaces.constants import permissions
 from workspaces.services import access
 
@@ -87,6 +87,7 @@ def create_article(
         )
         article.save()
         _set_categories(article, categories)
+        chunk_service.rebuild_chunks(article, membership.workspace.search_language)
     hooks.emit(
         membership.workspace,
         user,
@@ -120,6 +121,9 @@ def update_article(
         if article is None:
             raise NotFoundException(messages.MESSAGE_ARTICLE_NOT_FOUND)
         policies.KnowledgePolicy.ensure_can_edit(article)
+        reindex = (title is not None and title != article.title) or (
+            content is not None and content != article.content
+        )
         if title is not None:
             article.title = title
         if categories is not None:
@@ -134,6 +138,8 @@ def update_article(
             article.size_bytes = new_size
         article.updated_by = user
         article.save()
+        if reindex:
+            chunk_service.rebuild_chunks(article, membership.workspace.search_language)
     hooks.emit(
         membership.workspace,
         user,
