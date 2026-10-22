@@ -4,6 +4,14 @@ CATEGORY_NAME_MAX_LENGTH = 60
 CATEGORY_SLUG_MAX_LENGTH = 70
 MAX_CATEGORIES_PER_ARTICLE = 10
 
+# Passages the article is split into for search and citations.
+CHUNK_MAX_CHARS = 1200
+CHUNK_MIN_CHARS = 600
+CHUNK_CODE_MAX_CHARS = 4800  # a fenced code block stays whole up to this size
+CHUNK_MAX_HEADING_LEVEL = 3  # "#" to "###" start a new section
+CHUNK_HEADING_PATH_MAX_LENGTH = 500
+CHUNK_HEADING_SEPARATOR = " > "
+
 DEFAULT_CATEGORIES = ["General", "Getting started", "Billing", "Troubleshooting", "FAQ"]
 
 UPLOAD_MAX_BYTES = 10 * 1024 * 1024

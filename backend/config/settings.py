@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.admin",
     "django.contrib.staticfiles",
+    "django.contrib.postgres",  # full-text search fields and indexes
     "allauth",
     "allauth.account",
     "allauth.socialaccount",
