@@ -8,11 +8,10 @@ import { Restricted } from '@/components/patterns/restricted'
 import { CATEGORY_OPTIONS, ChannelLabel, SoftBadge, STATUS_OPTIONS, TicketStatusBadge, type SelectOption } from '@/components/patterns/ticket-meta'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ContextPanel } from '@/features/ai/context-panel'
-import { useTicketContext } from '@/features/ai/context-api'
 import { ErrorPanel } from '@/features/app/page-states'
 import { useWorkspace } from '@/features/app/workspace-context'
 import { useAssignTicket, useChangeStatus, useTicketOverview, useUpdateTicket } from '@/features/tickets/api'
+import { DraftReplyDialog, SummarySection } from '@/features/tickets/ai-actions'
 import { Conversation } from '@/features/tickets/conversation'
 import { EditTicketDialog } from '@/features/tickets/edit-ticket-dialog'
 import { REAL_PRIORITIES } from '@/features/tickets/options'
@@ -20,7 +19,7 @@ import { HistoryDialog } from '@/features/tickets/history-dialog'
 import { useMembers } from '@/features/workspaces/api'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useDocumentTitle } from '@/hooks/use-document-title'
-import { ArrowLeft, Clock, MagnifyingGlass, ClockCounterClockwise, DotsThreeVertical, PencilSimple, User, UserCircleDashed } from '@/icons'
+import { ArrowLeft, Clock, MagicWand, ClockCounterClockwise, DotsThreeVertical, PencilSimple, User, UserCircleDashed } from '@/icons'
 import { ApiError, errorMessage } from '@/lib/api'
 import { formatDateTime } from '@/lib/format'
 import type { TicketCategoryValue, TicketPriorityValue, TicketStatusValue } from '@/lib/types'
@@ -48,7 +47,7 @@ export function TicketPage({ ticketId }: { ticketId: string }) {
   const [editing, setEditing] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const assign = useAssignTicket(workspace.id, ticketId)
-  const contextSearch = useTicketContext(workspace.id, ticketId)
+  const [drafting, setDrafting] = useState(false)
   const members = useMembers(workspace.id)
   useDocumentTitle(overview.data ? `#${overview.data.ticket.number} ${overview.data.ticket.subject} · ResolveAI` : 'Ticket · ResolveAI')
 
@@ -99,7 +98,7 @@ export function TicketPage({ ticketId }: { ticketId: string }) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-          <Button variant="outline" icon={<MagnifyingGlass />} loading={contextSearch.isPending && !contextSearch.variables} onClick={() => contextSearch.mutate(undefined)}>Find context</Button>
+          <Button variant="outline" icon={<MagicWand />} onClick={() => setDrafting(true)}>Draft reply</Button>
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="outline" size="icon" label="Ticket actions" />}><DotsThreeVertical weight="bold" /></DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-max min-w-48">
@@ -115,7 +114,7 @@ export function TicketPage({ ticketId }: { ticketId: string }) {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <Conversation workspaceId={workspace.id} ticketId={ticket.id} messages={messages} total={meta.messages_total} returned={meta.messages_returned} rules={{ canManage, closed, email }} onFindContext={(id) => contextSearch.mutate(id)} findingMessageId={contextSearch.isPending ? contextSearch.variables ?? null : null} />
+        <Conversation workspaceId={workspace.id} ticketId={ticket.id} messages={messages} total={meta.messages_total} returned={meta.messages_returned} rules={{ canManage, closed, email }} />
         <aside aria-label="Ticket details" className="space-y-6">
           <section aria-labelledby="props" className="space-y-1">
             <h2 id="props" className="sr-only">Properties</h2>
@@ -144,10 +143,11 @@ export function TicketPage({ ticketId }: { ticketId: string }) {
             <PropertyRow label="Last activity"><span className="text-sm">{formatDateTime(ticket.last_activity_at)}</span></PropertyRow>
             {ticket.resolved_at && <PropertyRow label="Resolved"><span className="text-sm">{formatDateTime(ticket.resolved_at)}</span></PropertyRow>}
           </section>
-          <ContextPanel workspaceId={workspace.id} ticketSearch={contextSearch} />
+          <SummarySection workspaceId={workspace.id} ticketId={ticket.id} />
         </aside>
       </div>
 
+      {drafting && <DraftReplyDialog workspaceId={workspace.id} ticketId={ticket.id} open onOpenChange={setDrafting} />}
       {showHistory && <HistoryDialog workspaceId={workspace.id} ticketId={ticket.id} number={ticket.number} events={events} total={meta.events_total} returned={meta.events_returned} open onOpenChange={setShowHistory} />}
       {editing && <EditTicketDialog key={ticket.updated_at} workspaceId={workspace.id} ticket={ticket} open onOpenChange={setEditing} />}
     </div>

@@ -1,8 +1,8 @@
 import { Link } from '@tanstack/react-router'
 
-import { EmptyState, ErrorPanel, LinesSkeleton } from '@/features/app/page-states'
-import { splitHighlights, type ContextHit, type ContextResult, type useTicketContext } from '@/features/ai/context-api'
-import { Books, MagnifyingGlass } from '@/icons'
+import { EmptyState } from '@/features/app/page-states'
+import { splitHighlights, type ContextHit, type ContextResult } from '@/features/ai/context-api'
+import { MagnifyingGlass } from '@/icons'
 
 export function Snippet({ text }: { text: string }) {
   return (
@@ -37,21 +37,5 @@ export function ContextResults({ workspaceId, result, idPrefix }: { workspaceId:
         {result.rewritten ? <>Searched with: {result.queries.map((q, i) => <span key={i}>{i > 0 && ' · '}“{q.length > 80 ? `${q.slice(0, 80)}…` : q}”</span>)}</> : 'Searched with your exact words. Rewriting the question was not possible this time.'}
       </p>
     </div>
-  )
-}
-
-/** Right-hand "Related articles" panel of the ticket page: the result of the last "Find context" click. */
-export function ContextPanel({ workspaceId, ticketSearch }: { workspaceId: string; ticketSearch: ReturnType<typeof useTicketContext> }) {
-  const source = ticketSearch.variables ? 'The customer message' : 'This ticket'
-  return (
-    <section aria-labelledby="ctx" className="space-y-3">
-      <h2 id="ctx" className="flex items-center gap-2 text-sm font-semibold"><Books className="size-4 text-muted-foreground" aria-hidden />Related articles</h2>
-      <div aria-live="polite" aria-busy={ticketSearch.isPending}>
-        {ticketSearch.isPending ? <LinesSkeleton rows={3} />
-          : ticketSearch.error ? <ErrorPanel error={ticketSearch.error} title="Search failed" />
-          : ticketSearch.data ? <><p className="pb-1 text-xs text-muted-foreground">{source}</p><ContextResults workspaceId={workspaceId} result={ticketSearch.data} /></>
-          : <p className="text-sm text-muted-foreground">Use “Find context” on the ticket or on a customer message to see matching articles.</p>}
-      </div>
-    </section>
   )
 }

@@ -32,4 +32,6 @@ MESSAGE_ASSIGNEE_LOCKED = (
     "This ticket is closed. Only the owner can change its assignee."
 )
 MESSAGE_ASSIGNEE_FILTER_INVALID = "Use a user id, me or unassigned."
-MESSAGE_CONTEXT_MESSAGE_NOT_FOUND = "Message not found."
+MESSAGE_SUMMARY_READY = "Summary generated."
+MESSAGE_DRAFT_READY = "Draft generated."
+MESSAGE_AI_UNAVAILABLE = "The AI could not answer right now. Try again."

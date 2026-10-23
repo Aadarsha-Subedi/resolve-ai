@@ -17,6 +17,7 @@ from tickets.constants.settings import (
     CUSTOMER_NAME_MAX_LENGTH,
     DEFAULT_CATEGORY,
     DEFAULT_PRIORITY,
+    DRAFT_INTENT_MAX_LENGTH,
     PORTAL_HONEYPOT_FIELD,
     SUBJECT_MAX_LENGTH,
     TEXT_MAX_LENGTH,
@@ -139,5 +140,10 @@ class PortalTicketSerializer(serializers.Serializer):
         return super().to_internal_value(data)
 
 
-class TicketContextSerializer(StrictSerializer):
-    message_id = serializers.UUIDField(required=False)
+class DraftReplySerializer(StrictSerializer):
+    """`intent` is what the agent wants the reply to do. It is required: the articles say what
+    the policy is, only the agent knows what has been decided for this customer."""
+
+    intent = serializers.CharField(
+        max_length=DRAFT_INTENT_MAX_LENGTH, trim_whitespace=True
+    )

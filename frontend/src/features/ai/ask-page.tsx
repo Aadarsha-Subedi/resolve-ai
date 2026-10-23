@@ -23,7 +23,7 @@ import { errorMessage } from '@/lib/api'
 const GREETINGS = ['Hello', 'Good to have you', 'Welcome back', 'Nice to see you']
 
 /** Chat over the knowledge base. Chats are saved per user in this workspace; answers are paraphrased from published articles, with numbered sources. */
-export function AskPage() {
+export function AskPage({ initialQuestion }: { initialQuestion?: string } = {}) {
   useDocumentTitle('Ask · ResolveAI')
   const { workspace } = useWorkspace()
   const ask = useAskQuestion(workspace.id)
@@ -64,6 +64,14 @@ export function AskPage() {
       },
     )
   }
+  // A question sent here from a ticket message starts a new chat once.
+  const sentInitial = useRef(false)
+  useEffect(() => {
+    if (!initialQuestion || sentInitial.current) return
+    sentInitial.current = true
+    send(initialQuestion)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuestion])
   const submit = (event?: FormEvent) => {
     event?.preventDefault()
     const question = text.trim()

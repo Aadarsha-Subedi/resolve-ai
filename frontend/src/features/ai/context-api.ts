@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { useRefreshLlmUsage, useStaleLlmUsage } from '@/features/ai/api'
+import { useRefreshLlmUsage } from '@/features/ai/api'
 import { api, apiList } from '@/lib/api'
 
 export type ContextHit = {
@@ -19,16 +19,6 @@ export type ContextResult = {
   queries: string[]
   rewritten: boolean
   results: ContextHit[]
-}
-
-/** Context for a ticket, or, with `message_id`, for one public customer message of it. */
-export function useTicketContext(ws: string, ticketId: string) {
-  const stale = useStaleLlmUsage(ws)
-  return useMutation({
-    mutationFn: async (message_id?: string) =>
-      (await api.post<ContextResult>(`/workspaces/${ws}/tickets/${ticketId}/context/`, message_id ? { message_id } : {})).data,
-    onSettled: stale,
-  })
 }
 
 export type AnswerStatus = 'answered' | 'not_covered' | 'unavailable' | 'no_results'

@@ -97,10 +97,16 @@ All routes: `/api/workspaces/{workspace_id}/knowledge/...` -> `workspaces/servic
 - **Chat question:** `knowledge/views/context.py::ContextView.post` (scope `ai`) -> `ContextQuestionSerializer` -> `knowledge/services/context_service.py::retrieve_for_question` -> `retrieve_context`.
 - **Ask:** `knowledge/views/context.py::AskView.post` (scope `ai`) -> `knowledge/services/answer_service.py::answer_question` -> `retrieve_for_question` -> no passages: `no_results`; otherwise `llm_service.generate` with the numbered passages -> `parse_answer` (valid `[n]` only) -> `AnswerData` (`status`, `answer`, `cited` plus the context fields). An LLM error returns `unavailable` with the passages.
 - **Ask history:** `answer_service.answer_question` first calls `ask_history.check_can_add_turn` (own chat, under the turn cap), then answers, then `ask_history.record_turn` stores question and payload (`answer_payload`) and returns the ids. `AskConversationListView`, `AskConversationDetailView` (GET, DELETE) read and delete only the caller's chats. `knowledge/signals.py` deletes a member's chats when they leave or are removed.
-- **Ticket:** `tickets/views/context.py::TicketContextView.post` -> `tickets/services/context_service.py::ticket_context` (`tickets.view`; query = subject and description, or the public customer message `message_id`, otherwise 404) -> `retrieve_context`.
+- **Ticket customer message:** no ticket endpoint. The ticket page sends the raw message to the Ask page (`/app/{ws}/ask?q=...`), which starts a new chat through `AskView`.
 - **`retrieve_context`:** `common/search/context.py::context_query` (stemmed OR terms, 12-term cap) -> `rewrite_service` (cached 1 h; `llm_service.generate` -> `allowance` check for the Resolve AI key -> `common/llm` provider; any failure returns no rewrites) -> `_ranked` per query (`common/search/query.py::search_with_query` over PUBLISHED chunks of the workspace, `ts_rank_cd`, score floor) -> `_merge` (reciprocal rank fusion) -> `_select` (2 per article, top 5) -> `with_headline` for those rows -> `ContextData` (`terms`, `queries`, `rewritten`, `results`).
 - **Index upkeep:** `knowledge/services/chunk_service.py::rebuild_chunks` on article create and on edits; `reindex_knowledge` command; a `search_language` change queues a Celery reindex.
 
+## 13b. Ticket summary and draft reply (implemented)
+
+- **Summary:** `tickets/views/ai.py::TicketSummaryView.post` (scope `ai`) -> `tickets/services/ai_service.py::summarize` -> public messages only -> `llm_service.generate`. Not stored.
+- **Draft reply:** `TicketDraftReplyView.post` -> `DraftReplySerializer` (`intent`, required, max 200) -> `ai_service.draft_reply` -> public conversation + `retrieve_context` passages -> `llm_service.generate` with the user's name as signature -> `draft` and `sources`. Not sent, not stored.
+- **Frontend:** `features/tickets/ai-actions.tsx`, `ai-api.ts`.
+
 ## 14. Planned flows (not implemented yet; see the LLD, section 12)
 
-Mark each as implemented, with real file references, when built: AI-assisted reply (drafting from the context search results).
+Mark each as implemented, with real file references, when built: none at the moment.

@@ -2389,7 +2389,7 @@
           }
         },
         {
-          "name": "Find context for a ticket",
+          "name": "Summarise a ticket",
           "request": {
             "method": "POST",
             "header": [
@@ -2403,7 +2403,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/context/",
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/summary/",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -2413,11 +2413,11 @@
                 "{{workspaceId}}",
                 "tickets",
                 "{{ticketId}}",
-                "context",
+                "summary",
                 ""
               ]
             },
-            "description": "Uses the ticket subject and description. Send {\"message_id\": \"...\"} to use one public customer message instead. Internal notes are never used.",
+            "description": "Needs tickets.view. Summary of the public conversation only; internal notes are never sent to the LLM. Not stored. Throttle scope ai.",
             "body": {
               "mode": "raw",
               "raw": "{}"
@@ -2425,7 +2425,7 @@
           }
         },
         {
-          "name": "Find context for a customer message",
+          "name": "Draft a reply",
           "request": {
             "method": "POST",
             "header": [
@@ -2439,7 +2439,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/context/",
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/draft-reply/",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -2449,14 +2449,14 @@
                 "{{workspaceId}}",
                 "tickets",
                 "{{ticketId}}",
-                "context",
+                "draft-reply",
                 ""
               ]
             },
-            "description": "Only public customer messages are accepted; any other id returns 404.",
+            "description": "Needs tickets.view. `intent` is required, 1 to 200 characters. Uses the public conversation, matching published articles and the caller's name for the signature. Returns `draft` and `sources`. Nothing is sent or stored.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"message_id\": \"{{messageId}}\"\n}"
+              "raw": "{\n  \"intent\": \"Apologise for the delay and explain the refund steps\"\n}"
             }
           }
         }
