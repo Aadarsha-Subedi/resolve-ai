@@ -1,4 +1,5 @@
-"""Split an article's Markdown into passages for search and citations.
+"""Split Markdown (an article, or the text of an uploaded document) into passages for
+search and citations.
 
 Pure function, no database. Rules:
 - "#" to "###" headings (outside code fences) start a new section; every passage carries
@@ -8,8 +9,13 @@ Pure function, no database. Rules:
   then word boundaries.
 - A fenced code block is never split unless it is larger than CHUNK_CODE_MAX_CHARS,
   and then only between lines.
+- A table (lines starting with "|") is cut between rows, and every piece repeats the
+  header row so it stays readable on its own.
 - Sections without body text produce no passage; a tiny last passage is merged into
   the one before it.
+- Documents: `chunk_document` takes the pages of a PDF (or one unnumbered page). Headings
+  carry over from page to page, a passage never crosses a page and records its page number,
+  and a long paragraph that has to be cut overlaps its neighbour by one sentence.
 """
 
 import re
@@ -22,25 +28,49 @@ from knowledge.constants.settings import (
     CHUNK_MAX_CHARS,
     CHUNK_MAX_HEADING_LEVEL,
     CHUNK_MIN_CHARS,
+    CHUNK_OVERLAP_CHARS,
 )
 
 _HEADING = re.compile(rf"^(#{{1,{CHUNK_MAX_HEADING_LEVEL}}})\s+(.+?)\s*#*\s*$")
 _FENCE = re.compile(r"^\s*(```|~~~)")
 _SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
+_TABLE_SEPARATOR = re.compile(r"^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$")
 
 
 @dataclass(frozen=True)
 class ChunkDraft:
     heading_path: str
     text: str
+    page: int | None = None
 
 
 def chunk_markdown(title: str, content: str) -> list[ChunkDraft]:
+    return _chunk(title, content, [], page=None, overlap=0)
+
+
+def chunk_document(title: str, pages: list[tuple[int | None, str]]) -> list[ChunkDraft]:
+    """Passages of an uploaded document, given as (page number or None, Markdown) pairs."""
+    stack: list[tuple[int, str]] = []  # headings stay in force on the following pages
     chunks: list[ChunkDraft] = []
-    for path, body_lines in _sections(title, content):
+    for page, content in pages:
+        chunks.extend(
+            _chunk(title, content, stack, page=page, overlap=CHUNK_OVERLAP_CHARS)
+        )
+    return chunks
+
+
+def _chunk(
+    title: str,
+    content: str,
+    stack: list[tuple[int, str]],
+    page: int | None,
+    overlap: int,
+) -> list[ChunkDraft]:
+    chunks: list[ChunkDraft] = []
+    for path, body_lines in _sections(title, content, stack):
         paragraphs = _paragraphs(body_lines)
-        for text in _pack(paragraphs):
-            chunks.append(ChunkDraft(path, text))
+        for text in _pack(paragraphs, overlap):
+            chunks.append(ChunkDraft(path, text, page))
     return chunks
 
 
@@ -52,9 +82,9 @@ def _heading_path(title: str, stack: list[tuple[int, str]]) -> str:
     return CHUNK_HEADING_SEPARATOR.join(parts)[:CHUNK_HEADING_PATH_MAX_LENGTH]
 
 
-def _sections(title: str, content: str):
-    """Yield (heading_path, body_lines) for the text before and after each heading."""
-    stack: list[tuple[int, str]] = []
+def _sections(title: str, content: str, stack: list[tuple[int, str]]):
+    """Yield (heading_path, body_lines) for the text before and after each heading.
+    `stack` is the heading path in force; it is updated in place."""
     body: list[str] = []
     fence = None
     for line in content.splitlines():
@@ -111,24 +141,65 @@ def _paragraphs(lines: list[str]) -> list[str]:
     return blocks
 
 
-def _split_long(block: str) -> list[str]:
-    """Cut a block longer than the maximum into pieces no longer than the maximum."""
+def _split_long(block: str, overlap: int = 0) -> list[str]:
+    """Cut a block longer than the maximum into pieces no longer than the maximum.
+    With `overlap`, a piece starts with the previous piece's last sentence if that is
+    short enough."""
     if block.lstrip().startswith(("```", "~~~")):
         if len(block) <= CHUNK_CODE_MAX_CHARS:
             return [block]
         return _split_lines(block, CHUNK_CODE_MAX_CHARS)
     if len(block) <= CHUNK_MAX_CHARS:
         return [block]
+    if (
+        _is_table(block)
+        and len("\n".join(block.splitlines()[:2])) <= CHUNK_MAX_CHARS // 2
+    ):
+        return _split_table(block)
     pieces: list[str] = []
     current = ""
+    last_part = ""
     for sentence in _SENTENCE_END.split(block):
         for part in _split_words(sentence):
             if current and len(current) + 1 + len(part) > CHUNK_MAX_CHARS:
                 pieces.append(current)
-                current = part
+                keep = last_part if 0 < len(last_part) <= overlap else ""
+                if keep and len(keep) + 1 + len(part) <= CHUNK_MAX_CHARS:
+                    current = f"{keep} {part}"
+                else:
+                    current = part
             else:
                 current = f"{current} {part}".strip()
+            last_part = part
     if current:
+        pieces.append(current)
+    return pieces
+
+
+def _is_table(block: str) -> bool:
+    lines = block.splitlines()
+    return (
+        len(lines) >= 3
+        and all(line.lstrip().startswith("|") for line in lines)
+        and bool(_TABLE_SEPARATOR.match(lines[1]))
+    )
+
+
+def _split_table(block: str) -> list[str]:
+    """Cut a Markdown table between rows; each piece repeats the header and separator."""
+    lines = block.splitlines()
+    header = "\n".join(lines[:2])
+    pieces: list[str] = []
+    current = header
+    for row in lines[2:]:
+        if len(row) > CHUNK_MAX_CHARS - len(header) - 1:
+            # A single row longer than a passage is cut: rare, and its first cells matter most.
+            row = row[: CHUNK_MAX_CHARS - len(header) - 1]
+        if current != header and len(current) + 1 + len(row) > CHUNK_MAX_CHARS:
+            pieces.append(current)
+            current = header
+        current = f"{current}\n{row}"
+    if current != header:
         pieces.append(current)
     return pieces
 
@@ -170,12 +241,12 @@ def _split_words(text: str) -> list[str]:
     return pieces
 
 
-def _pack(paragraphs: list[str]) -> list[str]:
+def _pack(paragraphs: list[str], overlap: int = 0) -> list[str]:
     """Greedily join paragraphs up to the maximum; merge a tiny last piece backwards."""
     packed: list[str] = []
     current = ""
     for paragraph in paragraphs:
-        for piece in _split_long(paragraph):
+        for piece in _split_long(paragraph, overlap):
             if (
                 current
                 and len(current) + 2 + len(piece) > CHUNK_MAX_CHARS

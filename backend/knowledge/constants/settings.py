@@ -11,6 +11,9 @@ CHUNK_CODE_MAX_CHARS = 4800  # a fenced code block stays whole up to this size
 CHUNK_MAX_HEADING_LEVEL = 3  # "#" to "###" start a new section
 CHUNK_HEADING_PATH_MAX_LENGTH = 500
 CHUNK_HEADING_SEPARATOR = " > "
+# Uploaded documents: when a long paragraph must be cut, the next passage starts with the last
+# sentence of the previous one if it is at most this long (context for search and embeddings).
+CHUNK_OVERLAP_CHARS = 150
 
 # Context search (citations for a ticket, a customer message or a chat question)
 CONTEXT_QUERY_MIN_LENGTH = 2

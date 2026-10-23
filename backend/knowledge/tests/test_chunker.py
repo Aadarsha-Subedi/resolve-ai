@@ -1,3 +1,5 @@
+import itertools
+
 from django.test import SimpleTestCase
 
 from knowledge.constants.settings import (
@@ -6,7 +8,7 @@ from knowledge.constants.settings import (
     CHUNK_MAX_CHARS,
     CHUNK_MIN_CHARS,
 )
-from knowledge.services.chunker import chunk_markdown
+from knowledge.services.chunker import chunk_document, chunk_markdown
 
 
 def paths(chunks):
@@ -118,3 +120,105 @@ class ChunkerCodeBlockTests(SimpleTestCase):
             self.assertLessEqual(len(chunk.text), CHUNK_CODE_MAX_CHARS)
             for line in chunk.text.splitlines():
                 self.assertTrue(line.startswith(("line number", "```")), line)
+
+
+def table(rows: int) -> str:
+    lines = ["| Plan | Price | Notes |", "| --- | --- | --- |"]
+    lines += [f"| Plan {i} | ${i} | " + "details " * 12 + "|" for i in range(rows)]
+    return "\n".join(lines)
+
+
+class ChunkerTableTests(SimpleTestCase):
+    def test_a_small_table_stays_whole(self):
+        chunks = chunk_markdown("T", table(3))
+        self.assertEqual(len(chunks), 1)
+        self.assertEqual(chunks[0].text, table(3))
+
+    def test_a_long_table_is_cut_between_rows_and_repeats_its_header(self):
+        chunks = chunk_markdown("T", table(60))
+        self.assertGreater(len(chunks), 1)
+        header = "| Plan | Price | Notes |\n| --- | --- | --- |"
+        rows = []
+        for chunk in chunks:
+            self.assertTrue(chunk.text.startswith(header), chunk.text[:40])
+            self.assertLessEqual(len(chunk.text), CHUNK_MAX_CHARS)
+            body = chunk.text[len(header) :].strip().splitlines()
+            self.assertTrue(all(row.startswith("| Plan ") for row in body))
+            rows += body
+        self.assertEqual(len(rows), 60)  # every row exactly once
+        self.assertEqual(rows[0].split("|")[1].strip(), "Plan 0")
+        self.assertEqual(rows[-1].split("|")[1].strip(), "Plan 59")
+
+    def test_text_that_only_looks_like_a_table_is_cut_as_text(self):
+        block = "\n".join(["| not a table |"] * 200)
+        for chunk in chunk_markdown("T", block):
+            self.assertLessEqual(len(chunk.text), CHUNK_MAX_CHARS)
+
+    def test_a_table_with_an_enormous_header_does_not_crash(self):
+        header = "| " + " | ".join(["column"] * 200) + " |"
+        block = "\n".join([header, "| --- |", *["| x |"] * 300])
+        for chunk in chunk_markdown("T", block):
+            self.assertLessEqual(len(chunk.text), CHUNK_MAX_CHARS)
+
+
+SENTENCE = "This sentence explains one idea clearly."
+
+
+class ChunkDocumentTests(SimpleTestCase):
+    def test_pages_are_recorded_and_unnumbered_documents_have_none(self):
+        chunks = chunk_document("Guide", [(1, "First page."), (2, "Second page.")])
+        self.assertEqual(
+            [(c.page, c.text) for c in chunks],
+            [(1, "First page."), (2, "Second page.")],
+        )
+        plain = chunk_document("Guide", [(None, "Only text.")])
+        self.assertEqual([c.page for c in plain], [None])
+
+    def test_a_chunk_never_spans_two_pages(self):
+        chunks = chunk_document("G", [(1, "Short one."), (2, "Short two.")])
+        self.assertEqual(len(chunks), 2)
+
+    def test_headings_carry_over_to_the_next_page(self):
+        pages = [
+            (1, "# Billing\n\n## Refunds\n\nRefunds take five days."),
+            (2, "They are paid to the original card."),
+            (3, "## Invoices\n\nInvoices are monthly."),
+        ]
+        chunks = chunk_document("Guide", pages)
+        self.assertEqual(
+            [(c.page, c.heading_path) for c in chunks],
+            [
+                (1, "Guide > Billing > Refunds"),
+                (2, "Guide > Billing > Refunds"),
+                (3, "Guide > Billing > Invoices"),
+            ],
+        )
+
+    def test_empty_pages_produce_nothing(self):
+        self.assertEqual(
+            chunk_document("G", [(1, ""), (2, "  \n"), (3, "# Only heading")]), []
+        )
+
+    def test_a_cut_paragraph_overlaps_by_one_sentence_in_documents_only(self):
+        text = " ".join([SENTENCE] * 100)
+        plain = chunk_markdown("T", text)
+        document = chunk_document("T", [(None, text)])
+        for before, after in itertools.pairwise(document):
+            self.assertTrue(before.text.endswith(SENTENCE))
+            self.assertTrue(after.text.startswith(SENTENCE))
+        for chunk in document:
+            self.assertLessEqual(len(chunk.text), CHUNK_MAX_CHARS)
+        # articles are unchanged: no sentence is repeated between passages
+        self.assertEqual(" ".join(c.text for c in plain).count(SENTENCE), 100)
+        self.assertGreater(" ".join(c.text for c in document).count(SENTENCE), 100)
+
+    def test_overlap_is_skipped_when_the_sentence_is_too_long(self):
+        long_sentence = ("word " * 40).strip() + "."  # about 200 characters
+        text = " ".join([long_sentence] * 30)
+        document = chunk_document("T", [(None, text)])
+        joined = " ".join(c.text for c in document)
+        self.assertEqual(joined.count(long_sentence), 30)
+
+    def test_document_chunking_is_deterministic(self):
+        pages = [(1, "# A\n" + "word " * 700), (2, table(40))]
+        self.assertEqual(chunk_document("T", pages), chunk_document("T", pages))
