@@ -18,7 +18,7 @@ x-backend: &backend
 
 services:
   db:
-    image: postgres:17
+    image: pgvector/pgvector:pg17
     container_name: ${RESOLVE_AI_DB_CONTAINER_NAME}
     environment:
       POSTGRES_DB: ${RESOLVE_AI_DB_NAME}
