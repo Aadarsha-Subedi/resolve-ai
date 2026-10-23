@@ -39,6 +39,14 @@ RESOLVE_AI_MODELS = (
     "gemini-3.8-flash",
 )
 
+# Embeddings: one fixed model for every workspace, so all stored vectors can be compared.
+# Changing either value means every stored vector must be recomputed.
+EMBEDDING_MODEL = "gemini-embedding-001"
+EMBEDDING_DIMENSIONS = 768
+EMBEDDING_BATCH_SIZE = 100  # the most texts Gemini accepts in one request
+EMBED_DOCUMENT = "document"  # text that is stored and searched
+EMBED_QUERY = "query"  # text a user searches with
+
 REQUEST_TIMEOUT_SECONDS = 30
 DEFAULT_MAX_OUTPUT_TOKENS = 1024
 DEFAULT_TEMPERATURE = 0.2

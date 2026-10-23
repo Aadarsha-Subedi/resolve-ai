@@ -19,7 +19,7 @@ CHUNK_OVERLAP_CHARS = 150
 CONTEXT_QUERY_MIN_LENGTH = 2
 CONTEXT_QUERY_MAX_LENGTH = 2000
 CONTEXT_MAX_RESULTS = 5
-CONTEXT_MAX_PER_ARTICLE = 2
+CONTEXT_MAX_PER_SOURCE = 2  # passages from one article or one uploaded document
 # Passages taken from each query's ranking before merging.
 CONTEXT_CANDIDATES_PER_QUERY = 20
 # ts_rank_cd (0..1). A lone word found only in a passage's body scores about 0.29 and a word
@@ -28,6 +28,14 @@ CONTEXT_CANDIDATES_PER_QUERY = 20
 CONTEXT_MIN_SCORE = 0.05
 CONTEXT_MIN_SCORE_MANY_TERMS = 0.3
 CONTEXT_MANY_TERMS = 3
+# Vector search: a passage counts when its cosine similarity to the query is at least this.
+# Not tuned on real data yet; raise it if unrelated passages appear, lower it if related
+# ones are missed.
+CONTEXT_MIN_SIMILARITY = 0.55
+# Searches that embed their query text (original + rewrites go in one request) are limited
+# per user, per workspace, per UTC day. They use the Resolve AI key whatever the user's mode.
+EMBED_QUERY_DAILY_LIMIT = 300
+EMBED_QUERY_USAGE_KEY = "knowledge:query-embeddings:{workspace_id}:{user_id}:{day}"
 CONTEXT_RRF_K = 60  # reciprocal rank fusion: score = sum of 1 / (K + rank)
 # The same text is not sent to the LLM twice within this time.
 CONTEXT_REWRITE_CACHE_SECONDS = 60 * 60
@@ -88,3 +96,18 @@ ANSWER_MAX_OUTPUT_TOKENS = 1024
 ASK_TITLE_MAX_LENGTH = 80
 ASK_MAX_CONVERSATIONS = 50  # per user per workspace; the oldest are removed beyond this
 ASK_MAX_TURNS = 50  # per conversation
+
+TASK_EMBED_SOURCE = "knowledge.embed_source"
+TASK_EMBED_PENDING_CHUNKS = "knowledge.embed_pending_chunks"
+EMBED_SOURCE_ARTICLE = "article"
+EMBED_SOURCE_UPLOAD = "upload"
+EMBED_SOURCES = (EMBED_SOURCE_ARTICLE, EMBED_SOURCE_UPLOAD)
+EMBED_MAX_RETRIES = 3
+EMBED_RETRY_BACKOFF_SECONDS = 60
+# The Resolve AI key pays for embeddings, so each workspace may embed this many chunks per
+# UTC day (about 24 MB of text). What is over the cap waits for the next day's sweep.
+EMBED_DAILY_CHUNK_LIMIT = 20_000
+EMBED_USAGE_KEY = "knowledge:embeddings:{workspace_id}:{day}"
+EMBED_USAGE_TTL_SECONDS = 2 * 24 * 60 * 60
+# The sweeper queues at most this many articles/uploads per run.
+EMBED_SWEEP_SOURCES = 50

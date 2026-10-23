@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand, CommandError
 
 from knowledge.constants.enums import UploadStatus
 from knowledge.models import KnowledgeUpload
-from knowledge.services import chunk_service
+from knowledge.services import chunk_service, embedding_service
 from knowledge.tasks import index_upload
 from workspaces.models import Workspace
 
@@ -10,7 +10,8 @@ from workspaces.models import Workspace
 class Command(BaseCommand):
     help = (
         "Re-split every article into search passages and rebuild their search vectors. "
-        "With --uploads, also queue every confirmed upload to be read again."
+        "With --uploads, also queue every confirmed upload to be read again. "
+        "With --embeddings, forget all stored embeddings so the background sweep recomputes them."
     )
 
     def add_arguments(self, parser):
@@ -19,6 +20,11 @@ class Command(BaseCommand):
             "--uploads",
             action="store_true",
             help="Also queue all confirmed uploads for re-reading (the documents worker does the work).",
+        )
+        parser.add_argument(
+            "--embeddings",
+            action="store_true",
+            help="Forget all stored embeddings; the sweep (every 15 minutes) recomputes them.",
         )
         parser.add_argument(
             "--dry-run", action="store_true", help="Count articles, write nothing."
@@ -49,3 +55,8 @@ class Command(BaseCommand):
                 for upload_id in ids:
                     index_upload.delay(str(upload_id), force=True)
                 self.stdout.write(f"queued {len(ids)} uploads")
+        if options["embeddings"] and not options["dry_run"]:
+            count = embedding_service.reset_embeddings(workspace_id)
+            self.stdout.write(
+                f"cleared {count} embeddings; the sweep will recompute them"
+            )

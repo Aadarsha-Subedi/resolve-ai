@@ -12,17 +12,23 @@ from common.llm import (
     LLMRequest,
     LLMTimeoutError,
     LLMUnavailableError,
+    LLMUnsupportedError,
     create_provider,
     resolve_ai_provider,
 )
 from common.llm.constants import (
     ALLOWED_MODELS,
     DEFAULT_MODELS,
+    EMBED_DOCUMENT,
+    EMBED_QUERY,
+    EMBEDDING_BATCH_SIZE,
+    EMBEDDING_DIMENSIONS,
+    EMBEDDING_MODEL,
     PROVIDERS,
     REQUEST_TIMEOUT_SECONDS,
     RESOLVE_AI_MODELS,
 )
-from common.llm.fake import FakeProvider
+from common.llm.fake import FakeProvider, fake_embedding
 from common.llm.gemini import GeminiProvider
 from common.llm.openai_provider import OpenAIProvider
 
@@ -327,3 +333,86 @@ class OpenAIQuotaTests(SimpleTestCase):
         with self.assertRaises(LLMRateLimitedError) as caught:
             provider.generate(REQUEST)
         self.assertNotIsInstance(caught.exception, LLMInsufficientQuotaError)
+
+
+class EmbeddingTests(SimpleTestCase):
+    def gemini(self):
+        with mock.patch("common.llm.gemini.genai.Client"):
+            provider = GeminiProvider("secret-key", "gemini-3.5-flash-lite")
+        return provider, provider._client.models
+
+    @staticmethod
+    def reply(count, size=EMBEDDING_DIMENSIONS):
+        return mock.Mock(
+            embeddings=[mock.Mock(values=[0.5] * size) for _ in range(count)]
+        )
+
+    def test_gemini_uses_the_fixed_model_and_size(self):
+        provider, models = self.gemini()
+        models.embed_content.return_value = self.reply(2)
+        vectors = provider.embed(["a", "b"], EMBED_QUERY)
+        self.assertEqual(len(vectors), 2)
+        kwargs = models.embed_content.call_args.kwargs
+        self.assertEqual(kwargs["model"], EMBEDDING_MODEL)
+        self.assertEqual(kwargs["contents"], ["a", "b"])
+        self.assertEqual(kwargs["config"].task_type, "RETRIEVAL_QUERY")
+        self.assertEqual(kwargs["config"].output_dimensionality, EMBEDDING_DIMENSIONS)
+
+    def test_documents_use_the_document_task(self):
+        provider, models = self.gemini()
+        models.embed_content.return_value = self.reply(1)
+        provider.embed(["a"], EMBED_DOCUMENT)
+        self.assertEqual(
+            models.embed_content.call_args.kwargs["config"].task_type,
+            "RETRIEVAL_DOCUMENT",
+        )
+
+    def test_large_inputs_are_sent_in_batches(self):
+        provider, models = self.gemini()
+        models.embed_content.side_effect = lambda **kw: self.reply(len(kw["contents"]))
+        vectors = provider.embed(["t"] * (EMBEDDING_BATCH_SIZE + 5))
+        self.assertEqual(len(vectors), EMBEDDING_BATCH_SIZE + 5)
+        sizes = [c.kwargs["contents"] for c in models.embed_content.call_args_list]
+        self.assertEqual([len(s) for s in sizes], [EMBEDDING_BATCH_SIZE, 5])
+
+    def test_wrong_count_or_size_is_a_bad_response(self):
+        provider, models = self.gemini()
+        models.embed_content.return_value = self.reply(1)
+        with self.assertRaises(LLMBadResponseError):
+            provider.embed(["a", "b"])
+        models.embed_content.return_value = self.reply(1, size=3)
+        with self.assertRaises(LLMBadResponseError):
+            provider.embed(["a"])
+
+    def test_errors_are_mapped(self):
+        provider, models = self.gemini()
+        models.embed_content.side_effect = genai_errors.APIError(
+            429, {"error": {"message": "quota for key secret-key"}}
+        )
+        with self.assertRaises(LLMRateLimitedError) as caught:
+            provider.embed(["a"])
+        self.assertNotIn("secret-key", str(caught.exception))
+
+    def test_openai_does_not_embed(self):
+        with mock.patch("common.llm.openai_provider.openai.OpenAI"):
+            provider = OpenAIProvider("key", "gpt-5-mini")
+        with self.assertRaises(LLMUnsupportedError):
+            provider.embed(["a"])
+
+    def test_fake_vectors_are_unit_length_and_reflect_shared_words(self):
+        fake = FakeProvider()
+        close, near, far = fake.embed(
+            ["reset password", "password reset steps", "refund policy"]
+        )
+        self.assertEqual(len(close), EMBEDDING_DIMENSIONS)
+        self.assertAlmostEqual(sum(v * v for v in close), 1.0)
+
+        def dot(a, b):
+            return sum(x * y for x, y in zip(a, b, strict=True))
+
+        self.assertGreater(dot(close, near), dot(close, far))
+        self.assertEqual(fake.embedded[0][1], EMBED_DOCUMENT)
+        fake.fail_with = LLMTimeoutError()
+        with self.assertRaises(LLMTimeoutError):
+            fake.embed(["x"])
+        self.assertEqual(fake_embedding("a b"), fake_embedding("b a"))

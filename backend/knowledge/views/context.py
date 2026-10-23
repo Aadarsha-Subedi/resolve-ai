@@ -24,8 +24,9 @@ from knowledge.services import answer_service, ask_history, context_service
 
 
 class ContextView(APIView):
-    """POST {"query": "..."}: passages of published articles that answer a question typed
-    into the chat box, with citations. Uses the caller's AI settings for query rewriting."""
+    """POST {"query": "..."}: passages of published articles and uploaded documents that
+    answer a question typed into the chat box, with citations. Uses the caller's AI settings
+    for query rewriting, and the Resolve AI key to embed the query for the search by meaning."""
 
     throttle_classes = [UserThrottle, AuthScopedThrottle]
     throttle_scope = "ai"

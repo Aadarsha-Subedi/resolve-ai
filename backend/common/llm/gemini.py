@@ -17,7 +17,14 @@ from common.llm.base import (
     LLMTimeoutError,
     LLMUnavailableError,
 )
-from common.llm.constants import PROVIDER_GEMINI, REQUEST_TIMEOUT_SECONDS
+from common.llm.constants import (
+    EMBED_DOCUMENT,
+    EMBEDDING_BATCH_SIZE,
+    EMBEDDING_DIMENSIONS,
+    EMBEDDING_MODEL,
+    PROVIDER_GEMINI,
+    REQUEST_TIMEOUT_SECONDS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +113,32 @@ class GeminiProvider(LLMProvider):
             input_tokens=(usage.prompt_token_count or 0) if usage else 0,
             output_tokens=(usage.candidates_token_count or 0) if usage else 0,
         )
+
+    def embed(self, texts: list[str], task: str = EMBED_DOCUMENT) -> list[list[float]]:
+        # The embedding model is fixed (EMBEDDING_MODEL), whatever model answers questions.
+        config = types.EmbedContentConfig(
+            task_type=(
+                "RETRIEVAL_DOCUMENT" if task == EMBED_DOCUMENT else "RETRIEVAL_QUERY"
+            ),
+            output_dimensionality=EMBEDDING_DIMENSIONS,
+        )
+        vectors: list[list[float]] = []
+        for start in range(0, len(texts), EMBEDDING_BATCH_SIZE):
+            batch = texts[start : start + EMBEDDING_BATCH_SIZE]
+            try:
+                response = self._client.models.embed_content(
+                    model=EMBEDDING_MODEL, contents=batch, config=config
+                )
+                embeddings = response.embeddings or []
+            except Exception as exc:  # noqa: BLE001 - any SDK failure maps to an LLMError
+                raise _map_error(exc) from None
+            if len(embeddings) != len(batch) or any(
+                not e.values or len(e.values) != EMBEDDING_DIMENSIONS
+                for e in embeddings
+            ):
+                raise LLMBadResponseError()
+            vectors.extend(list(e.values) for e in embeddings)
+        return vectors
 
     def validate_key(self) -> None:
         try:

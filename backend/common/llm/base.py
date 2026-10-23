@@ -3,7 +3,11 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from common.llm.constants import DEFAULT_MAX_OUTPUT_TOKENS, DEFAULT_TEMPERATURE
+from common.llm.constants import (
+    DEFAULT_MAX_OUTPUT_TOKENS,
+    DEFAULT_TEMPERATURE,
+    EMBED_DOCUMENT,
+)
 
 
 class LLMError(Exception):
@@ -43,6 +47,11 @@ class LLMUnavailableError(LLMError):
     message = "The provider is unavailable."
 
 
+class LLMUnsupportedError(LLMError):
+    code = "llm_unsupported"
+    message = "The provider does not support this operation."
+
+
 class LLMBadResponseError(LLMError):
     code = "llm_bad_response"
     message = "The provider returned no usable answer."
@@ -72,6 +81,12 @@ class LLMProvider(ABC):
     @abstractmethod
     def generate(self, request: LLMRequest) -> LLMResponse:
         """Return the model's text. Raises an LLMError subclass on any failure."""
+
+    def embed(self, texts: list[str], task: str = EMBED_DOCUMENT) -> list[list[float]]:
+        """One vector of EMBEDDING_DIMENSIONS floats per text, in order. `task` is
+        EMBED_DOCUMENT for text that is stored or EMBED_QUERY for a search. Raises an
+        LLMError subclass on any failure."""
+        raise LLMUnsupportedError()
 
     @abstractmethod
     def validate_key(self) -> None:

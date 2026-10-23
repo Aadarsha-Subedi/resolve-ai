@@ -11,6 +11,7 @@ from common.llm.base import (
     LLMResponse,
     LLMTimeoutError,
     LLMUnavailableError,
+    LLMUnsupportedError,
 )
 from common.llm.factory import create_provider, resolve_ai_provider
 
@@ -25,6 +26,7 @@ __all__ = [
     "LLMResponse",
     "LLMTimeoutError",
     "LLMUnavailableError",
+    "LLMUnsupportedError",
     "create_provider",
     "resolve_ai_provider",
 ]

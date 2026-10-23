@@ -1,39 +1,58 @@
-"""Context search: the best passages of PUBLISHED articles for a piece of text.
+"""Context search: the best passages of PUBLISHED articles and READY uploaded documents for a
+piece of text.
 
 The text can be a ticket, a customer's message or a question typed into the chat box. The
-original text and up to three LLM rewrites of it are each searched (OR of the most
-distinctive stemmed words, ranked with `ts_rank_cd`), and the ranked lists are merged with
-reciprocal rank fusion. A passage that ranks well for several wordings rises to the top.
-If rewriting fails for any reason, only the original text is searched."""
+original text and up to three LLM rewrites of it are each searched two ways: by words (OR of
+the most distinctive stemmed words, ranked with `ts_rank_cd`) and by meaning (the query's
+embedding against the passages' embeddings, cosine similarity). All the ranked lists are
+merged with reciprocal rank fusion, so a passage that ranks well for several wordings or in
+both searches rises to the top. At most CONTEXT_MAX_PER_SOURCE passages come from one article
+or document.
+
+Every step has a fallback: if rewriting fails only the original text is searched; if
+embedding fails (no key, limit reached, provider down) or the database is not Postgres, only
+the word search runs; if the word search finds nothing, the vector search alone decides."""
 
 import hashlib
+import logging
 from dataclasses import dataclass, field
 
 from django.contrib.postgres.search import SearchQuery
 from django.core.cache import cache
-from django.db import connection
+from django.db import DatabaseError, connection, transaction
 from django.db.models import Q
 
 from accounts.models import User
 from ai.services.rewrite_service import rewrite_query
+from common.exception.domain import AppException
+from common.llm import LLMError
+from common.llm.constants import EMBEDDING_MODEL
 from common.search.context import ContextQuery, context_query
 from common.search.query import search_with_query, with_headline
 from knowledge.constants import settings as cfg
-from knowledge.constants.enums import ArticleStatus
+from knowledge.constants.enums import ArticleStatus, UploadStatus
 from knowledge.models import KnowledgeChunk
+from knowledge.services import embedding_service
 from workspaces.constants import permissions
 from workspaces.services import access
+
+logger = logging.getLogger(__name__)
+
+SOURCE_ARTICLE = "article"
+SOURCE_UPLOAD = "upload"
 
 
 @dataclass
 class Passage:
     chunk_id: str
-    article_id: str
-    article_title: str
+    source_type: str  # SOURCE_ARTICLE or SOURCE_UPLOAD
+    source_id: str
+    source_title: str  # the article title, or the uploaded file's name
     section: str
     snippet: str
-    score: float
+    score: float  # best raw score: word-search rank, or vector similarity (0 to 1)
     text: str = ""
+    page: int | None = None  # the PDF page, for passages of uploaded documents
 
 
 @dataclass
@@ -60,22 +79,24 @@ def _rewrites(user: User, workspace_id, text: str) -> list[str]:
     return rewrites
 
 
-def _published_chunks(workspace_id):
-    return KnowledgeChunk.objects.filter(
-        workspace_id=workspace_id, article__status=ArticleStatus.PUBLISHED
+def _visible_chunks(workspace_id):
+    """Passages of published articles and of uploads that are ready."""
+    return KnowledgeChunk.objects.filter(workspace_id=workspace_id).filter(
+        Q(article__status=ArticleStatus.PUBLISHED)
+        | Q(upload__status=UploadStatus.READY)
     )
 
 
 def _ranked(workspace_id, query: ContextQuery) -> list[tuple[str, float]]:
-    """(chunk id, score) for one query, best first."""
-    base = _published_chunks(workspace_id)
+    """(chunk id, score) for one query by words, best first."""
+    base = _visible_chunks(workspace_id)
     many = len(query.terms) >= cfg.CONTEXT_MANY_TERMS
     minimum = cfg.CONTEXT_MIN_SCORE_MANY_TERMS if many else cfg.CONTEXT_MIN_SCORE
     if connection.vendor == "postgresql":
         rows = (
             search_with_query(base, query.query, vector_field="search_vector")
             .filter(rank__gte=minimum)
-            .order_by("-rank", "-article__updated_at", "id")
+            .order_by("-rank", "-created_at", "id")
             .values_list("id", "rank")[: cfg.CONTEXT_CANDIDATES_PER_QUERY]
         )
         return [(str(chunk_id), float(rank)) for chunk_id, rank in rows]
@@ -89,6 +110,52 @@ def _ranked(workspace_id, query: ContextQuery) -> list[tuple[str, float]]:
         .values_list("id", flat=True)[: cfg.CONTEXT_CANDIDATES_PER_QUERY]
     )
     return [(str(chunk_id), 0.0) for chunk_id in rows]
+
+
+def _vector_rankings(
+    workspace_id, vectors: list[list[float]]
+) -> list[list[tuple[str, float]]]:
+    """(chunk id, cosine similarity) per query vector, best first. Postgres only."""
+    from pgvector.django import CosineDistance
+
+    max_distance = 1 - cfg.CONTEXT_MIN_SIMILARITY
+    rankings = []
+    with transaction.atomic():
+        try:
+            # The index finds neighbours first and the workspace filter is applied after:
+            # keep scanning until enough rows pass it (pgvector 0.8 and later).
+            with transaction.atomic(), connection.cursor() as cursor:
+                cursor.execute("SET LOCAL hnsw.iterative_scan = strict_order")
+        except DatabaseError:
+            logger.info("pgvector iterative scan is not available")
+        for vector in vectors:
+            rows = (
+                _visible_chunks(workspace_id)
+                .filter(embedding__isnull=False, embedding_model=EMBEDDING_MODEL)
+                .annotate(distance=CosineDistance("embedding", vector))
+                .filter(distance__lte=max_distance)
+                .order_by("distance", "id")
+                .values_list("id", "distance")[: cfg.CONTEXT_CANDIDATES_PER_QUERY]
+            )
+            rankings.append(
+                [(str(chunk_id), round(1 - float(d), 6)) for chunk_id, d in rows]
+            )
+    return rankings
+
+
+def _query_vectors(user: User, workspace_id, texts: list[str]):
+    """Embeddings of the query texts (one request), or None when searching by meaning is
+    not possible right now."""
+    if connection.vendor != "postgresql" or not embedding_service.is_configured():
+        return None
+    try:
+        return embedding_service.embed_queries(user.id, workspace_id, texts)
+    except (LLMError, AppException) as exc:
+        logger.warning(
+            "Search by meaning skipped: %s",
+            getattr(exc, "code", None) or getattr(exc, "error_code", ""),
+        )
+        return None
 
 
 def _merge(rankings: list[list[tuple[str, float]]]) -> list[tuple[str, float]]:
@@ -106,16 +173,17 @@ def _merge(rankings: list[list[tuple[str, float]]]) -> list[tuple[str, float]]:
 
 
 def _select(
-    merged: list[tuple[str, float]], article_of: dict[str, str]
+    merged: list[tuple[str, float]], source_of: dict[str, str]
 ) -> list[tuple[str, float]]:
-    """At most CONTEXT_MAX_PER_ARTICLE passages per article, CONTEXT_MAX_RESULTS in all."""
-    per_article: dict[str, int] = {}
+    """At most CONTEXT_MAX_PER_SOURCE passages per article or document, CONTEXT_MAX_RESULTS
+    in all. `source_of` maps a chunk id to its article's or upload's id."""
+    per_source: dict[str, int] = {}
     picked = []
     for chunk_id, score in merged:
-        article_id = article_of[chunk_id]
-        if per_article.get(article_id, 0) >= cfg.CONTEXT_MAX_PER_ARTICLE:
+        source_id = source_of[chunk_id]
+        if per_source.get(source_id, 0) >= cfg.CONTEXT_MAX_PER_SOURCE:
             continue
-        per_article[article_id] = per_article.get(article_id, 0) + 1
+        per_source[source_id] = per_source.get(source_id, 0) + 1
         picked.append((chunk_id, score))
         if len(picked) == cfg.CONTEXT_MAX_RESULTS:
             break
@@ -132,55 +200,74 @@ def _combined_query(queries: list[ContextQuery]) -> ContextQuery:
     )
 
 
+def _passage(row: KnowledgeChunk, score: float) -> Passage:
+    snippet = getattr(row, "headline", "") or row.text[:300]
+    if row.article_id:
+        kind, source_id, title = SOURCE_ARTICLE, row.article_id, row.article.title
+    else:
+        kind, source_id, title = SOURCE_UPLOAD, row.upload_id, row.upload.filename
+    return Passage(
+        chunk_id=str(row.id),
+        source_type=kind,
+        source_id=str(source_id),
+        source_title=title,
+        section=row.heading_path,
+        snippet=snippet,
+        score=round(score, 4),
+        text=row.text,
+        page=row.page,
+    )
+
+
 def retrieve_context(user: User, workspace, text: str) -> ContextResult:
     """Passages for `text`. The caller has checked the user's permission."""
     text = " ".join((text or "").split())
     original = context_query(text, workspace.search_language)
-    if not original:
+    if not original and not text:
         return ContextResult()
     rewrites = _rewrites(user, workspace.id, text)
-    queries = [original] + [
-        q for q in (context_query(r, workspace.search_language) for r in rewrites) if q
+    texts = [text, *rewrites]
+    queries = [
+        q for q in (context_query(t, workspace.search_language) for t in texts) if q
     ]
     rankings = [_ranked(workspace.id, q) for q in queries]
+    vectors = _query_vectors(user, workspace.id, texts)
+    if vectors:
+        rankings += _vector_rankings(workspace.id, vectors)
+    terms = original.terms if original else []
     merged = _merge(rankings)
     if not merged:
-        return ContextResult(terms=original.terms, rewrites=rewrites)
+        return ContextResult(terms=terms, rewrites=rewrites)
 
-    article_of = {
-        str(chunk_id): str(article_id)
-        for chunk_id, article_id in _published_chunks(workspace.id)
+    rows = {
+        str(row.id): row
+        for row in _visible_chunks(workspace.id)
         .filter(id__in=[c for c, _ in merged])
-        .values_list("id", "article_id")
+        .select_related("article", "upload")
     }
-    picked = _select([m for m in merged if m[0] in article_of], article_of)
+    source_of = {
+        chunk_id: str(row.article_id or row.upload_id) for chunk_id, row in rows.items()
+    }
+    picked = _select([m for m in merged if m[0] in rows], source_of)
 
     combined = _combined_query(queries)
-    rows = _published_chunks(workspace.id).filter(id__in=[c for c, _ in picked])
+    chosen = _visible_chunks(workspace.id).filter(id__in=[c for c, _ in picked])
     if combined.query is not None:
-        rows = with_headline(
-            rows,
-            text_field="text",
-            config=workspace.search_language,
-            tsquery=combined.query,
-        )
-    by_id = {str(row.id): row for row in rows.select_related("article")}
-    passages = []
-    for chunk_id, score in picked:
-        row = by_id[chunk_id]
-        snippet = getattr(row, "headline", "") or row.text[:300]
-        passages.append(
-            Passage(
-                chunk_id=chunk_id,
-                article_id=str(row.article_id),
-                article_title=row.article.title,
-                section=row.heading_path,
-                snippet=snippet,
-                score=round(score, 4),
-                text=row.text,
+        headlines = {
+            str(r.id): r.headline
+            for r in with_headline(
+                chosen,
+                text_field="text",
+                config=workspace.search_language,
+                tsquery=combined.query,
             )
-        )
-    return ContextResult(results=passages, terms=combined.terms, rewrites=rewrites)
+        }
+        for chunk_id, headline in headlines.items():
+            rows[chunk_id].headline = headline
+    passages = [_passage(rows[chunk_id], score) for chunk_id, score in picked]
+    return ContextResult(
+        results=passages, terms=combined.terms or terms, rewrites=rewrites
+    )
 
 
 def retrieve_for_question(user: User, workspace_id, text: str) -> ContextResult:

@@ -18,6 +18,7 @@ from django.db import connections, transaction
 from django.db.models import F, QuerySet
 
 from common.documents import ParsedDocument
+from knowledge.constants.settings import EMBED_SOURCE_ARTICLE, EMBED_SOURCE_UPLOAD
 from knowledge.models import KnowledgeArticle, KnowledgeChunk, KnowledgeUpload
 from knowledge.services.chunker import ChunkDraft, chunk_document, chunk_markdown
 from workspaces.models import Workspace
@@ -48,15 +49,25 @@ def _language(workspace_id) -> str:
     )
 
 
+def _queue_embedding(kind: str, source_id) -> None:
+    """Once the surrounding transaction commits, embed the source's new chunks."""
+    from knowledge.tasks import embed_source  # tasks import this module
+
+    transaction.on_commit(lambda: embed_source.delay(kind, str(source_id)))
+
+
 def _sync(
     existing: QuerySet[KnowledgeChunk],
     drafts: list[ChunkDraft],
     language: str,
     make_row,
+    embed_as: tuple[str, object],
     full: bool = False,
 ) -> int:
     """Make the rows of one source match `drafts`. Returns how many chunks the source has.
-    `make_row(position, draft)` builds an unsaved row. With `full` every row is replaced."""
+    `make_row(position, draft)` builds an unsaved row. With `full` every row is replaced.
+    Rows that are new get their embedding afterwards (`embed_as` is the (kind, id) of the
+    source); rows that were kept keep theirs."""
     rows = list(existing.order_by("position"))
     pool: dict[tuple, deque[KnowledgeChunk]] = defaultdict(deque)
     if not full:
@@ -86,6 +97,7 @@ def _sync(
     if new_rows:
         KnowledgeChunk.objects.bulk_create(new_rows)
         fill_vectors(KnowledgeChunk.objects.filter(pk__in=[r.id for r in new_rows]))
+        _queue_embedding(*embed_as)
     return len(drafts)
 
 
@@ -108,6 +120,7 @@ def rebuild_chunks(
             text=draft.text,
             search_language=language,
         ),
+        (EMBED_SOURCE_ARTICLE, article.id),
         full=full,
     )
 
@@ -140,6 +153,7 @@ def rebuild_upload_chunks(
             page=draft.page,
             search_language=language,
         ),
+        (EMBED_SOURCE_UPLOAD, upload.id),
         full=full,
     )
 

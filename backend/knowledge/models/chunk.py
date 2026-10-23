@@ -3,7 +3,9 @@ import uuid
 from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.search import SearchVectorField
 from django.db import models
+from pgvector.django import HnswIndex, VectorField
 
+from common.llm.constants import EMBEDDING_DIMENSIONS
 from knowledge.constants.settings import CHUNK_HEADING_PATH_MAX_LENGTH
 from workspaces.constants.settings import (
     DEFAULT_SEARCH_LANGUAGE,
@@ -22,6 +24,8 @@ class KnowledgeChunk(models.Model):
     `search_vector` is
     filled by that service (Postgres only; it stays NULL on SQLite) using
     `search_language`, a copy of the workspace language at the time of writing.
+    `embedding` is filled shortly after by a background task (`embedding_service`); it is
+    NULL until then, and `embedding_model` names the model that made it.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
@@ -52,6 +56,8 @@ class KnowledgeChunk(models.Model):
         default=DEFAULT_SEARCH_LANGUAGE,
     )
     search_vector = SearchVectorField(null=True, editable=False)
+    embedding = VectorField(dimensions=EMBEDDING_DIMENSIONS, null=True, editable=False)
+    embedding_model = models.CharField(max_length=60, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -82,4 +88,16 @@ class KnowledgeChunk(models.Model):
                 name="knowledge_chunk_ws_upl_pos",
             ),
             GinIndex(fields=["search_vector"], name="knowledge_chunk_search_gin"),
+            HnswIndex(
+                name="knowledge_chunk_embedding_hnsw",
+                fields=["embedding"],
+                m=16,
+                ef_construction=64,
+                opclasses=["vector_cosine_ops"],
+            ),
         ]
+
+    @property
+    def embedding_input(self) -> str:
+        """The text that is embedded: the heading path gives the passage its context."""
+        return f"{self.heading_path}\n\n{self.text}"

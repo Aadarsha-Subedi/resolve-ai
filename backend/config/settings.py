@@ -366,6 +366,10 @@ CELERY_BEAT_SCHEDULE: dict = {  # feature apps register their periodic tasks her
         "task": "knowledge.requeue_unindexed_uploads",
         "schedule": crontab(minute="*/10"),
     },
+    "knowledge-embed-pending-chunks": {
+        "task": "knowledge.embed_pending_chunks",
+        "schedule": crontab(minute="*/15"),
+    },
     "email-renew-gmail-watches": {
         "task": "email_integration.renew_gmail_watches",
         "schedule": crontab(hour=2, minute=30),

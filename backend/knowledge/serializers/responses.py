@@ -7,8 +7,8 @@ from knowledge.models import (
     KnowledgeCategory,
     KnowledgeUpload,
 )
-from knowledge.services.answer_service import AnswerResult
-from knowledge.services.context_service import ContextResult
+from knowledge.services.answer_service import ANSWERED, AnswerResult
+from knowledge.services.context_service import SOURCE_ARTICLE, ContextResult
 
 
 def _category(category: KnowledgeCategory) -> dict:
@@ -96,7 +96,19 @@ class ContextData(BaseResponseData):
                 {
                     "citation": number,
                     "score": p.score,
-                    "article": {"id": p.article_id, "title": p.article_title},
+                    # `article` is null for passages of uploaded documents; `source` is
+                    # always set (`type` is "article" or "upload", `page` is a PDF page).
+                    "article": (
+                        {"id": p.source_id, "title": p.source_title}
+                        if p.source_type == SOURCE_ARTICLE
+                        else None
+                    ),
+                    "source": {
+                        "type": p.source_type,
+                        "id": p.source_id,
+                        "title": p.source_title,
+                        "page": p.page,
+                    },
                     "section": p.section,
                     "chunk_id": p.chunk_id,
                     "snippet": p.snippet,
@@ -110,6 +122,7 @@ def answer_payload(result: AnswerResult) -> dict:
     """What one Ask turn shows: the context payload plus the answer. This is also what is stored."""
     return {
         **ContextData(result.context).to_dict(),
+        "answered": result.status == ANSWERED,
         "status": result.status,
         "reason": result.reason or None,
         "answer": result.answer or None,
