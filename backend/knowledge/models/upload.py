@@ -9,7 +9,7 @@ from knowledge.constants.settings import UPLOAD_FILENAME_MAX_LENGTH
 
 
 class KnowledgeUpload(TimeStampModel):
-    """A PDF/TXT document. Stored only (no text extraction in v1). The row exists as
+    """A PDF, DOCX, Markdown or text document. The row exists as
     PENDING from the moment space is reserved until the browser upload is confirmed."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
@@ -19,7 +19,7 @@ class KnowledgeUpload(TimeStampModel):
         related_name="knowledge_uploads",
     )
     filename = models.CharField(max_length=UPLOAD_FILENAME_MAX_LENGTH)
-    content_type = models.CharField(max_length=50)
+    content_type = models.CharField(max_length=100)
     size_bytes = models.PositiveIntegerField()
     storage_key = models.CharField(max_length=300, unique=True)
     status = models.CharField(

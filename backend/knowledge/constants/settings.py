@@ -33,12 +33,25 @@ CONTEXT_REWRITE_CACHE_KEY = "knowledge:rewrites:{workspace_id}:{digest}"
 DEFAULT_CATEGORIES = ["General", "Getting started", "Billing", "Troubleshooting", "FAQ"]
 
 UPLOAD_MAX_BYTES = 10 * 1024 * 1024
-UPLOAD_CONTENT_TYPES = {"application/pdf": "pdf", "text/plain": "txt"}
+DOCX_CONTENT_TYPE = (
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+)
+UPLOAD_CONTENT_TYPES = {
+    "application/pdf": "pdf",
+    "text/plain": "txt",
+    "text/markdown": "md",
+    DOCX_CONTENT_TYPE: "docx",
+}
 UPLOAD_FILENAME_MAX_LENGTH = 255
 UPLOAD_URL_EXPIRY_SECONDS = 600
 UPLOAD_PENDING_TTL_SECONDS = 3600  # unconfirmed uploads are cleaned up after this
 DOWNLOAD_URL_EXPIRY_SECONDS = 300
 PDF_MAGIC = b"%PDF-"
+ZIP_MAGIC = b"PK\x03\x04"  # a DOCX is a zip archive
+# DOCX archives are checked from the zip directory only (nothing is decompressed here).
+DOCX_REQUIRED_PARTS = ("[Content_Types].xml", "word/document.xml")
+DOCX_MAX_ENTRIES = 1000
+DOCX_MAX_UNCOMPRESSED_BYTES = 100 * 1024 * 1024  # declared size of all parts together
 
 KEY_PREFIX = "workspaces/{workspace_id}/knowledge/"
 UPLOAD_KEY = KEY_PREFIX + "uploads/{upload_id}.{extension}"

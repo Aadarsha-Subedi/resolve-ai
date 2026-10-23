@@ -1,6 +1,8 @@
+import io
 import os
 import re
 import uuid
+import zipfile
 
 from django.db import transaction
 from django.db.models import QuerySet
@@ -19,6 +21,10 @@ from common.storage.base import DirectUploadUnsupported
 from knowledge.constants import errors, messages
 from knowledge.constants.enums import UploadStatus
 from knowledge.constants.settings import (
+    DOCX_CONTENT_TYPE,
+    DOCX_MAX_ENTRIES,
+    DOCX_MAX_UNCOMPRESSED_BYTES,
+    DOCX_REQUIRED_PARTS,
     DOWNLOAD_URL_EXPIRY_SECONDS,
     PDF_MAGIC,
     UPLOAD_CONTENT_TYPES,
@@ -27,6 +33,7 @@ from knowledge.constants.settings import (
     UPLOAD_MAX_BYTES,
     UPLOAD_PENDING_TTL_SECONDS,
     UPLOAD_URL_EXPIRY_SECONDS,
+    ZIP_MAGIC,
 )
 from knowledge.models import KnowledgeCategory, KnowledgeUpload
 from knowledge.services import hooks, quota_service
@@ -42,6 +49,25 @@ def clean_filename(name: str, content_type: str) -> str:
     extension = "." + UPLOAD_CONTENT_TYPES[content_type]
     base = base[: UPLOAD_FILENAME_MAX_LENGTH - len(extension)] or "document"
     return base if base.lower().endswith(extension) else base + extension
+
+
+def _is_docx(data: bytes) -> bool:
+    """A real DOCX: a zip with the Word parts, a bounded number of entries and a bounded
+    declared size. Only the zip directory is read, nothing is decompressed."""
+    if not data.startswith(ZIP_MAGIC):
+        return False
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            entries = archive.infolist()
+            names = {entry.filename for entry in entries}
+            return (
+                len(entries) <= DOCX_MAX_ENTRIES
+                and sum(entry.file_size for entry in entries)
+                <= DOCX_MAX_UNCOMPRESSED_BYTES
+                and all(part in names for part in DOCX_REQUIRED_PARTS)
+            )
+    except zipfile.BadZipFile:
+        return False
 
 
 def create_upload(
@@ -129,6 +155,8 @@ def confirm_upload(user: User, workspace_id, upload_id) -> KnowledgeUpload:
     )
     if valid and upload.content_type == "application/pdf":
         valid = storage.read_range(upload.storage_key, len(PDF_MAGIC)) == PDF_MAGIC
+    elif valid and upload.content_type == DOCX_CONTENT_TYPE:
+        valid = _is_docx(storage.read(upload.storage_key))
     if not valid:
         _discard(upload)  # never keep an object we refuse to use
         raise BadRequestException(

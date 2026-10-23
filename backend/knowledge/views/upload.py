@@ -37,7 +37,7 @@ class UploadListView(APIView):
 
 
 class UploadUrlView(APIView):
-    """POST: reserve space and get a signed PUT URL (PDF or TXT, up to 10 MB)."""
+    """POST: reserve space and get a signed PUT URL (PDF, DOCX, MD or TXT, up to 10 MB)."""
 
     def post(self, request, workspace_id):
         data = UploadUrlSerializer.parse(request.data)

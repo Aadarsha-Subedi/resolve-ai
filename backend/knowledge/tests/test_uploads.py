@@ -1,3 +1,5 @@
+import io
+import zipfile
 from datetime import timedelta
 from unittest import mock
 
@@ -11,6 +13,18 @@ from knowledge.tests.base import KnowledgeTestCase
 
 PDF = b"%PDF-1.4\n" + b"x" * 100
 PDF_SIZE = len(PDF)
+DOCX_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+
+def make_zip(names=("[Content_Types].xml", "word/document.xml")) -> bytes:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        for name in names:
+            archive.writestr(name, "<x/>")
+    return buffer.getvalue()
+
+
+DOCX = make_zip()
 
 
 class UploadFlowTests(KnowledgeTestCase):
@@ -95,6 +109,56 @@ class UploadFlowTests(KnowledgeTestCase):
     def test_text_upload(self):
         body, _ = self.upload(b"hello", "text/plain", "notes.txt")
         self.assertEqual(self.confirm(body["id"]).status_code, 200)
+
+    def test_markdown_upload(self):
+        body, key = self.upload(b"# Guide\n\nText", "text/markdown", "guide.md")
+        self.assertEqual(body["filename"], "guide.md")
+        self.assertTrue(key.endswith(".md"))
+        self.assertEqual(self.confirm(body["id"]).status_code, 200)
+
+    def test_docx_upload(self):
+        body, key = self.upload(DOCX, DOCX_TYPE, "Policy.docx")
+        self.assertTrue(key.endswith(".docx"))
+        self.assertEqual(self.confirm(body["id"]).status_code, 200)
+        self.assertEqual(
+            KnowledgeUpload.objects.get(pk=body["id"]).content_type, DOCX_TYPE
+        )
+
+    def test_extension_follows_the_content_type(self):
+        for given, content_type, expected in (
+            ("notes", "text/markdown", "notes.md"),
+            ("Policy", DOCX_TYPE, "Policy.docx"),
+            ("Policy.docx", DOCX_TYPE, "Policy.docx"),
+        ):
+            self.assertEqual(
+                upload_service.clean_filename(given, content_type), expected
+            )
+
+    def test_confirm_rejects_fake_and_unsafe_docx(self):
+        too_many = make_zip(
+            ("[Content_Types].xml", "word/document.xml")
+            + tuple(f"p{i}.xml" for i in range(1001))
+        )
+        cases = (
+            b"not a zip at all" * 4,
+            b"PK\x03\x04" + b"garbage" * 10,  # zip header, broken archive
+            make_zip(("readme.txt",)),  # a zip, but not a Word file
+            too_many,
+        )
+        for data in cases:
+            body = self.request_url(size=len(data), content_type=DOCX_TYPE).data["data"]
+            key = KnowledgeUpload.objects.get(pk=body["id"]).storage_key
+            self.storage.objects[key] = (data, DOCX_TYPE)
+            self.assertEqual(self.confirm(body["id"]).status_code, 400, len(data))
+            self.assertNotIn(key, self.storage.objects)
+        self.assertEqual((self.used(), KnowledgeUpload.objects.count()), (0, 0))
+
+    def test_docx_declared_size_cap(self):
+        with mock.patch.object(upload_service, "DOCX_MAX_UNCOMPRESSED_BYTES", 3):
+            body, _ = self.upload(
+                DOCX, DOCX_TYPE, "big.docx"
+            )  # parts declare > 3 bytes
+            self.assertEqual(self.confirm(body["id"]).status_code, 400)
 
     def test_declared_validation(self):
         bad = [
