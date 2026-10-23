@@ -14,7 +14,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from common.documents import DocumentError, get_parser
+from common.documents import DocumentEmptyError, DocumentError, get_parser
 from common.storage import get_storage
 from knowledge.constants.enums import IndexStatus, UploadStatus
 from knowledge.constants.settings import (
@@ -25,6 +25,7 @@ from knowledge.constants.settings import (
     INDEX_STALE_SECONDS,
 )
 from knowledge.models import KnowledgeUpload
+from knowledge.services import chunk_service
 
 logger = logging.getLogger(__name__)
 
@@ -58,8 +59,16 @@ def mark_failed(upload_id, code: str) -> None:
     )
 
 
+def _back_to_pending(upload_id) -> None:
+    """After an unexpected error: let the retry (or the sweeper) claim the upload again."""
+    KnowledgeUpload.objects.filter(
+        pk=upload_id, index_status=IndexStatus.INDEXING
+    ).update(index_status=IndexStatus.PENDING, updated_at=timezone.now())
+
+
 def index_upload(upload_id, force: bool = False) -> bool:
-    """Extract the document's text and store it. Returns True when the upload is INDEXED."""
+    """Read the document, store its text, and write its search passages. Returns True when
+    the upload is INDEXED."""
     upload = _claim(upload_id, force)
     if upload is None:
         return False
@@ -69,29 +78,35 @@ def index_upload(upload_id, force: bool = False) -> bool:
         parsed = get_parser(upload.content_type).parse(
             storage.read(upload.storage_key), upload.content_type
         )
+        drafts = chunk_service.upload_drafts(upload, parsed)
+        if not drafts:  # only headings, or nothing that can be searched
+            raise DocumentEmptyError()
         storage.upload(key, parsed.markdown.encode("utf-8"), EXTRACTED_CONTENT_TYPE)
     except DocumentError as error:
         logger.warning("Upload %s could not be read: %s", upload.id, error.code)
         mark_failed(upload.id, error.code)
         return False
     except Exception:
-        # Back to PENDING so the retry (or the sweeper) can claim it again.
-        KnowledgeUpload.objects.filter(
-            pk=upload.id, index_status=IndexStatus.INDEXING
-        ).update(index_status=IndexStatus.PENDING, updated_at=timezone.now())
+        _back_to_pending(upload.id)
         raise
     numbered = [page.number for page in parsed.pages if page.number is not None]
-    with transaction.atomic():
-        done = KnowledgeUpload.objects.filter(
-            pk=upload.id, index_status=IndexStatus.INDEXING
-        ).update(
-            index_status=IndexStatus.INDEXED,
-            index_error="",
-            extracted_key=key,
-            page_count=max(numbered) if numbered else None,
-            indexed_at=timezone.now(),
-            updated_at=timezone.now(),
-        )
+    try:
+        with transaction.atomic():
+            done = KnowledgeUpload.objects.filter(
+                pk=upload.id, index_status=IndexStatus.INDEXING
+            ).update(
+                index_status=IndexStatus.INDEXED,
+                index_error="",
+                extracted_key=key,
+                page_count=max(numbered) if numbered else None,
+                indexed_at=timezone.now(),
+                updated_at=timezone.now(),
+            )
+            if done:  # chunks and status are saved together or not at all
+                chunk_service.rebuild_upload_chunks(upload, drafts)
+    except Exception:
+        _back_to_pending(upload.id)
+        raise
     if not done:  # deleted (or taken over) while we were reading it
         storage.delete(key)
         return False

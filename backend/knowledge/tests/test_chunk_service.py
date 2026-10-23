@@ -71,6 +71,84 @@ class ChunkSyncTests(LanguageChangeMixin, KnowledgeTestCase):
         self.assertEqual([c.heading_path for c in after], ["Billing > Shipping"])
         self.assertTrue(before.isdisjoint({c.id for c in after}))
 
+    def edit(self, article_id, content):
+        response = self.owner_client.patch(
+            self.kurl(f"articles/{article_id}/"), {"content": content}, format="json"
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+
+    def by_path(self, article_id):
+        return {c.heading_path: c for c in self.chunks(article_id)}
+
+    def test_editing_one_section_keeps_the_other_rows(self):
+        data = self.article()
+        before = self.by_path(data["id"])
+        self.edit(data["id"], BODY.replace("arrive monthly", "arrive weekly"))
+        after = self.by_path(data["id"])
+        for path in (
+            "Billing",
+            "Billing > Refunds",
+            "Billing > Refunds > Annual plans",
+        ):
+            self.assertEqual(after[path].id, before[path].id, path)
+        changed = after["Billing > Invoices"]
+        self.assertNotEqual(changed.id, before["Billing > Invoices"].id)
+        self.assertEqual(changed.text, "Invoices arrive weekly.")
+        self.assertEqual([c.position for c in self.chunks(data["id"])], [0, 1, 2, 3])
+
+    def test_inserting_a_section_moves_the_rows_after_it_without_replacing_them(self):
+        data = self.article()
+        before = self.by_path(data["id"])
+        self.edit(
+            data["id"],
+            BODY.replace("# Refunds", "# Shipping\nShips in two days.\n\n# Refunds"),
+        )
+        after = self.by_path(data["id"])
+        self.assertEqual(
+            [c.heading_path for c in self.chunks(data["id"])],
+            [
+                "Billing",
+                "Billing > Invoices",
+                "Billing > Shipping",
+                "Billing > Refunds",
+                "Billing > Refunds > Annual plans",
+            ],
+        )
+        self.assertEqual([c.position for c in self.chunks(data["id"])], [0, 1, 2, 3, 4])
+        for path in ("Billing > Refunds", "Billing > Refunds > Annual plans"):
+            self.assertEqual(
+                after[path].id, before[path].id, path
+            )  # moved, not replaced
+        self.assertNotIn(
+            after["Billing > Shipping"].id, {c.id for c in before.values()}
+        )
+
+    def test_removing_a_section_deletes_only_its_rows(self):
+        data = self.article()
+        before = self.by_path(data["id"])
+        self.edit(data["id"], BODY.split("# Refunds")[0])
+        after = self.by_path(data["id"])
+        self.assertEqual(set(after), {"Billing", "Billing > Invoices"})
+        self.assertEqual(after["Billing"].id, before["Billing"].id)
+
+    def test_identical_passages_are_each_kept(self):
+        content = "# A\nSame text.\n\n# B\nOther.\n\n# A\nSame text."
+        data = self.article(content=content)
+        before = [c.id for c in self.chunks(data["id"])]
+        self.edit(data["id"], content + "\n\n# C\nNew.")
+        self.assertEqual([c.id for c in self.chunks(data["id"])][:3], before)
+
+    def test_a_full_rebuild_replaces_every_row(self):
+        data = self.article()
+        before = {c.id for c in self.chunks(data["id"])}
+        article = KnowledgeArticle.objects.get(pk=data["id"])
+        from knowledge.services import chunk_service
+
+        self.assertEqual(chunk_service.rebuild_chunks(article), 4)
+        self.assertEqual({c.id for c in self.chunks(data["id"])}, before)
+        self.assertEqual(chunk_service.rebuild_chunks(article, full=True), 4)
+        self.assertTrue(before.isdisjoint({c.id for c in self.chunks(data["id"])}))
+
     def test_editing_the_title_updates_the_heading_paths(self):
         data = self.article()
         self.owner_client.patch(

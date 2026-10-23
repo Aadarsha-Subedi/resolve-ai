@@ -1,9 +1,10 @@
 from datetime import timedelta
 from io import StringIO
-from unittest import mock
+from unittest import mock, skipUnless
 
 from celery.exceptions import Retry
 from django.core.management import call_command
+from django.db import connection
 from django.utils import timezone
 
 from common.documents import (
@@ -14,9 +15,10 @@ from common.documents import (
 )
 from knowledge import tasks
 from knowledge.constants.enums import IndexStatus
-from knowledge.models import KnowledgeUpload
+from knowledge.models import KnowledgeChunk, KnowledgeUpload
 from knowledge.services import upload_index_service, upload_service
 from knowledge.tests.base import KnowledgeTestCase
+from workspaces.models import Workspace
 
 PDF = b"%PDF-1.4\n" + b"x" * 100
 
@@ -204,3 +206,124 @@ class UploadIndexingTests(KnowledgeTestCase):
         self.assertEqual(len(self.document_parser.calls), 2)  # forced re-read
         upload.refresh_from_db()
         self.assertEqual(upload.index_status, IndexStatus.INDEXED)
+
+
+PAGES = ParsedDocument(
+    pages=(
+        ParsedPage(1, "# Billing\n\n## Refunds\n\nRefunds take five days."),
+        ParsedPage(
+            2,
+            "They are paid to the original card.\n\n## Invoices\n\nInvoices are monthly.",
+        ),
+    )
+)
+
+
+class UploadChunkTests(UploadIndexingTests):
+    """Same helpers as above; these tests are about the passages an upload gets."""
+
+    def chunks(self, upload):
+        return list(KnowledgeChunk.objects.filter(upload=upload))
+
+    def index_with(self, parsed, **kwargs):
+        self.document_parser.parse = mock.Mock(return_value=parsed)
+        return self.make_upload(**kwargs)
+
+    def test_indexing_writes_passages_with_pages_and_headings(self):
+        upload = self.index_with(PAGES)
+        chunks = self.chunks(upload)
+        self.assertEqual(
+            [(c.position, c.page, c.heading_path) for c in chunks],
+            [
+                (0, 1, "Guide > Billing > Refunds"),
+                (1, 2, "Guide > Billing > Refunds"),
+                (2, 2, "Guide > Billing > Invoices"),
+            ],
+        )
+        self.assertEqual({c.article_id for c in chunks}, {None})
+        self.assertEqual({c.search_language for c in chunks}, {"english"})
+        self.assertEqual({str(c.workspace_id) for c in chunks}, {self.workspace_id})
+
+    def test_reindexing_keeps_unchanged_passages(self):
+        upload = self.index_with(PAGES)
+        before = {c.heading_path + c.text: c.id for c in self.chunks(upload)}
+        changed = ParsedDocument(
+            pages=(
+                PAGES.pages[0],
+                ParsedPage(
+                    2,
+                    "They are paid to the original card.\n\n## Invoices\n\nInvoices are weekly.",
+                ),
+            )
+        )
+        self.document_parser.parse = mock.Mock(return_value=changed)
+        self.assertTrue(upload_index_service.index_upload(upload.id, force=True))
+        after = {c.heading_path + c.text: c.id for c in self.chunks(upload)}
+        kept = set(before) & set(after)
+        self.assertEqual(len(kept), 2)
+        self.assertTrue(all(before[k] == after[k] for k in kept))
+        self.assertEqual(len(self.chunks(upload)), 3)
+
+    def test_nothing_searchable_fails_the_upload_as_empty(self):
+        upload = self.index_with(
+            ParsedDocument(pages=(ParsedPage(1, "# Only a heading"),))
+        )
+        self.assertEqual(
+            (upload.index_status, upload.index_error, upload.extracted_key),
+            (IndexStatus.FAILED, "document_empty", ""),
+        )
+        self.assertEqual(self.chunks(upload), [])
+
+    def test_a_chunk_failure_undoes_the_status_and_allows_a_retry(self):
+        upload = self.make_upload(confirm=False)
+        KnowledgeUpload.objects.filter(pk=upload.id).update(status="ready")
+        with (
+            mock.patch(
+                "knowledge.services.upload_index_service.chunk_service.rebuild_upload_chunks",
+                side_effect=RuntimeError("boom"),
+            ),
+            self.assertRaises(RuntimeError),
+        ):
+            upload_index_service.index_upload(upload.id)
+        upload.refresh_from_db()
+        self.assertEqual(upload.index_status, IndexStatus.PENDING)
+        self.assertEqual(self.chunks(upload), [])
+        self.assertTrue(upload_index_service.index_upload(upload.id))
+        self.assertEqual(len(self.chunks(upload)), 1)
+
+    def test_deleting_the_upload_or_the_workspace_removes_its_passages(self):
+        gone = self.index_with(PAGES)
+        kept = self.index_with(ParsedDocument(pages=(ParsedPage(None, "Plain text."),)))
+        upload_service.delete_upload(self.owner, self.workspace_id, gone.id)
+        self.assertEqual(self.chunks(gone), [])
+        self.assertEqual(len(self.chunks(kept)), 1)
+        Workspace.all_objects.filter(pk=self.workspace_id).delete()
+        self.assertEqual(KnowledgeChunk.objects.count(), 0)
+
+    def test_the_workspace_language_applies_to_new_passages(self):
+        response = self.owner_client.patch(
+            f"/api/workspaces/{self.workspace_id}/",
+            {"search_language": "german"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        upload = self.index_with(PAGES)
+        self.assertEqual({c.search_language for c in self.chunks(upload)}, {"german"})
+
+    @skipUnless(connection.vendor == "postgresql", "needs Postgres full-text search")
+    def test_passages_are_searchable_with_their_vectors(self):
+        from common.search.query import search
+
+        upload = self.index_with(PAGES)
+        self.assertFalse(
+            KnowledgeChunk.objects.filter(
+                upload=upload, search_vector__isnull=True
+            ).exists()
+        )
+        found = search(
+            KnowledgeChunk.objects.filter(upload=upload),
+            "invoice",
+            config="english",
+            vector_field="search_vector",
+        )
+        self.assertEqual([c.page for c in found], [2])
