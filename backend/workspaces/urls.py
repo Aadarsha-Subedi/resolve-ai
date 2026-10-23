@@ -5,9 +5,19 @@ from workspaces.views import invitation, join_link, logo, member, workspace
 urlpatterns = [
     path("workspaces/", workspace.WorkspaceListView.as_view(), name="workspace_list"),
     path(
+        "workspaces/demo/",
+        workspace.DemoWorkspaceView.as_view(),
+        name="workspace_demo",
+    ),
+    path(
         "workspaces/<uuid:workspace_id>/",
         workspace.WorkspaceDetailView.as_view(),
         name="workspace_detail",
+    ),
+    path(
+        "workspaces/<uuid:workspace_id>/demo/reset/",
+        workspace.DemoResetView.as_view(),
+        name="workspace_demo_reset",
     ),
     path(
         "workspaces/<uuid:workspace_id>/transfer-ownership/",

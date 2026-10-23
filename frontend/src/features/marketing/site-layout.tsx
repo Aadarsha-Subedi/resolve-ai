@@ -2,8 +2,7 @@ import type { ReactNode } from "react"
 import { Link } from "@tanstack/react-router"
 import { Logo } from "@/components/patterns/logo"
 import { ThemeToggle } from "@/components/patterns/theme-toggle"
-import { Button } from "@/components/ui/button"
-import { ArrowRight } from "@/icons"
+import { GoogleButton } from "./google-button"
 
 /** Public pages: a quiet top bar with the two entry points, the page, and a footer carrying the legal links. */
 export function SiteLayout({ children }: { children: ReactNode }) {
@@ -14,8 +13,7 @@ export function SiteLayout({ children }: { children: ReactNode }) {
           <Link to="/" aria-label="ResolveAI home"><Logo /></Link>
           <nav aria-label="Account" className="flex items-center gap-1.5">
             <ThemeToggle />
-            <Button variant="ghost" render={<Link to="/login" />} slide={false}>Sign in</Button>
-            <Button iconEnd={<ArrowRight weight="bold" />} render={<Link to="/signup" />}>Get started</Button>
+            <GoogleButton>Continue with Google</GoogleButton>
           </nav>
         </div>
       </header>

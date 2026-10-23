@@ -11,6 +11,7 @@ from workspaces.constants import errors, messages, permissions
 from workspaces.constants.roles import MembershipStatus
 from workspaces.constants.settings import INVITATION_EXPIRY
 from workspaces.models import WorkspaceInvitation, WorkspaceMembership
+from workspaces.policies import ensure_not_demo
 from workspaces.services import access, hooks, member_service
 
 OUTCOME_CREATED = "created"
@@ -32,6 +33,7 @@ def create_invitations(
     membership = access.require_permission(
         actor, workspace_id, permissions.INVITATIONS_MANAGE
     )
+    ensure_not_demo(membership.workspace)
     member_keys = {
         canonical_email_key(email)
         for email in WorkspaceMembership.objects.filter(

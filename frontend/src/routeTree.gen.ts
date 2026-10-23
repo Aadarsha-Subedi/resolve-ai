@@ -11,9 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/app'
-import { Route as LoginRouteImport } from './routes/login'
 import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as SignupRouteImport } from './routes/signup'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppWsRouteImport } from './routes/app.$ws'
@@ -46,19 +44,9 @@ const AppRoute = AppRouteImport.update({
   path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SignupRoute = SignupRouteImport.update({
-  id: '/signup',
-  path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TermsRoute = TermsRouteImport.update({
@@ -170,9 +158,7 @@ const AppWsTicketsIdRoute = AppWsTicketsIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
-  '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
-  '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
   '/app/$ws': typeof AppWsRouteWithChildren
   '/app/account': typeof AppAccountRoute
@@ -197,9 +183,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
-  '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
   '/app/account': typeof AppAccountRoute
   '/app/email': typeof AppEmailRoute
@@ -225,9 +209,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
-  '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
-  '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
   '/app/$ws': typeof AppWsRouteWithChildren
   '/app/account': typeof AppAccountRoute
@@ -255,9 +237,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/app'
-    | '/login'
     | '/privacy'
-    | '/signup'
     | '/terms'
     | '/app/$ws'
     | '/app/account'
@@ -282,9 +262,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/login'
     | '/privacy'
-    | '/signup'
     | '/terms'
     | '/app/account'
     | '/app/email'
@@ -309,9 +287,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/app'
-    | '/login'
     | '/privacy'
-    | '/signup'
     | '/terms'
     | '/app/$ws'
     | '/app/account'
@@ -338,9 +314,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
-  LoginRoute: typeof LoginRoute
   PrivacyRoute: typeof PrivacyRoute
-  SignupRoute: typeof SignupRoute
   TermsRoute: typeof TermsRoute
   DesignPreviewFrameRoute: typeof DesignPreviewFrameRoute
   JoinTokenRoute: typeof JoinTokenRoute
@@ -364,25 +338,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/privacy': {
       id: '/privacy'
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/signup': {
-      id: '/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/terms': {
@@ -586,9 +546,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
-  LoginRoute: LoginRoute,
   PrivacyRoute: PrivacyRoute,
-  SignupRoute: SignupRoute,
   TermsRoute: TermsRoute,
   DesignPreviewFrameRoute: DesignPreviewFrameRoute,
   JoinTokenRoute: JoinTokenRoute,

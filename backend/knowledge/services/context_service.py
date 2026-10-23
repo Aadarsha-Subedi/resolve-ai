@@ -6,8 +6,8 @@ original text and up to three LLM rewrites of it are each searched two ways: by 
 the most distinctive stemmed words, ranked with `ts_rank_cd`) and by meaning (the query's
 embedding against the passages' embeddings, cosine similarity). All the ranked lists are
 merged with reciprocal rank fusion, so a passage that ranks well for several wordings or in
-both searches rises to the top. At most CONTEXT_MAX_PER_SOURCE passages come from one article
-or document.
+both searches rises to the top. There is no limit per article or document: when one
+document holds the answer, its passages fill the results.
 
 Every step has a fallback: if rewriting fails only the original text is searched; if
 embedding fails (no key, limit reached, provider down) or the database is not Postgres, only
@@ -172,24 +172,6 @@ def _merge(rankings: list[list[tuple[str, float]]]) -> list[tuple[str, float]]:
     return [(chunk_id, best[chunk_id]) for chunk_id in ordered]
 
 
-def _select(
-    merged: list[tuple[str, float]], source_of: dict[str, str]
-) -> list[tuple[str, float]]:
-    """At most CONTEXT_MAX_PER_SOURCE passages per article or document, CONTEXT_MAX_RESULTS
-    in all. `source_of` maps a chunk id to its article's or upload's id."""
-    per_source: dict[str, int] = {}
-    picked = []
-    for chunk_id, score in merged:
-        source_id = source_of[chunk_id]
-        if per_source.get(source_id, 0) >= cfg.CONTEXT_MAX_PER_SOURCE:
-            continue
-        per_source[source_id] = per_source.get(source_id, 0) + 1
-        picked.append((chunk_id, score))
-        if len(picked) == cfg.CONTEXT_MAX_RESULTS:
-            break
-    return picked
-
-
 def _combined_query(queries: list[ContextQuery]) -> ContextQuery:
     terms = list(dict.fromkeys(t for q in queries for t in q.terms))
     if connection.vendor != "postgresql" or not terms:
@@ -245,10 +227,7 @@ def retrieve_context(user: User, workspace, text: str) -> ContextResult:
         .filter(id__in=[c for c, _ in merged])
         .select_related("article", "upload")
     }
-    source_of = {
-        chunk_id: str(row.article_id or row.upload_id) for chunk_id, row in rows.items()
-    }
-    picked = _select([m for m in merged if m[0] in rows], source_of)
+    picked = [m for m in merged if m[0] in rows][: cfg.CONTEXT_MAX_RESULTS]
 
     combined = _combined_query(queries)
     chosen = _visible_chunks(workspace.id).filter(id__in=[c for c, _ in picked])

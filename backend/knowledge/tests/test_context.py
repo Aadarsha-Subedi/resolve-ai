@@ -141,14 +141,15 @@ class RankingTests(ContextTestCase):
         results = self.ask("annual plan refund 14 days").data["data"]["results"]
         self.assertEqual(results[0]["section"], "Refund policy > Annual plans")
 
-    def test_at_most_two_passages_per_article(self):
+    def test_one_article_can_fill_every_slot(self):
         sections = "\n\n".join(
             f"## Part {i}\nRefund details number {i}. " + "Refund words. " * 40
             for i in range(5)
         )
         self.article("Refund handbook", "# Refund handbook\n\n" + sections)
         results = self.ask("refund").data["data"]["results"]
-        self.assertEqual(len(results), 2)
+        self.assertEqual(len(results), 5)
+        self.assertEqual({r["article"]["title"] for r in results}, {"Refund handbook"})
 
     def test_at_most_five_passages_overall(self):
         for i in range(8):

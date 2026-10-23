@@ -10,6 +10,7 @@ from common.exception.domain import (
 from workspaces.constants import errors, messages, permissions
 from workspaces.constants.roles import MembershipStatus, Role
 from workspaces.models import WorkspaceMembership
+from workspaces.policies import ensure_not_demo
 from workspaces.services import access, hooks, limits
 
 
@@ -62,7 +63,10 @@ def leave_workspace(user: User, workspace_id) -> None:
 
 def transfer_ownership(actor: User, workspace_id, new_owner_id) -> None:
     """Promote the target and demote the actor in one transaction."""
-    access.require_permission(actor, workspace_id, permissions.OWNERSHIP_TRANSFER)
+    membership = access.require_permission(
+        actor, workspace_id, permissions.OWNERSHIP_TRANSFER
+    )
+    ensure_not_demo(membership.workspace)
     if new_owner_id == actor.id:
         raise BadRequestException(
             messages.MESSAGE_TRANSFER_TO_SELF, error_code=errors.ERROR_TRANSFER_TO_SELF
@@ -102,6 +106,7 @@ def transfer_ownership(actor: User, workspace_id, new_owner_id) -> None:
 
 def add_member(workspace, user: User) -> tuple[WorkspaceMembership, bool]:
     """Make `user` an active MEMBER (re-activating a removed one). Returns (membership, created)."""
+    ensure_not_demo(workspace)
     with transaction.atomic():
         existing = WorkspaceMembership.objects.filter(
             workspace=workspace, user=user

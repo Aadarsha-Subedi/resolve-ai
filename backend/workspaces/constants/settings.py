@@ -57,4 +57,6 @@ LOGO_CONTENT_TYPES = {
 LOGO_UPLOAD_URL_EXPIRY_SECONDS = 600
 LOGO_KEY_PREFIX = "workspaces/{workspace_id}/logo/"
 
+DEMO_WORKSPACE_NAME = "Demo: Fernway support"
+
 TASK_PURGE_DELETED_WORKSPACES = "workspaces.purge_deleted_workspaces"

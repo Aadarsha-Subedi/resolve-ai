@@ -6,13 +6,13 @@ import { OptionSelect } from '@/components/patterns/option-select'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Field, FieldLabel } from '@/components/ui/field'
-import { useStorage, useUploadFile, useCategories } from '@/features/knowledge/api'
+import { uploadContentType, useStorage, useUploadFile, useCategories } from '@/features/knowledge/api'
 import { Notebook, Tag, UploadSimple, X } from '@/icons'
 import { errorMessage } from '@/lib/api'
 import { formatBytes } from '@/lib/format'
 
 const MAX_BYTES = 10 * 1024 * 1024
-const TYPES = ['application/pdf', 'text/plain']
+const ACCEPT = '.pdf,.docx,.md,.txt'
 
 /**
  * "New": first pick the category, then write an article or upload a file. Both end up under that category
@@ -35,10 +35,11 @@ export function NewContentDialog({ workspaceId, open, onOpenChange }: { workspac
   }
   const upload = (file: File | undefined) => {
     if (!file || !category) return
-    if (!TYPES.includes(file.type)) return void toast.error('Only PDF and plain text (.txt) files can be uploaded.')
+    const contentType = uploadContentType(file.name)
+    if (!contentType) return void toast.error('Only PDF, Word (.docx), Markdown (.md) and plain text (.txt) files can be uploaded.')
     if (file.size > MAX_BYTES) return void toast.error(`Files can be at most ${formatBytes(MAX_BYTES)}.`)
     if (storage.data && file.size > storage.data.remaining_bytes) return void toast.error('That file is larger than the space left. Delete files first.')
-    send.mutate({ file, categoryId: category }, { onSuccess: () => { toast.success(`${file.name} uploaded.`); onOpenChange(false) }, onError: (e) => toast.error(errorMessage(e)) })
+    send.mutate({ file, categoryId: category, contentType }, { onSuccess: () => { toast.success(`${file.name} uploaded. It is searchable once it has been read.`); onOpenChange(false) }, onError: (e) => toast.error(errorMessage(e)) })
   }
 
   return (
@@ -56,7 +57,7 @@ export function NewContentDialog({ workspaceId, open, onOpenChange }: { workspac
             <OptionSelect id="new-content-category" value={category} onValueChange={setChosen} options={options} placeholder={categories.isPending ? 'Loading categories…' : 'Choose a category'} disabled={!categories.data} />
           </Field>
         )}
-        <input ref={input} type="file" accept=".pdf,.txt,application/pdf,text/plain" className="sr-only" aria-label="Choose a file to upload" onChange={(e) => { upload(e.target.files?.[0]); e.target.value = '' }} />
+        <input ref={input} type="file" accept={ACCEPT} className="sr-only" aria-label="Choose a file to upload" onChange={(e) => { upload(e.target.files?.[0]); e.target.value = '' }} />
         <DialogFooter className="sm:flex-wrap">
           <Button type="button" variant="outline" icon={<X />} onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button type="button" variant="outline" icon={<UploadSimple />} loading={send.isPending} disabled={!category || full} title={full ? 'Storage is full. Delete files to upload more.' : undefined} onClick={() => input.current?.click()}>Upload a file</Button>

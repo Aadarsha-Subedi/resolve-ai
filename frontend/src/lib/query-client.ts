@@ -4,7 +4,7 @@ import { ApiError } from '@/lib/api'
 
 /** A 401 on any call means the session ended: go to sign-in (a full load clears every cache). */
 function signedOut(error: unknown) {
-  if (error instanceof ApiError && error.status === 401 && !window.location.pathname.startsWith('/login')) window.location.assign('/login')
+  if (error instanceof ApiError && error.status === 401 && window.location.pathname !== '/') window.location.assign('/')
 }
 
 /**

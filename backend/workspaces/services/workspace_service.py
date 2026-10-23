@@ -19,10 +19,11 @@ from workspaces.constants.settings import (
     SLUG_SUFFIX_BYTES,
 )
 from workspaces.models import Workspace, WorkspaceMembership
+from workspaces.policies import ensure_not_demo
 from workspaces.services import access, hooks, limits
 
 
-def _derive_slug(name: str) -> str:
+def derive_slug(name: str) -> str:
     base = slugify(name)[: SLUG_MAX_LENGTH - 5].strip("-") or "workspace"
     base = re.sub(r"-{2,}", "-", base)
     return f"{base}-{secrets.token_hex(SLUG_SUFFIX_BYTES)}"
@@ -36,7 +37,7 @@ def create_workspace(user: User, name: str, slug: str | None) -> Workspace:
         )
     attempts = 1 if slug else SLUG_MAX_ATTEMPTS
     for _ in range(attempts):
-        candidate = slug or _derive_slug(name)
+        candidate = slug or derive_slug(name)
         try:
             with transaction.atomic():
                 limits.ensure_can_join_another(
@@ -87,6 +88,8 @@ def update_workspace(
     if name is not None and name != workspace.name:
         workspace.name = name
         changed.append("name")
+    if portal_enabled and workspace.is_demo:
+        ensure_not_demo(workspace)
     if portal_enabled is not None and portal_enabled != workspace.portal_enabled:
         workspace.portal_enabled = portal_enabled
         changed.append("portal_enabled")

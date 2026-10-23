@@ -40,7 +40,7 @@ export function useSignOut(everywhere = false) {
       await ensureCsrfCookie()
       await api.post(everywhere ? '/auth/logout-all/' : '/auth/logout/')
     },
-    onSuccess: () => window.location.assign('/login'),
+    onSuccess: () => window.location.assign('/'),
   })
 }
 

@@ -45,6 +45,9 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampModel):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     deletion_requested_at = models.DateTimeField(null=True, blank=True)
+    # Set once the first-sign-in demo workspace exists, so deleting it is never undone
+    # by the next sign-in.
+    demo_provisioned_at = models.DateTimeField(null=True, blank=True)
 
     objects = UserManager()
     visible = VisibleUserManager()

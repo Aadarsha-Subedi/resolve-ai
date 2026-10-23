@@ -1,6 +1,6 @@
 """Stable error codes: API `code` values and `?google_error=` redirect values."""
 
-# Redirect codes used on /login?google_error=<code>
+# Redirect codes used on /?google_error=<code>
 GOOGLE_ERROR_CANCELLED = "cancelled"
 GOOGLE_ERROR_FAILED = "google_failed"
 GOOGLE_ERROR_RATE_LIMITED = "rate_limited"

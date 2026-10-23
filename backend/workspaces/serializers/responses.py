@@ -22,6 +22,7 @@ def workspace_dict(workspace: Workspace) -> dict:
         "slug": workspace.slug,
         "logo_url": logo_url(workspace),
         "portal_enabled": workspace.portal_enabled,
+        "is_demo": workspace.is_demo,
         "search_language": workspace.search_language,
         "created_at": workspace.created_at.isoformat(),
     }

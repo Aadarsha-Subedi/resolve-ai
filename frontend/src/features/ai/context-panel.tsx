@@ -1,8 +1,8 @@
 import { Link } from '@tanstack/react-router'
 
 import { EmptyState } from '@/features/app/page-states'
-import { splitHighlights, type ContextHit, type ContextResult } from '@/features/ai/context-api'
-import { MagnifyingGlass } from '@/icons'
+import { hitSource, splitHighlights, type ContextHit, type ContextResult } from '@/features/ai/context-api'
+import { FileText, MagnifyingGlass } from '@/icons'
 
 export function Snippet({ text }: { text: string }) {
   return (
@@ -13,11 +13,17 @@ export function Snippet({ text }: { text: string }) {
 }
 
 function Hit({ workspaceId, hit, idPrefix }: { workspaceId: string; hit: ContextHit; idPrefix?: string }) {
+  const source = hitSource(hit)
   return (
     <li id={idPrefix ? `${idPrefix}-${hit.citation}` : undefined} className="scroll-mt-20 space-y-1 py-3">
       <div className="flex items-baseline gap-2">
         <span className="text-xs font-medium tabular-nums text-muted-foreground" aria-label={`Source ${hit.citation}`}>[{hit.citation}]</span>
-        <Link to={`/app/${workspaceId}/knowledge/${hit.article.id}` as never} className="min-w-0 text-sm font-medium underline-offset-4 hover:underline [overflow-wrap:anywhere]">{hit.article.title}</Link>
+        {source.type === 'article' ? (
+          <Link to={`/app/${workspaceId}/knowledge/${source.id}` as never} className="min-w-0 text-sm font-medium underline-offset-4 hover:underline [overflow-wrap:anywhere]">{source.title}</Link>
+        ) : (
+          // Files have no page of their own: they are listed (and can be downloaded) on the Articles page.
+          <span className="flex min-w-0 items-baseline gap-1.5 text-sm font-medium [overflow-wrap:anywhere]"><FileText aria-hidden className="size-3.5 shrink-0 self-center text-muted-foreground" />{source.title}{source.page ? <span className="text-xs font-normal text-muted-foreground">page {source.page}</span> : null}</span>
+        )}
       </div>
       {hit.section && <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">{hit.section}</p>}
       <Snippet text={hit.snippet} />
@@ -28,7 +34,7 @@ function Hit({ workspaceId, hit, idPrefix }: { workspaceId: string; hit: Context
 /** `idPrefix` gives each passage an anchor (`<prefix>-<n>`) so an answer's [n] markers can jump to it. */
 export function ContextResults({ workspaceId, result, idPrefix }: { workspaceId: string; result: ContextResult; idPrefix?: string }) {
   if (result.results.length === 0) {
-    return <EmptyState icon={MagnifyingGlass} title="No matching articles">Only published articles are searched. Try the question box with different words.</EmptyState>
+    return <EmptyState icon={MagnifyingGlass} title="No matching articles or documents">Only published articles and uploaded files that have been read are searched. Try different words.</EmptyState>
   }
   return (
     <div className="space-y-2">

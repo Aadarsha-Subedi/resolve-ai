@@ -15,7 +15,12 @@ from workspaces.serializers.requests import (
     UpdateWorkspaceSerializer,
 )
 from workspaces.serializers.responses import DictData, WorkspaceData
-from workspaces.services import access, member_service, workspace_service
+from workspaces.services import (
+    access,
+    demo_service,
+    member_service,
+    workspace_service,
+)
 from workspaces.views.common import paginate
 
 
@@ -68,6 +73,31 @@ class WorkspaceDetailView(APIView):
             message=messages.MESSAGE_WORKSPACE_DELETED.format(
                 days=settings.WORKSPACE_DELETION_GRACE_DAYS
             ),
+        )
+
+
+class DemoWorkspaceView(APIView):
+    """POST /api/workspaces/demo/: open your demo workspace, creating it if you have none
+    (201 when created, 200 with the existing one)."""
+
+    def post(self, request):
+        membership, created = demo_service.explore_demo(request.user)
+        if created:
+            return ResourceCreatedResponse(
+                data=WorkspaceData(membership), message=messages.MESSAGE_DEMO_CREATED
+            )
+        return SuccessResponse(
+            data=WorkspaceData(membership), message=messages.MESSAGE_DEMO_EXISTS
+        )
+
+
+class DemoResetView(APIView):
+    """POST /api/workspaces/{id}/demo/reset/: owner only, demo workspaces only."""
+
+    def post(self, request, workspace_id):
+        membership = demo_service.reset_demo(request.user, workspace_id)
+        return SuccessResponse(
+            data=WorkspaceData(membership), message=messages.MESSAGE_DEMO_RESET
         )
 
 

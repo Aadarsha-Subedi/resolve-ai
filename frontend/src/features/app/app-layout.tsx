@@ -10,6 +10,8 @@ import { useSignOut } from '@/features/account/api'
 import { AppSearch } from '@/features/app/app-search'
 import { useGoShortcuts } from '@/features/app/go-shortcuts'
 import { ErrorPanel } from '@/features/app/page-states'
+import { HelpMenu } from '@/features/tour/help-menu'
+import { TourProvider } from '@/features/tour/tour'
 import { WorkspaceSwitcher } from '@/features/app/workspace-switcher'
 import { getLastWorkspace, useWorkspaces } from '@/features/workspaces/api'
 import { ClockCounterClockwise, EnvelopeSimple, Gear, Notebook, Robot, SquaresFour, Ticket, UserCircle, UsersThree } from '@/icons'
@@ -63,13 +65,15 @@ export function AppLayout() {
 
   if (user.isPending) return <BootSkeleton />
   if (user.error) return <div className="p-6"><ErrorPanel error={user.error} onRetry={() => void user.refetch()} title="Could not load your account" /></div>
-  if (!user.data) return <Navigate to="/login" />
+  if (!user.data) return <Navigate to="/" />
 
   return (
+    <TourProvider autoStart={!!current?.is_demo}>
     <AppShell
       nav={nav}
       leading={<WorkspaceSwitcher workspaces={workspaces.data} currentId={currentId} />}
       search={<AppSearch nav={nav} userMenu={USER_MENU} onShowShortcuts={() => setShortcutsOpen(true)} />}
+      actions={<HelpMenu onShowShortcuts={() => setShortcutsOpen(true)} />}
       user={{ name: user.data.display_name, email: user.data.email }}
       userMenu={USER_MENU}
       onSignOut={() => signOut.mutate()}
@@ -77,5 +81,6 @@ export function AppLayout() {
       <Outlet />
       <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
     </AppShell>
+    </TourProvider>
   )
 }

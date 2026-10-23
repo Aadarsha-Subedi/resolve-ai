@@ -83,7 +83,7 @@ class GoogleCallbackTests(AccountsTestCase):
     def test_unverified_email_rejected(self):
         response = self.sign_in(google_identity(verified=False))
         self.assertEqual(
-            response["Location"], f"{FRONT}/login?google_error=email_unverified"
+            response["Location"], f"{FRONT}/?google_error=email_unverified"
         )
         self.assertEqual(User.objects.count(), 0)
         self.assertNotIn("_auth_user_id", self.client.session)
@@ -92,7 +92,7 @@ class GoogleCallbackTests(AccountsTestCase):
         self.make_user(email="jane@example.com")
         response = self.sign_in(google_identity(sub="someone-else"))
         self.assertEqual(
-            response["Location"], f"{FRONT}/login?google_error=email_conflict"
+            response["Location"], f"{FRONT}/?google_error=email_conflict"
         )
         self.assertEqual(User.objects.count(), 1)
         self.assertEqual(SocialAccount.objects.count(), 0)
@@ -103,7 +103,7 @@ class GoogleCallbackTests(AccountsTestCase):
         client = APIClient()
         response = self.sign_in(client=client)
         self.assertEqual(
-            response["Location"], f"{FRONT}/login?google_error=account_disabled"
+            response["Location"], f"{FRONT}/?google_error=account_disabled"
         )
         self.assertNotIn("_auth_user_id", client.session)
 
@@ -112,20 +112,20 @@ class GoogleCallbackTests(AccountsTestCase):
         response = self.client.get(f"{CALLBACK}?code=abc&state=wrong")
         self.assertEqual(response.status_code, 302)
         self.assertEqual(
-            response["Location"], f"{FRONT}/login?google_error=google_failed"
+            response["Location"], f"{FRONT}/?google_error=google_failed"
         )
 
     def test_callback_without_start_redirects_with_error(self):
         response = self.client.get(f"{CALLBACK}?code=abc&state=nothing")
         self.assertEqual(
-            response["Location"], f"{FRONT}/login?google_error=google_failed"
+            response["Location"], f"{FRONT}/?google_error=google_failed"
         )
 
     def test_user_cancelled_at_google(self):
         start = self.client.get(START)
         state = parse_qs(urlsplit(start["Location"]).query)["state"][0]
         response = self.client.get(f"{CALLBACK}?error=access_denied&state={state}")
-        self.assertEqual(response["Location"], f"{FRONT}/login?google_error=cancelled")
+        self.assertEqual(response["Location"], f"{FRONT}/?google_error=cancelled")
 
     def test_failed_code_exchange_redirects(self):
         from allauth.socialaccount.providers.oauth2.client import OAuth2Error
@@ -137,7 +137,7 @@ class GoogleCallbackTests(AccountsTestCase):
         ):
             response = self.client.get(f"{CALLBACK}?code=bad&state={state}")
         self.assertEqual(
-            response["Location"], f"{FRONT}/login?google_error=google_failed"
+            response["Location"], f"{FRONT}/?google_error=google_failed"
         )
         self.assertEqual(User.objects.count(), 0)
 
@@ -214,7 +214,7 @@ class GoogleThrottleTests(AccountsTestCase):
             self.assertEqual(self.client.get(START).status_code, 302)
             response = self.client.get(START)
         self.assertEqual(
-            response["Location"], f"{FRONT}/login?google_error=rate_limited"
+            response["Location"], f"{FRONT}/?google_error=rate_limited"
         )
 
     def test_callback_over_limit_redirects_rate_limited(self):
@@ -222,7 +222,7 @@ class GoogleThrottleTests(AccountsTestCase):
             self.client.get(f"{CALLBACK}?code=a&state=b")
             response = self.client.get(f"{CALLBACK}?code=a&state=b")
         self.assertEqual(
-            response["Location"], f"{FRONT}/login?google_error=rate_limited"
+            response["Location"], f"{FRONT}/?google_error=rate_limited"
         )
 
     def test_limit_is_per_ip(self):

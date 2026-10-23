@@ -8,7 +8,9 @@ import { UsageMeter } from '@/components/patterns/usage-meter'
 import { Button } from '@/components/ui/button'
 import { EmptyState, ErrorPanel, LinesSkeleton } from '@/features/app/page-states'
 import { getDownloadUrl, useDeleteUpload, useStorage, useUploads, type Upload } from '@/features/knowledge/api'
-import { DownloadSimple, FilePdf, FileText, Folder, Trash } from '@/icons'
+import { IndexStatusBadge } from '@/features/knowledge/index-status-badge'
+import { failureMessage } from '@/features/knowledge/upload-failures'
+import { DownloadSimple, FileDoc, FilePdf, FileText, Folder, Trash } from '@/icons'
 import { errorMessage } from '@/lib/api'
 import { formatBytes } from '@/lib/format'
 
@@ -45,19 +47,20 @@ export function FilesSection({ workspaceId, category, filename }: { workspaceId:
       ) : uploads.error ? (
         <ErrorPanel error={uploads.error} onRetry={() => void uploads.refetch()} />
       ) : uploads.data.length === 0 ? (
-        <EmptyState icon={Folder} title={category || filename ? 'No files match' : 'No files yet'}>{category || filename ? 'Try another category or search.' : 'Use New to upload PDF or text files (up to 10 MB each) under a category.'}</EmptyState>
+        <EmptyState icon={Folder} title={category || filename ? 'No files match' : 'No files yet'}>{category || filename ? 'Try another category or search.' : 'Use New to upload PDF, Word, Markdown or text files (up to 10 MB each) under a category. Their text is searched when you ask a question.'}</EmptyState>
       ) : (
         <ul className="divide-y rounded-xl border">
           {uploads.data.map((upload) => {
-            const Icon = upload.content_type === 'application/pdf' ? FilePdf : FileText
+            const Icon = upload.content_type === 'application/pdf' ? FilePdf : upload.content_type.includes('wordprocessingml') ? FileDoc : FileText
             return (
               <li key={upload.id} className="flex items-center gap-3 p-3">
                 <Icon className="size-5 shrink-0 text-muted-foreground" aria-hidden />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium" title={upload.filename}>{upload.filename}</p>
-                  <p className="text-xs text-muted-foreground">{upload.category ? `${upload.category.name} · ` : 'Uncategorized · '}{formatBytes(upload.size_bytes)} · {formatDistanceToNowStrict(new Date(upload.created_at), { addSuffix: true })}</p>
+                  <p className="text-xs text-muted-foreground">{upload.category ? `${upload.category.name} · ` : 'Uncategorized · '}{formatBytes(upload.size_bytes)}{upload.page_count ? ` · ${upload.page_count} ${upload.page_count === 1 ? 'page' : 'pages'}` : ''} · {formatDistanceToNowStrict(new Date(upload.created_at), { addSuffix: true })}</p>
+                  {upload.index_status === 'failed' && <p className="text-xs text-destructive">{failureMessage(upload.index_error)} It is not searched. Delete it and upload a fixed copy.</p>}
                 </div>
-                {upload.status === 'pending' && <SoftBadge tone="warning">Unconfirmed</SoftBadge>}
+                {upload.status === 'pending' ? <SoftBadge tone="warning">Unconfirmed</SoftBadge> : <IndexStatusBadge status={upload.index_status} />}
                 <Button variant="outline" size="sm" icon={<DownloadSimple />} loading={downloading === upload.id} disabled={upload.status !== 'ready'} onClick={() => void download(upload)}>Download</Button>
                 <Button variant="ghost" size="icon-sm" label={`Delete ${upload.filename}`} onClick={() => setDeleting(upload)}><Trash /></Button>
               </li>

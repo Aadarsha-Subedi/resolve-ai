@@ -71,12 +71,14 @@ function NavLink({ item, expanded }: { item: NavItem; expanded: boolean }) {
  * top bar with workspace switcher and search on the left, theme toggle and account menu on the right. Nav items
  * are router links; an item with `disabledReason` stays visible and explains itself.
  */
-export function AppShell({ nav, leading, search, user, userMenu, onSignOut, children }: {
+export function AppShell({ nav, leading, search, actions, user, userMenu, onSignOut, children }: {
   nav: NavItem[]
   /** Top-bar control at the left edge (the workspace switcher). */
   leading?: ReactNode
   /** Top-bar search, after the workspace switcher. */
   search?: ReactNode
+  /** Top-bar controls before the theme toggle (the Help menu). */
+  actions?: ReactNode
   user: ShellUser
   /** Extra account-menu entries above "Sign out" (Email, Account). */
   userMenu?: UserMenuItem[]
@@ -131,6 +133,7 @@ export function AppShell({ nav, leading, search, user, userMenu, onSignOut, chil
           {leading}
           {search}
           <div className="ml-auto flex items-center gap-1">
+            {actions}
             <ThemeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger render={<Button variant="ghost" size="icon" label="Account"><UserAvatar name={user.name} size="sm" /></Button>} />

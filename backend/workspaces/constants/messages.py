@@ -43,3 +43,12 @@ MESSAGE_LOGO_INVALID = (
 )
 MESSAGE_LOGO_UPDATED = "Logo updated."
 MESSAGE_LOGO_REMOVED = "Logo removed."
+
+MESSAGE_DEMO_CREATED = "Demo workspace created."
+MESSAGE_DEMO_EXISTS = "You already have a demo workspace."
+MESSAGE_DEMO_RESET = "Demo workspace reset to its sample tickets."
+MESSAGE_DEMO_PRIVATE = (
+    "The demo workspace is private: it has no portal and cannot be shared. "
+    "Create a workspace to invite your team."
+)
+MESSAGE_NOT_DEMO_WORKSPACE = "Only a demo workspace can be reset."

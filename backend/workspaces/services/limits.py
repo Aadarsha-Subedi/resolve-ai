@@ -1,4 +1,5 @@
-"""How many workspaces one user may belong to (USER_MAX_WORKSPACES), created or joined."""
+"""How many workspaces one user may belong to (USER_MAX_WORKSPACES), created or joined.
+The demo workspace is not counted."""
 
 from django.conf import settings
 
@@ -13,6 +14,7 @@ def membership_count(user_id) -> int:
         user_id=user_id,
         status=MembershipStatus.ACTIVE,
         workspace__is_deleted=False,
+        workspace__is_demo=False,
     ).count()
 
 

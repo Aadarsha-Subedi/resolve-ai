@@ -10,6 +10,7 @@ export type Workspace = {
   portal_enabled: boolean
   created_at: string
   role: Role
+  is_demo?: boolean
 }
 
 export type TicketStatusValue = 'open' | 'in_progress' | 'pending' | 'resolved' | 'closed'

@@ -11,6 +11,7 @@ def account_ownership_blocker(user: User) -> str | None:
             role=Role.OWNER,
             status=MembershipStatus.ACTIVE,
             workspace__is_deleted=False,
+            workspace__is_demo=False,
         ).values_list("workspace__name", flat=True)[:3]
     )
     if not names:

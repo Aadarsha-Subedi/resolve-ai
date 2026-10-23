@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 /** What the agent is "doing" while a question is answered; one is shown at a time. */
 export const THINKING_VERBS = [
   'Thinking',
-  'Reading the articles',
+  'Reading the sources',
   'Cross-checking the sources',
   'Connecting the dots',
   'Piecing it together',
@@ -88,8 +88,8 @@ const UNAVAILABLE_REASONS: Record<string, string> = {
 const UNAVAILABLE_DEFAULT = 'An answer could not be written right now.'
 
 const NOTES = {
-  not_covered: 'The articles found do not answer this directly. They are listed below in case they help.',
-  no_results: 'No matching articles. Only published articles are searched, so try different words.',
+  not_covered: 'The sources found do not answer this directly. They are listed below in case they help.',
+  no_results: 'No matching articles or documents. Only published articles and uploaded files that have been read are searched, so try different words.',
 } as const
 
 /** One finished exchange: the question on the right, the agent's answer and its numbered sources on the left. */
@@ -106,7 +106,7 @@ export function TurnView({ workspaceId, turn }: { workspaceId: string; turn: Ask
       <UserBubble time={turn.created_at}>{turn.question}</UserBubble>
       <AgentRow>
         <div className="space-y-3">
-          {turn.status === 'answered' ? <AnswerText answer={turn} prefix={prefix} onCite={showSource} /> : <p className="text-sm text-muted-foreground">{turn.status === 'unavailable' ? `${(turn.reason && UNAVAILABLE_REASONS[turn.reason]) || UNAVAILABLE_DEFAULT} These are the matching articles.` : NOTES[turn.status]}</p>}
+          {turn.status === 'answered' ? <AnswerText answer={turn} prefix={prefix} onCite={showSource} /> : <p className="text-sm text-muted-foreground">{turn.status === 'unavailable' ? `${(turn.reason && UNAVAILABLE_REASONS[turn.reason]) || UNAVAILABLE_DEFAULT} These are the matching sources.` : NOTES[turn.status]}</p>}
           {turn.results.length > 0 && (
             <details open={sourcesOpen} onToggle={(e) => setSourcesOpen(e.currentTarget.open)} className="border-t pt-2">
               <summary className="cursor-pointer text-xs font-medium text-muted-foreground">Sources ({turn.results.length})</summary>

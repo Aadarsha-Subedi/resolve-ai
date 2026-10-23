@@ -112,7 +112,7 @@ export function AccountPage() {
             deleteAccount.mutate(undefined, {
               onSuccess: (message) => {
                 toast.success(message)
-                window.location.assign('/login')
+                window.location.assign('/')
               },
               onError: (e) => toast.error(errorMessage(e)),
             })

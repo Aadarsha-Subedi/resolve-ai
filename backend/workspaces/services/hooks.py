@@ -26,6 +26,7 @@ ACTION_INVITATION_REVOKED = "invitation.revoked"
 ACTION_INVITATION_ACCEPTED = "invitation.accepted"
 ACTION_INVITATION_DECLINED = "invitation.declined"
 ACTION_LOGO_CHANGED = "workspace.logo_changed"
+ACTION_DEMO_RESET = "workspace.demo_reset"
 
 
 def emit(workspace, actor, action: str, **metadata) -> None:

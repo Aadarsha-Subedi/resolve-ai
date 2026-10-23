@@ -14,9 +14,9 @@ import { AiSettings } from '@/features/ai/ai-settings'
 import { OWNER_ONLY, useWorkspace } from '@/features/app/workspace-context'
 import { WorkspaceMark } from '@/features/app/workspace-mark'
 import { ManageCategoriesDialog } from '@/features/knowledge/category-controls'
-import { useDeleteWorkspace, useRemoveLogo, useUpdateWorkspace, useUploadLogo } from '@/features/workspaces/api'
+import { useDeleteWorkspace, useRemoveLogo, useResetDemo, useUpdateWorkspace, useUploadLogo } from '@/features/workspaces/api'
 import { useDocumentTitle } from '@/hooks/use-document-title'
-import { Copy, FloppyDisk, ImageSquare, Tag, Trash } from '@/icons'
+import { ArrowCounterClockwise, Copy, FloppyDisk, ImageSquare, Tag, Trash } from '@/icons'
 import { errorMessage, fieldError } from '@/lib/api'
 
 const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp']
@@ -30,6 +30,7 @@ export function SettingsPage() {
   const uploadLogo = useUploadLogo(workspace.id)
   const removeLogo = useRemoveLogo(workspace.id)
   const deleteWorkspace = useDeleteWorkspace(workspace.id)
+  const resetDemo = useResetDemo(workspace.id)
   const fileInput = useRef<HTMLInputElement>(null)
   const [name, setName] = useState(workspace.name)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -101,6 +102,13 @@ export function SettingsPage() {
       <AiSettings workspaceId={workspace.id} />
 
       <SettingGroup id="danger" title="Danger zone">
+        {workspace.is_demo && (
+          <SettingRow danger title="Reset demo" description="Replaces every ticket with the original sample tickets. Your changes to them are lost.">
+            <Restricted reason={lock}>
+              <Button variant="outline" icon={<ArrowCounterClockwise />} loading={resetDemo.isPending} onClick={() => resetDemo.mutate(undefined, { onSuccess: () => toast.success('Demo reset to its sample tickets.'), onError: (e) => toast.error(errorMessage(e)) })}>Reset demo</Button>
+            </Restricted>
+          </SettingRow>
+        )}
         <SettingRow danger title="Delete workspace" description="Everyone loses access immediately. The workspace and its tickets are removed after a grace period.">
           <Restricted reason={lock}>
             <Button variant="destructive" icon={<Trash />} onClick={() => setConfirmDelete(true)}>Delete workspace</Button>

@@ -161,13 +161,13 @@ class UploadSearchTests(HybridTestCase):
             results = self.results("hardware repairs covered two years")
         self.assertEqual(results[0]["source"]["type"], "upload")
 
-    def test_at_most_two_passages_per_document(self):
+    def test_one_document_can_fill_every_slot(self):
         pages = tuple(
             ParsedPage(i, f"## Part {i}\n\nWarranty details {i}. " + "Warranty. " * 30)
             for i in range(1, 6)
         )
         self.upload(ParsedDocument(pages=pages))
-        self.assertEqual(len(self.results("warranty")), 2)
+        self.assertEqual(len(self.results("warranty")), 5)
 
     def test_a_document_that_is_not_ready_is_not_searched(self):
         upload = self.upload()

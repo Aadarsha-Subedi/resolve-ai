@@ -22,7 +22,7 @@ export const currentUserQuery = queryOptions({
 /**
  * Sign-in is a full-page redirect: the browser navigates to the backend's start endpoint, which
  * sends it to Google and, after the callback, back to FRONTEND_URL + `next` (default /app).
- * `remember` keeps the session for the long lifetime. Failures return to /login?google_error=<code>.
+ * `remember` keeps the session for the long lifetime. Failures return to /?google_error=<code>.
  */
 export function googleStartUrl({ next, remember = false }: { next?: string; remember?: boolean } = {}) {
   const params = new URLSearchParams({ remember: remember ? '1' : '0' })
@@ -33,7 +33,7 @@ export function googleStartUrl({ next, remember = false }: { next?: string; reme
 /** Sets the csrftoken cookie that the client echoes as X-CSRFToken. Call once before the first write. */
 export const ensureCsrfCookie = () => api.get('/csrf/')
 
-/** Values of /login?google_error=<code>, from the backend's accounts.constants.errors. */
+/** Values of /?google_error=<code>, from the backend's accounts.constants.errors. */
 export const GOOGLE_ERROR_MESSAGES: Record<string, string> = {
   cancelled: 'Sign-in was cancelled. Try again when you are ready.',
   google_failed: 'Google sign-in did not finish. Try again.',

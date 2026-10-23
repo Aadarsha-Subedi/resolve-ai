@@ -31,8 +31,13 @@ def list_messages(user: User, workspace_id, ticket_id) -> QuerySet[TicketMessage
 def add_message(
     user: User, workspace_id, ticket_id, body: str, visibility: str
 ) -> TicketMessage:
-    access.require_permission(user, workspace_id, permissions.TICKETS_MANAGE)
+    membership = access.require_permission(
+        user, workspace_id, permissions.TICKETS_MANAGE
+    )
     public = visibility == MessageVisibility.PUBLIC
+    # Demo customers are fictional: the reply is recorded as delivered and never emailed
+    # (send_ticket_message only picks up QUEUED messages).
+    queued = DeliveryStatus.SENT if membership.workspace.is_demo else DeliveryStatus.QUEUED
     now = timezone.now()
     with transaction.atomic():
         ticket = (
@@ -55,7 +60,7 @@ def add_message(
             else MessageDirection.INTERNAL,
             body_text=body,
             # A public reply is stored first, then feature 6 emails it from the agent's mailbox.
-            delivery_status=DeliveryStatus.QUEUED if public else "",
+            delivery_status=queued if public else "",
             sent_from_user=user if public else None,
         )
         ticket.last_activity_at = now

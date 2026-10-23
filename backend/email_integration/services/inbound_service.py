@@ -57,6 +57,7 @@ def _member_workspace_ids(connection: GmailConnection) -> list:
             user=connection.user,
             status=MembershipStatus.ACTIVE,
             workspace__is_deleted=False,
+            workspace__is_demo=False,  # sample tickets never match real mail
         ).values_list("workspace_id", flat=True)
     )
 

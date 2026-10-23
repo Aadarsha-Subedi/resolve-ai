@@ -34,7 +34,25 @@ describe('ContextResults', () => {
   })
   it('shows an empty state without results', () => {
     render(<ContextResults workspaceId="w1" result={result({ results: [] })} />)
-    expect(screen.getByText('No matching articles')).toBeInTheDocument()
+    expect(screen.getByText('No matching articles or documents')).toBeInTheDocument()
+  })
+})
+
+describe('ContextResults for uploaded files', () => {
+  const upload = (page: number | null) => result({ results: [{ citation: 1, score: 0.7, article: null, source: { type: 'upload', id: 'u1', title: 'Warranty.pdf', page }, section: 'Warranty > Exclusions', chunk_id: 'c9', snippet: 'Water damage is not covered' }] })
+  it('names the file and page instead of linking to an article', () => {
+    render(<ContextResults workspaceId="w1" result={upload(2)} />)
+    expect(screen.getByText('Warranty.pdf')).toBeInTheDocument()
+    expect(screen.getByText('page 2')).toBeInTheDocument()
+    expect(screen.queryByRole('link')).toBeNull()
+  })
+  it('leaves the page out when it is unknown', () => {
+    render(<ContextResults workspaceId="w1" result={upload(null)} />)
+    expect(screen.queryByText(/^page/)).toBeNull()
+  })
+  it('still reads chats saved before files were searched (only `article`)', () => {
+    render(<ContextResults workspaceId="w1" result={result()} />)
+    expect(screen.getByRole('link', { name: 'Reset a password' })).toBeInTheDocument()
   })
 })
 

@@ -72,7 +72,7 @@ function AiSettingsRows({ workspaceId, settings }: { workspaceId: string; settin
       </SettingRow>
 
       <p className="py-3 text-xs text-muted-foreground">
-        The customer text you search with is sent to {settings.mode === 'own_key' && active ? PROVIDER_LABELS[active.provider] : 'Google (Resolve AI)'} to find matching articles. Nothing else from the ticket is sent.
+        The customer text you search with is sent to {settings.mode === 'own_key' && active ? PROVIDER_LABELS[active.provider] : 'Google (Resolve AI)'} to find matching articles and to answer. To match meaning, the same text is also sent to Google (Resolve AI) to be turned into numbers (an embedding), whichever mode you use. Nothing else from the ticket is sent.
       </p>
       {configuring && <AiKeysDialog workspaceId={workspaceId} settings={settings} open onOpenChange={setConfiguring} />}
     </>

@@ -17,7 +17,23 @@ export type Article = {
   published_at: string | null
   content?: string
 }
-export type Upload = { id: string; category: Category | null; filename: string; content_type: string; size_bytes: number; status: 'pending' | 'ready'; uploaded_by: string | null; created_at: string }
+/** Whether a confirmed file's text has been read and made searchable. */
+export type IndexStatus = 'pending' | 'indexing' | 'indexed' | 'failed'
+export type Upload = {
+  id: string
+  category: Category | null
+  filename: string
+  content_type: string
+  size_bytes: number
+  status: 'pending' | 'ready'
+  index_status: IndexStatus
+  /** Why reading failed: a backend code such as `document_corrupt`. Null unless `index_status` is "failed". */
+  index_error: string | null
+  page_count: number | null
+  indexed_at: string | null
+  uploaded_by: string | null
+  created_at: string
+}
 export type StorageUsage = { used_bytes: number; limit_bytes: number; remaining_bytes: number }
 
 export const ARTICLE_PAGE_SIZE = 25
@@ -145,6 +161,19 @@ export function useCategoryMutations(ws: string) {
 
 export type UploadFilters = { category?: string; filename?: string }
 
+/** Content types the backend accepts, by file extension (browsers report none, or a wrong one, for .md). */
+export const UPLOAD_TYPES: Record<string, string> = {
+  pdf: 'application/pdf',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  md: 'text/markdown',
+  txt: 'text/plain',
+}
+
+/** The content type to send for a file, from its extension; undefined when the type is not accepted. */
+export function uploadContentType(filename: string): string | undefined {
+  return UPLOAD_TYPES[filename.split('.').pop()?.toLowerCase() ?? '']
+}
+
 /** Files filed under categories (newest 100). Fetched while the Articles page shows them or the graph is open. */
 export function useUploads(ws: string, filters: UploadFilters, enabled = true) {
   const query = { ...filters, limit: 100 }
@@ -169,8 +198,8 @@ type SignedUpload = Upload & { upload_url: string; expires_in: number; headers: 
 export function useUploadFile(ws: string) {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: async ({ file, categoryId }: { file: File; categoryId: string }) => {
-      const signed = (await api.post<SignedUpload>(`/workspaces/${ws}/knowledge/uploads/upload-url/`, { filename: file.name, content_type: file.type, size: file.size, category_id: categoryId })).data
+    mutationFn: async ({ file, categoryId, contentType }: { file: File; categoryId: string; contentType: string }) => {
+      const signed = (await api.post<SignedUpload>(`/workspaces/${ws}/knowledge/uploads/upload-url/`, { filename: file.name, content_type: contentType, size: file.size, category_id: categoryId })).data
       let response: Response
       try {
         response = await fetch(signed.upload_url, { method: 'PUT', headers: signed.headers, body: file })

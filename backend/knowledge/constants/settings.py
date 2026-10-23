@@ -19,7 +19,6 @@ CHUNK_OVERLAP_CHARS = 150
 CONTEXT_QUERY_MIN_LENGTH = 2
 CONTEXT_QUERY_MAX_LENGTH = 2000
 CONTEXT_MAX_RESULTS = 5
-CONTEXT_MAX_PER_SOURCE = 2  # passages from one article or one uploaded document
 # Passages taken from each query's ranking before merging.
 CONTEXT_CANDIDATES_PER_QUERY = 20
 # ts_rank_cd (0..1). A lone word found only in a passage's body scores about 0.29 and a word

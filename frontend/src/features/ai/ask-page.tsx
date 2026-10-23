@@ -95,7 +95,7 @@ export function AskPage({ initialQuestion }: { initialQuestion?: string } = {}) 
       <header className="sticky top-12 z-10 -mx-1 flex items-start justify-center bg-background px-1 pt-1 pb-3">
         <div className="min-w-0 space-y-1 px-12 text-center">
           <h1 className="font-display text-2xl font-semibold tracking-tight text-balance">{`Ask about ${workspace.name}'s knowledge base`}</h1>
-          <p className="text-sm text-muted-foreground">Answers use published articles only.</p>
+          <p className="text-sm text-muted-foreground">Answers use published articles and uploaded files.</p>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button variant="outline" size="icon" label="Chat options" className="absolute top-1 right-1" />}><DotsThreeVertical weight="bold" /></DropdownMenuTrigger>

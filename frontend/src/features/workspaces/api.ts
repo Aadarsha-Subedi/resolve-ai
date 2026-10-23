@@ -71,6 +71,24 @@ export function useCreateWorkspace() {
   })
 }
 
+/** POST /workspaces/demo/: opens your demo workspace, creating it first if you have none (e.g. you deleted it). */
+export function useExploreDemo() {
+  const cache = useWorkspaceCache()
+  return useMutation({
+    mutationFn: async () => (await api.post<Workspace>('/workspaces/demo/')).data,
+    onSuccess: (workspace) => cache.put(workspace),
+  })
+}
+
+/** POST /workspaces/{id}/demo/reset/: owner only, restores the sample tickets. */
+export function useResetDemo(workspaceId: string) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: async () => (await api.post<Workspace>(`/workspaces/${workspaceId}/demo/reset/`)).data,
+    onSuccess: () => void client.invalidateQueries({ queryKey: ['ws', workspaceId] }),
+  })
+}
+
 export function useRedeemJoinLink() {
   const cache = useWorkspaceCache()
   return useMutation({

@@ -1,8 +1,20 @@
-"""WorkspaceAccessPolicy: boolean questions for views/services that cannot raise."""
+"""WorkspaceAccessPolicy: boolean questions for views/services that cannot raise.
 
-from workspaces.constants import permissions
-from workspaces.models import WorkspaceMembership
+`ensure_not_demo` is a fixed ABAC rule: a demo workspace is private to its one owner, so
+it never gets a portal, invitations, join links, new members or a new owner.
+"""
+
+from common.exception.domain import ConflictException
+from workspaces.constants import errors, messages, permissions
+from workspaces.models import Workspace, WorkspaceMembership
 from workspaces.services.access import has_permission
+
+
+def ensure_not_demo(workspace: Workspace) -> None:
+    if workspace.is_demo:
+        raise ConflictException(
+            messages.MESSAGE_DEMO_PRIVATE, error_code=errors.ERROR_DEMO_WORKSPACE
+        )
 
 
 class WorkspaceAccessPolicy:

@@ -17,6 +17,7 @@ from workspaces.constants.settings import (
     JOIN_LINK_URL_PATH,
 )
 from workspaces.models import WorkspaceJoinLink, WorkspaceMembership
+from workspaces.policies import ensure_not_demo
 from workspaces.services import access, hooks, member_service
 
 
@@ -52,6 +53,7 @@ def rotate_link(
     membership = access.require_permission(
         user, workspace_id, permissions.JOIN_LINK_MANAGE
     )
+    ensure_not_demo(membership.workspace)
     raw = secrets.token_urlsafe(JOIN_LINK_TOKEN_BYTES)
     now = timezone.now()
     with transaction.atomic():

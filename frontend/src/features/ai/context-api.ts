@@ -6,7 +6,10 @@ import { api, apiList } from '@/lib/api'
 export type ContextHit = {
   citation: number
   score: number
-  article: { id: string; title: string }
+  /** Set for a passage of an article, null for a passage of an uploaded file. */
+  article: { id: string; title: string } | null
+  /** Where the passage comes from. Missing in chats saved before documents were searched: use `article`. */
+  source?: { type: 'article' | 'upload'; id: string; title: string; /** PDF page, when known. */ page: number | null }
   section: string
   chunk_id: string
   /** Plain text with ⟦ ⟧ around the matched words. Never HTML. */
@@ -24,7 +27,7 @@ export type ContextResult = {
 export type AnswerStatus = 'answered' | 'not_covered' | 'unavailable' | 'no_results'
 
 /** The context payload plus an answer paraphrased from it. `answer` is null unless `status` is "answered". */
-export type Answer = ContextResult & { status: AnswerStatus; answer: string | null; cited: number[]; reason?: string | null }
+export type Answer = ContextResult & { answered?: boolean; status: AnswerStatus; answer: string | null; cited: number[]; reason?: string | null }
 
 /** One question and its answer as stored in the chat history. */
 export type AskTurn = Answer & { turn_id: string; question: string; created_at: string }
@@ -75,6 +78,11 @@ export function useDeleteConversation(ws: string) {
       void client.invalidateQueries({ queryKey: [...askKey(ws), 'list'] })
     },
   })
+}
+
+/** The source of a hit, whether it came from the API with `source` or from an older saved chat with only `article`. */
+export function hitSource(hit: ContextHit): { type: 'article' | 'upload'; id: string; title: string; page: number | null } {
+  return hit.source ?? { type: 'article', id: hit.article?.id ?? '', title: hit.article?.title ?? '', page: null }
 }
 
 export type AnswerPart = { text: string; cite?: number }

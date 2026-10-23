@@ -117,7 +117,7 @@ describe('assignee history', () => {
 const cat = (id: string, name: string): Category => ({ id, name, slug: name.toLowerCase() })
 const art = (id: string, title: string, categories: Category[]): Article => ({ id, title, status: 'published', categories, size_bytes: 1, created_by: null, updated_by: null, created_at: '', updated_at: '', published_at: null })
 
-const file = (id: string, filename: string, category: Category | null): Upload => ({ id, category, filename, content_type: 'application/pdf', size_bytes: 10, status: 'ready', uploaded_by: null, created_at: '' })
+const file = (id: string, filename: string, category: Category | null): Upload => ({ id, category, filename, content_type: 'application/pdf', size_bytes: 10, status: 'ready', index_status: 'indexed', index_error: null, page_count: null, indexed_at: null, uploaded_by: null, created_at: '' })
 
 describe('buildKnowledgeGraph', () => {
   const billing = cat('c1', 'Billing')

@@ -29,6 +29,7 @@ ACTIONS: dict[str, ActionSpec] = {
     "workspace.updated": WORKSPACE,
     "workspace.deleted": WORKSPACE,
     "workspace.logo_changed": WORKSPACE,
+    "workspace.demo_reset": WORKSPACE,
     "member.joined": ACTOR,
     "member.left": ACTOR,
     "member.removed": ActionSpec("user", target_key="user_id"),

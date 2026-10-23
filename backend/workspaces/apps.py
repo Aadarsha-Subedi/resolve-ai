@@ -10,3 +10,5 @@ class WorkspacesConfig(AppConfig):
         from workspaces.services.ownership import account_ownership_blocker
 
         register_ownership_check(account_ownership_blocker)
+
+        from workspaces import signals  # noqa: F401

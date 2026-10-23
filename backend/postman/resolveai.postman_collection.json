@@ -1429,7 +1429,7 @@
                     ""
                   ]
                 },
-                "description": "PDF or TXT, 1 byte to 10 MB. size is in BYTES and must equal the real file size exactly. Reserves quota. Then PUT the raw bytes to upload_url (method PUT, body binary, header Content-Type exactly as returned, nothing else; create that request outside this collection), then call Confirm upload. Unconfirmed uploads are removed after 1 hour. category_id is required: the file is filed under that category.",
+                "description": "PDF, DOCX, MD (text/markdown) or TXT, 1 byte to 10 MB (legacy .doc is refused). content_type must be application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document, text/markdown or text/plain. size is in BYTES and must equal the real file size exactly. Reserves quota. Then PUT the raw bytes to upload_url (method PUT, body binary, header Content-Type exactly as returned, nothing else; create that request outside this collection), then call Confirm upload. Unconfirmed uploads are removed after 1 hour. category_id is required: the file is filed under that category.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"filename\": \"guide.pdf\",\n  \"content_type\": \"application/pdf\",\n  \"size\": 12345,\n  \"category_id\": \"{{categoryId}}\"\n}"
@@ -1474,7 +1474,7 @@
                     ""
                   ]
                 },
-                "description": "Checks the stored object has the declared size and type (PDFs must start with %PDF-)."
+                "description": "Checks the stored object has the declared size and type (PDFs must start with %PDF-, DOCX files must be a valid zip with the Word parts). Confirming queues reading the file in the background: poll List uploads until index_status is indexed (pending, indexing, indexed or failed; index_error says why it failed). Only indexed files are searched."
               }
             },
             {
@@ -1496,7 +1496,7 @@
                     ""
                   ]
                 },
-                "description": "Filters: category (id), filename (contains)."
+                "description": "Filters: category (id), filename (contains). Each item has index_status, index_error, page_count and indexed_at."
               }
             },
             {
@@ -1603,7 +1603,7 @@
                 ""
               ]
             },
-            "description": "Passages of published articles with citations. Up to 3 rewrites of the question are searched too; `rewritten` says whether they were used. 30 requests per minute.",
+            "description": "Passages of published articles and ready uploaded files with citations: each result has `source` {type article|upload, id, title, page} (`article` is null for files). Words and meaning (embeddings) are both searched and merged. Up to 3 rewrites of the question are searched too; `rewritten` says whether they were used. 30 requests per minute.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"query\": \"How do I get a refund for my annual plan?\"\n}"
@@ -1638,7 +1638,7 @@
                 ""
               ]
             },
-            "description": "Same passages as 'Find context for a question', plus `answer`: a paraphrase written only from those passages, with [n] markers that match `results[].citation`. `status` is answered, not_covered (passages do not answer it), unavailable (LLM failed; passages still returned) or no_results. Uses up to 2 Resolve AI calls (rewrite and answer). 30 requests per minute. The exchange is saved in your chat history; add `conversation_id` to continue a chat (omit it to start a new one).",
+            "description": "Same passages (articles and uploaded files) as 'Find context for a question', plus `answered` (true when `status` is answered) and `answer`: a paraphrase written only from those passages, with [n] markers that match `results[].citation`. `status` is answered, not_covered (passages do not answer it), unavailable (LLM failed; passages still returned) or no_results. Uses up to 2 Resolve AI calls (rewrite and answer). 30 requests per minute. The exchange is saved in your chat history; add `conversation_id` to continue a chat (omit it to start a new one).",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"query\": \"How do I get a refund for my annual plan?\"\n}"
