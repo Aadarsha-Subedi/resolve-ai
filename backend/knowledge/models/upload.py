@@ -4,7 +4,7 @@ from django.conf import settings
 from django.db import models
 
 from common.models import TimeStampModel
-from knowledge.constants.enums import UploadStatus
+from knowledge.constants.enums import IndexStatus, UploadStatus
 from knowledge.constants.settings import UPLOAD_FILENAME_MAX_LENGTH
 
 
@@ -25,6 +25,16 @@ class KnowledgeUpload(TimeStampModel):
     status = models.CharField(
         max_length=10, choices=UploadStatus.choices, default=UploadStatus.PENDING
     )
+    # Text extraction and search indexing (done in the background after the upload is confirmed).
+    index_status = models.CharField(
+        max_length=10, choices=IndexStatus.choices, default=IndexStatus.PENDING
+    )
+    index_error = models.CharField(
+        max_length=40, blank=True, default=""
+    )  # an error code, never text
+    indexed_at = models.DateTimeField(null=True, blank=True)
+    extracted_key = models.CharField(max_length=300, blank=True, default="")
+    page_count = models.PositiveIntegerField(null=True, blank=True)
     # Every file is filed under a category; a deleted category leaves the file uncategorized.
     category = models.ForeignKey(
         "knowledge.KnowledgeCategory",

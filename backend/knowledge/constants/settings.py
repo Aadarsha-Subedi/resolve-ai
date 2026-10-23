@@ -55,9 +55,29 @@ DOCX_MAX_UNCOMPRESSED_BYTES = 100 * 1024 * 1024  # declared size of all parts to
 
 KEY_PREFIX = "workspaces/{workspace_id}/knowledge/"
 UPLOAD_KEY = KEY_PREFIX + "uploads/{upload_id}.{extension}"
+# Markdown extracted from an upload. Derived data: it does not count toward the quota.
+EXTRACTED_KEY = KEY_PREFIX + "uploads/{upload_id}.extracted.md"
+EXTRACTED_CONTENT_TYPE = "text/markdown; charset=utf-8"
 
 TASK_RELEASE_STALE_UPLOADS = "knowledge.release_stale_uploads"
 TASK_REINDEX_WORKSPACE = "knowledge.reindex_workspace"
+TASK_INDEX_UPLOAD = "knowledge.index_upload"
+TASK_REQUEUE_UNINDEXED_UPLOADS = "knowledge.requeue_unindexed_uploads"
+
+# Reading a document is slow and memory-hungry, so it has its own queue and worker.
+INDEX_QUEUE = "documents"
+INDEX_SOFT_TIME_LIMIT_SECONDS = 330  # a little above the document parser's own 300 s
+INDEX_TIME_LIMIT_SECONDS = 360
+INDEX_MAX_RETRIES = 2
+INDEX_RETRY_BACKOFF_SECONDS = 60
+# An INDEXING upload not touched for this long is treated as abandoned (worker died).
+INDEX_STALE_SECONDS = 15 * 60
+# The sweeper re-queues uploads still waiting for their first run after this long.
+INDEX_REQUEUE_AFTER_SECONDS = 10 * 60
+INDEX_ERROR_FAILED = (
+    "index_failed"  # stored for unexpected errors; others use DocumentError codes
+)
+INDEX_ERROR_TIMEOUT = "document_timeout"
 
 ANSWER_MAX_CHARS = 1500
 ANSWER_MAX_OUTPUT_TOKENS = 1024

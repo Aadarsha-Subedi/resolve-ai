@@ -128,10 +128,13 @@ def _get(workspace_id, upload_id) -> KnowledgeUpload:
 def _discard(upload: KnowledgeUpload) -> None:
     """Drop an upload: delete the object, free the quota, remove the row."""
     key, size, workspace_id = upload.storage_key, upload.size_bytes, upload.workspace_id
+    extracted_key = upload.extracted_key
     with transaction.atomic():
         upload.delete()
         quota_service.release(workspace_id, size)
     get_storage().delete(key)
+    if extracted_key:
+        get_storage().delete(extracted_key)
 
 
 def confirm_upload(user: User, workspace_id, upload_id) -> KnowledgeUpload:
@@ -164,6 +167,9 @@ def confirm_upload(user: User, workspace_id, upload_id) -> KnowledgeUpload:
         )
     upload.status = UploadStatus.READY
     upload.save(update_fields=["status", "updated_at"])
+    from knowledge.tasks import index_upload  # tasks import this module
+
+    transaction.on_commit(lambda: index_upload.delay(str(upload.id)))
     hooks.emit(
         membership.workspace,
         user,
@@ -237,7 +243,9 @@ def release_stale_uploads() -> int:
 
 def purge_workspace_objects(workspace_id) -> None:
     storage = get_storage()
-    for key in KnowledgeUpload.objects.filter(workspace_id=workspace_id).values_list(
-        "storage_key", flat=True
-    ):
+    for key, extracted_key in KnowledgeUpload.objects.filter(
+        workspace_id=workspace_id
+    ).values_list("storage_key", "extracted_key"):
         storage.delete(key)
+        if extracted_key:
+            storage.delete(extracted_key)

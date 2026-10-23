@@ -45,6 +45,11 @@ services:
     <<: *backend
     command: celery -A config worker -Q default -l info
 
+  # Reads uploaded documents (Docling): slow and memory-hungry, so one process at a time.
+  celery-documents:
+    <<: *backend
+    command: celery -A config worker -Q documents -c 1 -l info -n documents@%h
+
   celery-beat:
     <<: *backend
     command: celery -A config beat -l info
