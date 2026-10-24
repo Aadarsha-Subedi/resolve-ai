@@ -4,12 +4,12 @@ A capstone project that uses AI to resolve customer queries: a multi-tenant supp
 
 ## Status
 
-| Area | State |
-| --- | --- |
-| Design (LLD) | Draft, owner decisions applied: [backend/docs/ResolveAI_LLD.md](backend/docs/ResolveAI_LLD.md) |
-| Backend | Features 1 to 7 built (accounts, workspaces, knowledge, tickets with assignment, Gmail incl. invitation emails, audit, dashboard); `ai` app next. `docker compose up -d --build` in `backend/` starts api, worker and beat |
-| Frontend | Screens built (not yet run against a live backend); design system awaiting approval: [frontend/README.md](frontend/README.md) |
-| LLM layer (full-text search, Gemini) | After frontend and backend scaffolding |
+| Area                                 | State                                                                                                                                                                                                                      |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Design (LLD)                         | Draft, owner decisions applied: [backend/docs/ResolveAI_LLD.md](backend/docs/ResolveAI_LLD.md)                                                                                                                             |
+| Backend                              | Features 1 to 7 built (accounts, workspaces, knowledge, tickets with assignment, Gmail incl. invitation emails, audit, dashboard); `ai` app next. `docker compose up -d --build` in `backend/` starts api, worker and beat |
+| Frontend                             | Screens built (not yet run against a live backend); design system awaiting approval: [frontend/README.md](frontend/README.md)                                                                                              |
+| LLM layer (full-text search, Gemini) | After frontend and backend scaffolding                                                                                                                                                                                     |
 
 ## Repository layout
 
