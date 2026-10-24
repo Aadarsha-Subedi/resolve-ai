@@ -1,7 +1,4 @@
 import io
-import os
-import unittest
-from types import SimpleNamespace
 from unittest import mock
 
 from django.test import SimpleTestCase
@@ -12,7 +9,6 @@ from common.documents import (
     DocumentTimeoutError,
     DocumentTooLargeError,
     DocumentUnsupportedError,
-    docling_parser,
     get_parser,
 )
 from common.documents.constants import (
@@ -22,8 +18,9 @@ from common.documents.constants import (
     CONTENT_TYPE_TEXT,
     MAX_FILE_BYTES,
 )
-from common.documents.docling_parser import DoclingParser
+from common.documents.docx_parser import DocxParser
 from common.documents.fake import FakeDocumentParser
+from common.documents.pdf_parser import PdfParser
 from common.documents.text_parser import TextParser
 
 
@@ -54,8 +51,8 @@ class FactoryAndFakeTests(SimpleTestCase):
     def test_routing(self):
         self.assertIsInstance(get_parser(CONTENT_TYPE_TEXT), TextParser)
         self.assertIsInstance(get_parser(CONTENT_TYPE_MARKDOWN), TextParser)
-        self.assertIsInstance(get_parser(CONTENT_TYPE_PDF), DoclingParser)
-        self.assertIsInstance(get_parser(CONTENT_TYPE_DOCX), DoclingParser)
+        self.assertIsInstance(get_parser(CONTENT_TYPE_PDF), PdfParser)
+        self.assertIsInstance(get_parser(CONTENT_TYPE_DOCX), DocxParser)
         with self.assertRaises(DocumentUnsupportedError):
             get_parser("application/msword")
 
@@ -69,127 +66,116 @@ class FactoryAndFakeTests(SimpleTestCase):
         self.assertEqual(len(fake.calls), 3)
 
 
-def _result(status, pages=None, markdown_by_page=None, whole=""):
-    document = mock.Mock()
-    document.pages = {n: object() for n in (pages or [])}
-    document.export_to_markdown.side_effect = lambda page_no=None: (
-        (markdown_by_page or {}).get(page_no, "") if page_no else whole
-    )
-    return SimpleNamespace(status=status, document=document)
-
-
-class DoclingParserMockedTests(SimpleTestCase):
-    """The Docling call is replaced, so these test our handling of its results only."""
-
-    def parse(self, result, content_type=CONTENT_TYPE_PDF, data=b"%PDF-1.4"):
-        converter = mock.Mock()
-        converter.convert.return_value = result
-        with mock.patch.object(
-            docling_parser, "_get_converter", return_value=converter
-        ):
-            return DoclingParser().parse(data, content_type), converter
-
-    def test_pdf_pages_keep_their_numbers_and_empty_pages_are_dropped(self):
-        from docling.datamodel.base_models import ConversionStatus
-
-        result = _result(
-            ConversionStatus.SUCCESS,
-            pages=[1, 2, 3],
-            markdown_by_page={1: "# A", 2: "  ", 3: "| x |\n| - |"},
-        )
-        parsed, converter = self.parse(result)
-        self.assertEqual(
-            [(p.number, p.markdown) for p in parsed.pages],
-            [(1, "# A"), (3, "| x |\n| - |")],
-        )
-        _, kwargs = converter.convert.call_args
-        self.assertEqual(kwargs["max_num_pages"], docling_parser.MAX_PAGES)
-        self.assertEqual(kwargs["max_file_size"], MAX_FILE_BYTES)
-
-    def test_docx_is_one_unnumbered_page(self):
-        from docling.datamodel.base_models import ConversionStatus
-
-        parsed, _ = self.parse(
-            _result(ConversionStatus.SUCCESS, whole="# Policy\n\nText"),
-            CONTENT_TYPE_DOCX,
-            b"PK",
-        )
-        self.assertEqual(
-            [(p.number, p.markdown) for p in parsed.pages], [(None, "# Policy\n\nText")]
-        )
-
-    def test_failures_map_to_our_errors(self):
-        from docling.datamodel.base_models import ConversionStatus
-
-        cases = (
-            (_result(ConversionStatus.PARTIAL_SUCCESS), DocumentTimeoutError),
-            (_result(ConversionStatus.FAILURE), DocumentCorruptError),
-            (
-                _result(ConversionStatus.SUCCESS, pages=[1], markdown_by_page={1: ""}),
-                DocumentEmptyError,
-            ),
-        )
-        for result, error in cases:
-            with self.assertRaises(error):
-                self.parse(result)
-
-    def test_unexpected_exception_becomes_corrupt_and_oversize_is_refused(self):
-        converter = mock.Mock()
-        converter.convert.side_effect = RuntimeError("boom")
-        with mock.patch.object(
-            docling_parser, "_get_converter", return_value=converter
-        ):
-            with self.assertRaises(DocumentCorruptError):
-                DoclingParser().parse(b"%PDF-", CONTENT_TYPE_PDF)
-            with self.assertRaises(DocumentTooLargeError):
-                DoclingParser().parse(b"x" * (MAX_FILE_BYTES + 1), CONTENT_TYPE_PDF)
-        with self.assertRaises(DocumentUnsupportedError):
-            DoclingParser().parse(b"x", CONTENT_TYPE_TEXT)
-
-
-def _docx_with_heading_and_table() -> bytes:
+def _docx_bytes(build) -> bytes:
     import docx
 
     document = docx.Document()
-    document.add_heading("Refund policy", level=1)
-    document.add_paragraph("Refunds are issued within 14 days.")
-    document.add_heading("Plans", level=2)
-    table = document.add_table(rows=2, cols=2)
-    table.rows[0].cells[0].text = "Plan"
-    table.rows[0].cells[1].text = "Price"
-    table.rows[1].cells[0].text = "Pro"
-    table.rows[1].cells[1].text = "$20"
+    build(document)
     buffer = io.BytesIO()
     document.save(buffer)
     return buffer.getvalue()
 
 
-class DoclingRealDocxTests(SimpleTestCase):
-    """Runs real Docling on a DOCX (no models are needed for Word files)."""
+def _heading_and_table(document):
+    document.add_heading("Refund policy", level=1)
+    document.add_paragraph("Refunds are issued within 14 days.")
+    document.add_paragraph("Email us first", style="List Bullet")
+    document.add_heading("Plans", level=2)
+    table = document.add_table(rows=2, cols=2)
+    table.rows[0].cells[0].text = "Plan"
+    table.rows[0].cells[1].text = "Price"
+    table.rows[1].cells[0].text = "Pro"
+    table.rows[1].cells[1].text = "$20 | month"
 
-    def test_headings_and_tables_survive(self):
+
+class DocxParserTests(SimpleTestCase):
+    def test_headings_lists_and_tables_survive_in_order(self):
         markdown = (
-            DoclingParser()
-            .parse(_docx_with_heading_and_table(), CONTENT_TYPE_DOCX)
+            DocxParser()
+            .parse(_docx_bytes(_heading_and_table), CONTENT_TYPE_DOCX)
             .markdown
         )
-        self.assertIn("# Refund policy", markdown)
-        self.assertIn("## Plans", markdown)
-        self.assertIn("| Plan", markdown)
-        self.assertIn("$20", markdown)
+        self.assertLess(markdown.index("# Refund policy"), markdown.index("## Plans"))
+        self.assertIn("- Email us first", markdown)
+        self.assertIn("| Plan | Price |", markdown)
+        self.assertIn("| Pro | $20 \\| month |", markdown)
 
-    def test_garbage_is_corrupt(self):
+    def test_docx_is_one_unnumbered_page(self):
+        parsed = DocxParser().parse(_docx_bytes(_heading_and_table), CONTENT_TYPE_DOCX)
+        self.assertEqual([page.number for page in parsed.pages], [None])
+
+    def test_errors(self):
         with self.assertRaises(DocumentCorruptError):
-            DoclingParser().parse(b"PK\x03\x04 not really", CONTENT_TYPE_DOCX)
+            DocxParser().parse(b"PK\x03\x04 not really", CONTENT_TYPE_DOCX)
+        with self.assertRaises(DocumentEmptyError):
+            DocxParser().parse(_docx_bytes(lambda d: None), CONTENT_TYPE_DOCX)
+        with self.assertRaises(DocumentUnsupportedError):
+            DocxParser().parse(b"x", CONTENT_TYPE_PDF)
+        with self.assertRaises(DocumentTooLargeError):
+            DocxParser().parse(b"x" * (MAX_FILE_BYTES + 1), CONTENT_TYPE_DOCX)
 
 
-@unittest.skipUnless(
-    os.environ.get("RESOLVE_AI_TEST_DOCLING_PDF"),
-    "needs Docling's layout models (set RESOLVE_AI_TEST_DOCLING_PDF=path/to/sample.pdf)",
-)
-class DoclingRealPdfTests(SimpleTestCase):
-    def test_pdf_is_converted_with_page_numbers(self):
-        with open(os.environ["RESOLVE_AI_TEST_DOCLING_PDF"], "rb") as handle:
-            parsed = DoclingParser().parse(handle.read(), CONTENT_TYPE_PDF)
-        self.assertTrue(parsed.markdown)
-        self.assertEqual(parsed.pages[0].number, 1)
+def _pdf_bytes(pages: list[list[str]]) -> bytes:
+    """A minimal text PDF: one list of lines per page (built by hand, no PDF library)."""
+    objects = [
+        "<< /Type /Catalog /Pages 2 0 R >>",
+        None,
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    kids = []
+    for lines in pages:
+        stream = (
+            "BT /F1 12 Tf 72 720 Td 16 TL "
+            + " ".join(f"({line}) Tj T*" for line in lines)
+            + " ET"
+        )
+        page_id = len(objects) + 1
+        kids.append(f"{page_id} 0 R")
+        objects.append(
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+            f"/Resources << /Font << /F1 3 0 R >> >> /Contents {page_id + 1} 0 R >>"
+        )
+        objects.append(f"<< /Length {len(stream)} >>\nstream\n{stream}\nendstream")
+    objects[1] = f"<< /Type /Pages /Kids [{' '.join(kids)}] /Count {len(kids)} >>"
+    out = b"%PDF-1.4\n"
+    offsets = []
+    for number, body in enumerate(objects, start=1):
+        offsets.append(len(out))
+        out += f"{number} 0 obj\n{body}\nendobj\n".encode()
+    xref = len(out)
+    out += f"xref\n0 {len(objects) + 1}\n0000000000 65535 f \n".encode()
+    out += b"".join(f"{offset:010d} 00000 n \n".encode() for offset in offsets)
+    out += f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF".encode()
+    return out
+
+
+class PdfParserTests(SimpleTestCase):
+    def test_pages_keep_their_numbers_and_empty_pages_are_dropped(self):
+        data = _pdf_bytes([["Refunds take 14 days"], [], ["Contact support"]])
+        parsed = PdfParser().parse(data, CONTENT_TYPE_PDF)
+        self.assertEqual([page.number for page in parsed.pages], [1, 3])
+        self.assertIn("Refunds take 14 days", parsed.pages[0].markdown)
+        self.assertIn("Contact support", parsed.pages[1].markdown)
+
+    def test_errors(self):
+        with self.assertRaises(DocumentCorruptError):
+            PdfParser().parse(b"%PDF-1.4 not really", CONTENT_TYPE_PDF)
+        with self.assertRaises(DocumentEmptyError):
+            PdfParser().parse(_pdf_bytes([[]]), CONTENT_TYPE_PDF)
+        with self.assertRaises(DocumentUnsupportedError):
+            PdfParser().parse(b"x", CONTENT_TYPE_DOCX)
+        with self.assertRaises(DocumentTooLargeError):
+            PdfParser().parse(b"x" * (MAX_FILE_BYTES + 1), CONTENT_TYPE_PDF)
+
+    def test_page_cap_and_time_limit(self):
+        data = _pdf_bytes([["a"], ["b"]])
+        with (
+            mock.patch("common.documents.pdf_parser.MAX_PAGES", 1),
+            self.assertRaises(DocumentTooLargeError),
+        ):
+            PdfParser().parse(data, CONTENT_TYPE_PDF)
+        with (
+            mock.patch("common.documents.pdf_parser.PARSE_TIMEOUT_SECONDS", -1),
+            self.assertRaises(DocumentTimeoutError),
+        ):
+            PdfParser().parse(data, CONTENT_TYPE_PDF)

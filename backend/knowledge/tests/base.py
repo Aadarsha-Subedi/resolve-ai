@@ -17,7 +17,7 @@ class KnowledgeTestCase(WorkspaceTestCase):
         )
         patcher.start()
         self.addCleanup(patcher.stop)
-        # Indexing never starts real Docling or touches real storage in tests.
+        # Indexing never starts a real document parser or touches real storage in tests.
         self.document_parser = FakeDocumentParser()
         for target, options in (
             (

@@ -74,8 +74,8 @@ TASK_REINDEX_WORKSPACE = "knowledge.reindex_workspace"
 TASK_INDEX_UPLOAD = "knowledge.index_upload"
 TASK_REQUEUE_UNINDEXED_UPLOADS = "knowledge.requeue_unindexed_uploads"
 
-# Reading a document is slow and memory-hungry, so it has its own queue and worker.
-INDEX_QUEUE = "documents"
+# Reading a document runs on the default queue, with the same worker as everything else.
+INDEX_QUEUE = "default"
 INDEX_SOFT_TIME_LIMIT_SECONDS = 330  # a little above the document parser's own 300 s
 INDEX_TIME_LIMIT_SECONDS = 360
 INDEX_MAX_RETRIES = 2

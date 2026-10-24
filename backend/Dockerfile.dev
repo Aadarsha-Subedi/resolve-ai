@@ -12,7 +12,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PATH="/opt/venv/bin:$PATH"
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libpq5 libgl1 libglib2.0-0 \
+    && apt-get install -y --no-install-recommends libpq5 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=ghcr.io/astral-sh/uv:0.11.26 /uv /usr/local/bin/uv
@@ -21,10 +21,6 @@ WORKDIR /app
 
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-install-project
-
-# Docling's layout, table and OCR models are baked into the image: nothing is downloaded at runtime.
-ENV DOCLING_ARTIFACTS_PATH=/opt/docling-models
-RUN docling-tools models download layout tableformer rapidocr -o /opt/docling-models
 
 COPY . .
 
