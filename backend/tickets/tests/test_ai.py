@@ -4,6 +4,7 @@ from django.core.cache import cache
 from django.test import override_settings
 
 from common.llm import LLMRateLimitedError, LLMResponse
+from knowledge.services.context_service import Passage
 from tickets.constants.enums import AuthorType, MessageDirection
 from tickets.models import Ticket, TicketMessage
 from tickets.services import ai_service
@@ -84,10 +85,14 @@ class TicketAiTests(TicketTestCase):
     def test_draft_uses_intent_name_and_no_internal_notes(self):
         self.retrieve.return_value = mock.Mock(
             results=[
-                mock.Mock(
-                    article_id="a1",
-                    article_title="Refund policy",
+                Passage(
+                    chunk_id="c1",
+                    source_type="article",
+                    source_id="a1",
+                    source_title="Refund policy",
                     section="Annual",
+                    snippet="Refunds within 14 days.",
+                    score=1.0,
                     text="Refunds within 14 days.",
                 )
             ]

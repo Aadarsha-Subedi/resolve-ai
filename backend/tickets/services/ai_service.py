@@ -128,7 +128,7 @@ def draft_reply(user: User, workspace_id, ticket_id, intent: str) -> DraftResult
         user, membership.workspace, f"{latest[: cfg.AI_MESSAGE_MAX_CHARS]}\n{intent}"
     )
     excerpts = "\n".join(
-        f"<excerpt>\n{_clean(p.article_title)} > {_clean(p.section)}\n{_clean(p.text)}\n</excerpt>"
+        f"<excerpt>\n{_clean(p.source_title)} > {_clean(p.section)}\n{_clean(p.text)}\n</excerpt>"
         for p in found.results
     )
     prompt = (
@@ -145,6 +145,6 @@ def draft_reply(user: User, workspace_id, ticket_id, intent: str) -> DraftResult
     return DraftResult(
         draft=draft,
         sources=[
-            Source(p.article_id, p.article_title, p.section) for p in found.results
+            Source(p.source_id, p.source_title, p.section) for p in found.results
         ],
     )
