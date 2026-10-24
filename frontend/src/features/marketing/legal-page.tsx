@@ -1,10 +1,8 @@
-import { SoftBadge } from "@/components/patterns/ticket-meta"
 import { SiteLayout } from "./site-layout"
-import { Info } from "@/icons"
 
 export type LegalSection = { heading: string; body: string[] }
 
-/** Long-form legal text: one column at reading width, a contents list for jumping, and a plain draft notice. */
+/** Long-form legal text: one column at reading width, a contents list for jumping. */
 export function LegalPage({ title, updated, intro, sections }: { title: string; updated: string; intro: string; sections: LegalSection[] }) {
   const slug = (h: string) => h.toLowerCase().replace(/[^a-z0-9]+/g, "-")
   return (
@@ -17,10 +15,7 @@ export function LegalPage({ title, updated, intro, sections }: { title: string; 
         </nav>
         <article className="max-w-prose">
           <h1 className="font-display text-4xl font-semibold tracking-tight">{title}</h1>
-          <p className="mt-3 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-            Last updated {updated}
-            <SoftBadge tone="warning" icon={Info}>Draft, not yet reviewed by a lawyer</SoftBadge>
-          </p>
+          <p className="mt-3 text-sm text-muted-foreground">Last updated {updated}</p>
           <p className="mt-8 text-pretty">{intro}</p>
           {sections.map((s) => (
             <section key={s.heading} id={slug(s.heading)} className="mt-10 scroll-mt-24">
