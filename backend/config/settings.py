@@ -76,6 +76,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "allauth.account.middleware.AccountMiddleware",
     "allauth.usersessions.middleware.UserSessionsMiddleware",
+    "accounts.middleware.SlidingSessionMiddleware",
     "common.logger.request_id.UserContextMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "common.logger.middleware.RequestLoggingMiddleware",
@@ -160,8 +161,8 @@ else:
 SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
 SESSION_COOKIE_AGE = 14 * 24 * 60 * 60  # 2 weeks, sliding
 SESSION_REMEMBER_ME_AGE = 30 * 24 * 60 * 60  # 30 days, sliding
-# Saved only when the session changes: saving on every request costs a database write and a Redis
-# write per call. The 2-week (or 30-day remember-me) lifetime therefore counts from sign-in.
+# Saving on every request is a database and a Redis write per call. The expiry still slides:
+# SlidingSessionMiddleware stamps the session once a minute, which saves it.
 SESSION_SAVE_EVERY_REQUEST = False
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_HTTPONLY = True

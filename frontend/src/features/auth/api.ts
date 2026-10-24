@@ -16,7 +16,8 @@ export const currentUserQuery = queryOptions({
       throw error
     }
   },
-  staleTime: 60_000,
+  // Route guards ask on every navigation; a session does not change that fast, and any 401 on a data call signs the user out.
+  staleTime: 15 * 60_000,
 })
 
 /**

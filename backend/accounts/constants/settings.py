@@ -10,3 +10,5 @@ TASK_PURGE_DELETED_ACCOUNTS = "accounts.purge_deleted_accounts"
 TASK_CLEAR_EXPIRED_SESSIONS = "accounts.clear_expired_sessions"
 SESSION_PURGE_BATCH_SIZE = 500
 UNKNOWN_DEVICE_LABEL = "Unknown device"
+SESSION_SEEN_KEY = "accounts_last_seen"
+SESSION_TOUCH_INTERVAL_SECONDS = 60  # how often a session is re-saved to slide its expiry
