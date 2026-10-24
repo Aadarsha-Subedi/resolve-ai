@@ -1,0 +1,46 @@
+[project]
+name = "resolveai-backend"
+version = "0.1.0"
+description = "ResolveAI backend: Django REST API for AI-assisted customer support."
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "boto3>=1.43.109",
+    "celery>=5.6.3",
+    "cryptography>=50.0.2",
+    "django>=6.1",
+    "django-allauth[socialaccount]>=65.20.0",
+    "django-cors-headers>=4.9.0",
+    "django-filter>=26.1",
+    "djangorestframework>=3.17.2",
+    "google-auth>=2.61.0",
+    "google-genai>=2.32.0",
+    "gunicorn>=26.2.0",
+    "httpx>=0.28.1",
+    "openai>=3.36.1",
+    "pdfplumber>=0.11.7",
+    "pgvector>=0.4.2",
+    "psycopg[binary]>=3.3.4",
+    "python-docx>=1.2.0",
+    "python-dotenv>=1.2.2",
+    "redis>=8.1.0",
+    "requests>=2.34.2",
+    "sentry-sdk[celery,django]>=2.71.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.3",
+]
+
+[tool.ruff]
+# `ruff format` also reformats Python code blocks inside Markdown; leave the docs as written.
+extend-exclude = ["docs"]
+
+[tool.ruff.lint]
+# Django and DRF declare mutable class attributes (Meta.ordering, parser_classes, ...) by design.
+ignore = ["RUF012"]
+
+[tool.ruff.lint.per-file-ignores]
+# The shebang is conventional; file modes are not preserved on every filesystem.
+"manage.py" = ["EXE001"]

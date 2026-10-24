@@ -1,0 +1,38 @@
+# Development: Vite dev server with the source bind-mounted for hot reload.
+# Usage: docker compose up --build        (then open http://localhost:3000)
+# New dependencies: just `docker compose up` again (no --build needed). The container's start script (docker-entrypoint.dev.sh)
+# compares package.json + pnpm-lock.yaml with a hash kept in the node_modules volume and runs
+# `pnpm install --frozen-lockfile` when they differ.
+#
+# The backend runs from ../backend (its own compose file publishes it on host port 8000).
+# From inside this container "localhost" is the container itself, so the proxy target
+# defaults to host.docker.internal, which reaches the host's published port 8000.
+# Override with FRONTEND_API_PROXY_TARGET, e.g. http://api:8000 if both stacks share a network.
+services:
+  web:
+    container_name: resolve-ai-frontend
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    # Set here, not only in Dockerfile.dev, so a plain `docker compose up` (no --build) on an older image
+    # still installs missing dependencies. The script is read from the bind mount.
+    entrypoint: ["sh", "./docker-entrypoint.dev.sh"]
+    command: ["pnpm", "dev"]
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_PROXY_TARGET: ${FRONTEND_API_PROXY_TARGET:-http://host.docker.internal:8000}
+      # Bind mounts on Docker Desktop (Mac, Windows) do not deliver file events.
+      VITE_USE_POLLING: ${VITE_USE_POLLING:-true}
+      # Keep pnpm's store out of the bind-mounted project (it would land in ./.pnpm-store and get watched and tracked).
+      npm_config_store_dir: /pnpm-store
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+      - pnpm_store:/pnpm-store
+
+volumes:
+  node_modules:
+  pnpm_store:

@@ -1,0 +1,144 @@
+/*
+ * ResolveAI design tokens. Neutrals lean a trace toward the accent hue (--h) so the
+ * yellow never looks pasted on. One accent (Signal Yellow); the other hues mean status.
+ */
+
+:root {
+  --h: 90;
+
+  --radius: 0.5rem;
+  --density: 1;
+  --row-h: calc(2.5rem * var(--density));
+  --ctl-h: calc(1.75rem * var(--density));
+
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 400ms;
+
+  /* light surfaces */
+  --background: oklch(0.995 0.002 var(--h));
+  --foreground: oklch(0.2 0.012 var(--h));
+  --surface: oklch(0.975 0.005 var(--h));
+  --card: var(--background);
+  --card-foreground: var(--foreground);
+  --popover: oklch(1 0 0);
+  --popover-foreground: var(--foreground);
+  --muted: oklch(0.962 0.006 var(--h));
+  --muted-foreground: oklch(0.5 0.015 var(--h));
+  --secondary: oklch(0.955 0.007 var(--h));
+  --secondary-foreground: var(--foreground);
+  --border: oklch(0.915 0.008 var(--h));
+  --input: oklch(0.89 0.01 var(--h));
+
+  /* Signal Yellow always carries dark ink; white on yellow fails contrast. */
+  --primary: oklch(0.86 0.175 90);
+  --primary-foreground: oklch(0.2 0.02 var(--h));
+  --accent: oklch(0.96 0.045 95);
+  --accent-foreground: oklch(0.36 0.07 85);
+  --ring: oklch(0.58 0.13 85);
+
+  --destructive: oklch(0.55 0.21 27);
+  --success: oklch(0.55 0.14 155);
+  --warning: oklch(0.66 0.15 60);
+  --info: oklch(0.55 0.14 250);
+  /* Darker variants for text; the base colors are for icons and fills. */
+  --success-text: oklch(0.42 0.11 155);
+  --warning-text: oklch(0.45 0.1 55);
+  --info-text: oklch(0.42 0.14 255);
+  --danger-text: oklch(0.46 0.17 27);
+  /* Soft badge backgrounds: tinted, never saturated. */
+  --success-soft: oklch(0.955 0.04 155);
+  --warning-soft: oklch(0.96 0.055 85);
+  --info-soft: oklch(0.955 0.035 250);
+  --danger-soft: oklch(0.955 0.035 27);
+
+  --chart-1: oklch(0.8 0.16 90);
+  --chart-2: oklch(0.62 0.14 250);
+  --chart-3: oklch(0.66 0.15 60);
+  --chart-4: oklch(0.55 0.21 27);
+  --chart-5: oklch(0.58 0.14 155);
+
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: oklch(0.94 0.012 var(--h));
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  --pop-shadow: 0 1px 2px oklch(0.2 0.012 var(--h) / 0.06), 0 8px 24px -8px oklch(0.2 0.012 var(--h) / 0.18);
+  --selection: oklch(0.86 0.175 90 / 0.4);
+}
+
+.dark {
+  --background: oklch(0.16 0.006 var(--h));
+  --foreground: oklch(0.96 0.005 var(--h));
+  --surface: oklch(0.19 0.007 var(--h));
+  --card: var(--background);
+  --popover: oklch(0.22 0.008 var(--h));
+  --muted: oklch(0.24 0.008 var(--h));
+  --muted-foreground: oklch(0.7 0.012 var(--h));
+  --secondary: oklch(0.26 0.009 var(--h));
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 14%);
+
+  --primary: oklch(0.84 0.165 90);
+  --primary-foreground: oklch(0.2 0.02 var(--h));
+  --accent: oklch(0.28 0.05 90);
+  --accent-foreground: oklch(0.9 0.1 92);
+  --ring: oklch(0.8 0.14 90);
+
+  --destructive: oklch(0.7 0.19 22);
+  --success: oklch(0.74 0.15 155);
+  --warning: oklch(0.8 0.14 70);
+  --info: oklch(0.74 0.12 250);
+  --success-text: var(--success);
+  --warning-text: var(--warning);
+  --info-text: var(--info);
+  --danger-text: var(--destructive);
+  --success-soft: oklch(0.3 0.05 155);
+  --warning-soft: oklch(0.32 0.05 70);
+  --info-soft: oklch(0.3 0.05 250);
+  --danger-soft: oklch(0.3 0.06 25);
+
+  --chart-1: oklch(0.84 0.165 90);
+  --chart-2: oklch(0.74 0.12 250);
+  --chart-3: oklch(0.8 0.14 70);
+  --chart-4: oklch(0.7 0.19 22);
+  --chart-5: oklch(0.74 0.15 155);
+
+  --sidebar-accent: oklch(0.26 0.01 var(--h));
+  --pop-shadow: 0 0 0 1px oklch(1 0 0 / 8%), 0 12px 32px -6px oklch(0 0 0 / 0.6);
+  --selection: oklch(0.84 0.165 90 / 0.35);
+}
+
+/* Touch: bigger hit areas on coarse pointers, same visual language. */
+@media (pointer: coarse) {
+  :root {
+    --ctl-h: 2.75rem;
+    --row-h: 3rem;
+  }
+}
+
+/* Knowledge graph (React Flow): its own variables mapped to the design tokens, in light and dark. */
+div.react-flow.resolve-flow {
+  --xy-background-color: transparent;
+  --xy-background-pattern-dots-color: var(--border);
+  --xy-edge-stroke: color-mix(in oklch, var(--muted-foreground) 55%, transparent);
+  --xy-edge-stroke-width: 1.25;
+  --xy-node-background-color: var(--card);
+  --xy-node-color: var(--card-foreground);
+  --xy-handle-background-color: var(--border);
+  --xy-controls-button-background-color: var(--popover);
+  --xy-controls-button-background-color-hover: var(--muted);
+  --xy-controls-button-color: var(--foreground);
+  --xy-controls-button-color-hover: var(--foreground);
+  --xy-controls-button-border-color: var(--border);
+  --xy-controls-box-shadow: var(--pop-shadow);
+}
+div.react-flow.resolve-flow .react-flow__node { cursor: default; }
+div.react-flow.resolve-flow .react-flow__controls-button:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 50%, transparent); }
+div.react-flow.resolve-flow .react-flow__edge-path { stroke: var(--xy-edge-stroke); }

@@ -1,0 +1,52 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "resolve-ai",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-10-01",
+
+	// The Django image: Dockerfile.cloudflare, built with the backend folder as context
+	"containers": [
+		{
+			"class_name": "BackendContainer",
+			"image": "../Dockerfile.cloudflare",
+			"image_build_context": "..",
+			"instance_type": "basic",
+			"max_instances": 1,
+			// Run in Asia Pacific, next to Neon and Redis in Singapore (a request round trip to Miami cost ~240 ms per query)
+			"constraints": { "regions": ["APAC"] },
+		},
+	],
+
+	// The built frontend (`pnpm build` in ../../frontend). Only /api and /admin reach the
+	// Worker (and the container); every other path is a static file, or index.html for the SPA.
+	"assets": {
+		"directory": "../../frontend/dist",
+		"not_found_handling": "single-page-application",
+		"run_worker_first": ["/api/*", "/admin/*"],
+	},
+
+	// Worker and container logs, shown in the dashboard (Workers Logs: billed per event)
+	"observability": {
+		"enabled": true,
+	},
+
+	"durable_objects": {
+		"bindings": [{ "name": "BACKEND", "class_name": "BackendContainer" }],
+	},
+	"exports": {
+		"BackendContainer": { "type": "durable-object", "storage": "sqlite" },
+	},
+
+	// Every setting is a secret (`wrangler secret bulk secrets.json`) except the ones that are
+	// empty on purpose, because Cloudflare does not accept an empty secret. When you start
+	// using one (Sentry, Gmail push), delete it from here and add it as a secret instead; a
+	// name cannot be both. A name missing from both makes the Worker fail.
+	"vars": {
+		"RESOLVE_AI_COOKIE_DOMAIN": "",
+		"RESOLVE_AI_SENTRY_DSN": "",
+		"RESOLVE_AI_GMAIL_PUBSUB_TOPIC": "",
+		"RESOLVE_AI_PUBSUB_PUSH_AUDIENCE": "",
+		"RESOLVE_AI_PUBSUB_PUSH_SERVICE_ACCOUNT": "",
+		"RESOLVE_AI_PUBLIC_API_URL": "https://resolve-ai-frontend.aadarshasubedi20.workers.dev",
+	},
+}

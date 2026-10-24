@@ -1,0 +1,53 @@
+# Development stack: Postgres, Redis, the API (Dockerfile.dev, code bind-mounted
+# for hot reload) and the Celery worker and beat. Reads RESOLVE_AI_* from .env.
+x-backend: &backend
+  build:
+    context: .
+    dockerfile: Dockerfile.dev
+  env_file: .env
+  environment:
+    # Inside the compose network the services are reached by name, not localhost.
+    RESOLVE_AI_DB_HOST: db
+    RESOLVE_AI_DB_PORT: "5432"
+    RESOLVE_AI_REDIS_URL: redis://redis:6379/0
+  volumes:
+    - .:/app
+  depends_on:
+    - db
+    - redis
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: ${RESOLVE_AI_DB_CONTAINER_NAME}
+    environment:
+      POSTGRES_DB: ${RESOLVE_AI_DB_NAME}
+      POSTGRES_USER: ${RESOLVE_AI_DB_USER}
+      POSTGRES_PASSWORD: ${RESOLVE_AI_DB_PASSWORD}
+    ports:
+      - "${RESOLVE_AI_DB_PORT}:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: ${RESOLVE_AI_REDIS_CONTAINER_NAME}
+    ports:
+      - "${RESOLVE_AI_REDIS_PORT}:6379"
+
+  api:
+    <<: *backend
+    container_name: resolve-ai-backend
+    ports:
+      - "8000:8000"
+
+  celery:
+    <<: *backend
+    command: celery -A config worker -Q default -l info
+
+  celery-beat:
+    <<: *backend
+    command: celery -A config beat -l info
+
+volumes:
+  db_data:

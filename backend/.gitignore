@@ -1,0 +1,14 @@
+__pycache__/
+*.py[oc]
+build/
+dist/
+*.egg-info
+.venv
+.env
+db.sqlite3
+media/
+.vscode/
+.celery/
+celerybeat-schedule*
+.ruff_cache/
+graphify-out/

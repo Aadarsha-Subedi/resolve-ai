@@ -1,0 +1,14 @@
+"""Account limits, names and defaults."""
+
+DISPLAY_NAME_MAX_LENGTH = 80
+SESSION_REMEMBER_KEY = "accounts_remember_me"
+SESSION_NEXT_KEY = "accounts_next"
+DEFAULT_APP_PATH = "/app"
+LOGIN_PATH = "/"  # no login page: sign-in errors return to the landing page
+GOOGLE_ERROR_PARAM = "google_error"
+TASK_PURGE_DELETED_ACCOUNTS = "accounts.purge_deleted_accounts"
+TASK_CLEAR_EXPIRED_SESSIONS = "accounts.clear_expired_sessions"
+SESSION_PURGE_BATCH_SIZE = 500
+UNKNOWN_DEVICE_LABEL = "Unknown device"
+SESSION_SEEN_KEY = "accounts_last_seen"
+SESSION_TOUCH_INTERVAL_SECONDS = 60  # how often a session is re-saved to slide its expiry

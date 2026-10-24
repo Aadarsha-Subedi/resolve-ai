@@ -1,0 +1,2904 @@
+{
+  "info": {
+    "name": "ResolveAI",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "ResolveAI backend API. Session-cookie auth; send X-CSRFToken on unsafe requests. Every response uses the envelope {success, status_code, message, data, meta}; errors carry a stable `code`."
+  },
+  "item": [
+    {
+      "name": "Common",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "health",
+                ""
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "CSRF cookie",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/csrf/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "csrf",
+                ""
+              ]
+            },
+            "description": "Sets the csrftoken cookie. The test script copies it into the csrfToken variable used by the X-CSRFToken header."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const c = pm.cookies.get('csrftoken');",
+                  "if (c) { pm.environment.set('csrfToken', c); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Start Google sign-in",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/google/start/?remember=1&next=/app",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "google",
+                "start",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "remember",
+                  "value": "1"
+                },
+                {
+                  "key": "next",
+                  "value": "/app"
+                }
+              ]
+            },
+            "description": "Open this URL in a browser (Postman cannot complete Google's consent screen). Redirects to Google; after sign-in the callback redirects to the frontend /app (or /login?google_error=<code>). remember=1 gives a 30-day session, otherwise 14 days. Codes: cancelled, google_failed, rate_limited, email_unverified, email_conflict, account_disabled. Add reconnect=1 to force Google's consent screen and obtain a fresh Gmail refresh token (works for signed-in users too). Sign-in now asks for Gmail send and read access; users may decline it and still log in."
+          }
+        },
+        {
+          "name": "Google callback (redirect target)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/google/login/callback/?code=&state=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "google",
+                "login",
+                "callback",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "code",
+                  "value": ""
+                },
+                {
+                  "key": "state",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Called by Google, not by clients. Listed for reference; add http://localhost:8000/api/auth/google/login/callback/ as an authorized redirect URI."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout",
+                ""
+              ]
+            },
+            "description": "Ends the current session."
+          }
+        },
+        {
+          "name": "Logout everywhere",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout-all/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout-all",
+                ""
+              ]
+            },
+            "description": "Ends every session of the user."
+          }
+        },
+        {
+          "name": "List sessions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sessions/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sessions",
+                ""
+              ]
+            },
+            "description": "Own device sessions: id, device label, created_at, last_active_at, is_current. The IP is never returned."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const items = (pm.response.json().data || {}).items || [];",
+                  "const other = items.find(i => !i.is_current);",
+                  "if (other) { pm.environment.set('sessionId', String(other.id)); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Revoke session",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sessions/{{sessionId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sessions",
+                "{{sessionId}}",
+                ""
+              ]
+            },
+            "description": "Ends another device's session. The current session is ended with Logout (400 cannot_revoke_current_session)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Account",
+      "item": [
+        {
+          "name": "Get profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "me",
+                ""
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Update profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "me",
+                ""
+              ]
+            },
+            "description": "Only display_name (1-80 chars); unknown fields are rejected.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"display_name\": \"Jane Doe\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Request account deletion",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "me",
+                ""
+              ]
+            },
+            "description": "Starts a 7-day grace period and ends all sessions. 409 account_owns_workspace while the user owns a workspace. Signing in again within 7 days cancels it."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Workspaces",
+      "item": [
+        {
+          "name": "Create workspace",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                ""
+              ]
+            },
+            "description": "slug is optional (3-40 lowercase letters, digits, hyphens) and immutable. The caller becomes the owner.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Acme Support\",\n  \"slug\": \"acme-support\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json().data;",
+                  "if (d && d.id) { pm.environment.set('workspaceId', d.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List my workspaces",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                ""
+              ]
+            },
+            "description": "Paginated (25, max 100 via ?limit=&offset=)."
+          }
+        },
+        {
+          "name": "Get workspace",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                ""
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Update workspace",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                ""
+              ]
+            },
+            "description": "Owner only. slug cannot be changed.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Acme Help\",\n  \"portal_enabled\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete workspace",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                ""
+              ]
+            },
+            "description": "Owner only. Hidden at once, purged after 7 days."
+          }
+        },
+        {
+          "name": "Transfer ownership",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/transfer-ownership/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "transfer-ownership",
+                ""
+              ]
+            },
+            "description": "Owner only; target must be an active member.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{userId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Upload URL for logo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/logo/upload-url/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "logo",
+                "upload-url",
+                ""
+              ]
+            },
+            "description": "size is in BYTES and must equal the real file size exactly (check the file's properties, e.g. 4392), and content_type must match what you send in the PUT; both are part of the signature, otherwise R2 answers SignatureDoesNotMatch. Returns key and a signed upload_url. PUT the raw file bytes there (Body > binary) with the Content-Type header from the response and no other auth headers, then call Confirm logo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content_type\": \"image/png\",\n  \"size\": 4392\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json().data;",
+                  "if (d && d.key) { pm.environment.set('logoKey', d.key); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm logo",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/logo/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "logo",
+                ""
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"{{logoKey}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Remove logo",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/logo/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "logo",
+                ""
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Members",
+      "item": [
+        {
+          "name": "List members",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/members/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "members",
+                ""
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const items = (pm.response.json().data || {}).items || [];",
+                  "const other = items.find(i => i.role === 'member');",
+                  "if (other) { pm.environment.set('userId', other.user_id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Remove member",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/members/{{userId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "members",
+                "{{userId}}",
+                ""
+              ]
+            },
+            "description": "Owner only. The owner cannot be removed."
+          }
+        },
+        {
+          "name": "Leave workspace",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/leave/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "leave",
+                ""
+              ]
+            },
+            "description": "Members only; the owner must transfer ownership first."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Join link",
+      "item": [
+        {
+          "name": "Join link status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/join-link/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "join-link",
+                ""
+              ]
+            },
+            "description": "Owner only. Metadata only; the token cannot be recovered."
+          }
+        },
+        {
+          "name": "Create or rotate join link",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/join-link/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "join-link",
+                ""
+              ]
+            },
+            "description": "expires_in: 1h (default), 1d or 7d. Revokes the previous link. The raw token and url are returned once.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expires_in\": \"1h\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json().data;",
+                  "if (d && d.token) { pm.environment.set('joinToken', d.token); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Revoke join link",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/join-link/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "join-link",
+                ""
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Redeem join link",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/join-links/redeem/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "join-links",
+                "redeem",
+                ""
+              ]
+            },
+            "description": "Any signed-in user. Limited per IP (scope join_link). Invalid, expired and revoked links return the same 404.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{joinToken}}\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invitations",
+      "item": [
+        {
+          "name": "Invite Google accounts",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/invitations/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "invitations",
+                ""
+              ]
+            },
+            "description": "Owner only, up to 20. Gmail addresses are matched by mailbox (dots, +tags and googlemail.com are ignored). Each result says created, already_invited or already_member. Invitations expire after 7 days. Each new invitation is also emailed to the invitee from your own Gmail (needs the Celery worker; skipped when no Gmail is connected).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emails\": [\n    \"colleague@gmail.com\",\n    \"other@example.com\"\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "List workspace invitations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/invitations/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "invitations",
+                ""
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const items = (pm.response.json().data || {}).items || [];",
+                  "if (items.length) { pm.environment.set('invitationId', items[0].id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Revoke invitation",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/invitations/{{invitationId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "invitations",
+                "{{invitationId}}",
+                ""
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "My invitations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/invitations/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "invitations",
+                ""
+              ]
+            },
+            "description": "Open invitations for the Google account you signed in with."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const items = (pm.response.json().data || {}).items || [];",
+                  "if (items.length) { pm.environment.set('invitationId', items[0].id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Accept invitation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/invitations/{{invitationId}}/accept/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "invitations",
+                "{{invitationId}}",
+                "accept",
+                ""
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Decline invitation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/invitations/{{invitationId}}/decline/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "invitations",
+                "{{invitationId}}",
+                "decline",
+                ""
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Knowledge",
+      "item": [
+        {
+          "name": "Articles",
+          "item": [
+            {
+              "name": "Create article",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRFToken",
+                    "value": "{{csrfToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/articles/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "articles",
+                    ""
+                  ]
+                },
+                "description": "Body is Markdown/text, up to 200 KB, stored in R2 and counted in the 50 MB workspace quota. Starts as draft.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"How to reset your password\",\n  \"content\": \"# Reset\\n\\nOpen Settings and choose Reset password.\",\n  \"category_ids\": [\n    \"{{categoryId}}\"\n  ]\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const d = pm.response.json().data;",
+                      "if (d && d.id) { pm.environment.set('articleId', d.id); }"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List articles",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/articles/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "articles",
+                    ""
+                  ]
+                },
+                "description": "Filters: ?title=(contains) &status=draft|published|archived &category=<id> &ordering=-updated_at|title|created_at|published_at, plus limit/offset. No full-text search in v1."
+              }
+            },
+            {
+              "name": "Get article",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/articles/{{articleId}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "articles",
+                    "{{articleId}}",
+                    ""
+                  ]
+                },
+                "description": "Includes the content (read from storage)."
+              }
+            },
+            {
+              "name": "Update article",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRFToken",
+                    "value": "{{csrfToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/articles/{{articleId}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "articles",
+                    "{{articleId}}",
+                    ""
+                  ]
+                },
+                "description": "Any of title, content, category_ids. Archived articles are read-only (409 article_archived).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Reset your password\",\n  \"content\": \"Updated text\",\n  \"category_ids\": [\n    \"{{categoryId}}\"\n  ]\n}"
+                }
+              }
+            },
+            {
+              "name": "Publish article",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-CSRFToken",
+                    "value": "{{csrfToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/articles/{{articleId}}/publish/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "articles",
+                    "{{articleId}}",
+                    "publish",
+                    ""
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "Unpublish (back to draft)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-CSRFToken",
+                    "value": "{{csrfToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/articles/{{articleId}}/unpublish/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "articles",
+                    "{{articleId}}",
+                    "unpublish",
+                    ""
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "Archive article",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-CSRFToken",
+                    "value": "{{csrfToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/articles/{{articleId}}/archive/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "articles",
+                    "{{articleId}}",
+                    "archive",
+                    ""
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "Delete article",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "X-CSRFToken",
+                    "value": "{{csrfToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/articles/{{articleId}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "articles",
+                    "{{articleId}}",
+                    ""
+                  ]
+                },
+                "description": "Permanent. Frees its storage quota."
+              }
+            }
+          ]
+        },
+        {
+          "name": "Categories",
+          "item": [
+            {
+              "name": "List categories",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/categories/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "categories",
+                    ""
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const items = (pm.response.json().data || {}).items || [];",
+                      "if (items.length) { pm.environment.set('categoryId', items[0].id); }"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Create category",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRFToken",
+                    "value": "{{csrfToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/categories/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "categories",
+                    ""
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Shipping\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Rename category",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRFToken",
+                    "value": "{{csrfToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/categories/{{categoryId}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "categories",
+                    "{{categoryId}}",
+                    ""
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Delivery\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Delete category",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "X-CSRFToken",
+                    "value": "{{csrfToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/categories/{{categoryId}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "categories",
+                    "{{categoryId}}",
+                    ""
+                  ]
+                },
+                "description": "Only unlinks the category from articles."
+              }
+            }
+          ]
+        },
+        {
+          "name": "Uploads",
+          "item": [
+            {
+              "name": "Get upload URL",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRFToken",
+                    "value": "{{csrfToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/uploads/upload-url/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "uploads",
+                    "upload-url",
+                    ""
+                  ]
+                },
+                "description": "PDF, DOCX, MD (text/markdown) or TXT, 1 byte to 10 MB (legacy .doc is refused). content_type must be application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document, text/markdown or text/plain. size is in BYTES and must equal the real file size exactly. Reserves quota. Then PUT the raw bytes to upload_url (method PUT, body binary, header Content-Type exactly as returned, nothing else; create that request outside this collection), then call Confirm upload. Unconfirmed uploads are removed after 1 hour. category_id is required: the file is filed under that category.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"filename\": \"guide.pdf\",\n  \"content_type\": \"application/pdf\",\n  \"size\": 12345,\n  \"category_id\": \"{{categoryId}}\"\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const d = pm.response.json().data;",
+                      "if (d && d.id) { pm.environment.set('uploadId', d.id); }"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Confirm upload",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-CSRFToken",
+                    "value": "{{csrfToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/uploads/{{uploadId}}/confirm/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "uploads",
+                    "{{uploadId}}",
+                    "confirm",
+                    ""
+                  ]
+                },
+                "description": "Checks the stored object has the declared size and type (PDFs must start with %PDF-, DOCX files must be a valid zip with the Word parts). Confirming queues reading the file in the background: poll List uploads until index_status is indexed (pending, indexing, indexed or failed; index_error says why it failed). Only indexed files are searched."
+              }
+            },
+            {
+              "name": "List uploads",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/uploads/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "uploads",
+                    ""
+                  ]
+                },
+                "description": "Filters: category (id), filename (contains). Each item has index_status, index_error, page_count and indexed_at."
+              }
+            },
+            {
+              "name": "Download URL",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/uploads/{{uploadId}}/download/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "uploads",
+                    "{{uploadId}}",
+                    "download",
+                    ""
+                  ]
+                },
+                "description": "Signed URL that forces a download, valid 5 minutes."
+              }
+            },
+            {
+              "name": "Delete upload",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "X-CSRFToken",
+                    "value": "{{csrfToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/uploads/{{uploadId}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workspaces",
+                    "{{workspaceId}}",
+                    "knowledge",
+                    "uploads",
+                    "{{uploadId}}",
+                    ""
+                  ]
+                },
+                "description": "Frees its storage quota."
+              }
+            }
+          ]
+        },
+        {
+          "name": "Storage usage",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/storage/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "knowledge",
+                "storage",
+                ""
+              ]
+            },
+            "description": "used_bytes, limit_bytes (50 MB) and remaining_bytes for articles plus uploads. The logo is not counted."
+          }
+        },
+        {
+          "name": "Find context for a question",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/context/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "knowledge",
+                "context",
+                ""
+              ]
+            },
+            "description": "Passages of published articles and ready uploaded files with citations: each result has `source` {type article|upload, id, title, page} (`article` is null for files). Words and meaning (embeddings) are both searched and merged. Up to 3 rewrites of the question are searched too; `rewritten` says whether they were used. 30 requests per minute.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"How do I get a refund for my annual plan?\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Ask a question (answer with citations)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/ask/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "knowledge",
+                "ask",
+                ""
+              ]
+            },
+            "description": "Same passages (articles and uploaded files) as 'Find context for a question', plus `answered` (true when `status` is answered) and `answer`: a paraphrase written only from those passages, with [n] markers that match `results[].citation`. `status` is answered, not_covered (passages do not answer it), unavailable (LLM failed; passages still returned) or no_results. Uses up to 2 Resolve AI calls (rewrite and answer). 30 requests per minute. The exchange is saved in your chat history; add `conversation_id` to continue a chat (omit it to start a new one).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"How do I get a refund for my annual plan?\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List my Ask conversations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/ask/conversations/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "knowledge",
+                "ask",
+                "conversations",
+                ""
+              ]
+            },
+            "description": "Your saved chats in this workspace, newest first. Paginated (limit, offset)."
+          }
+        },
+        {
+          "name": "Get an Ask conversation",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/ask/conversations/{{conversationId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "knowledge",
+                "ask",
+                "conversations",
+                "{{conversationId}}",
+                ""
+              ]
+            },
+            "description": "One of your chats with all its questions and answers. Another user's chat is 404."
+          }
+        },
+        {
+          "name": "Delete an Ask conversation",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/knowledge/ask/conversations/{{conversationId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "knowledge",
+                "ask",
+                "conversations",
+                "{{conversationId}}",
+                ""
+              ]
+            },
+            "description": "Deletes the chat and its answers."
+          }
+        }
+      ]
+    },
+    {
+      "name": "AI settings",
+      "item": [
+        {
+          "name": "Get my AI settings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/llm/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "llm",
+                ""
+              ]
+            },
+            "description": "Your own mode, model and key summary (last 4 only) in this workspace, plus the allowed models."
+          }
+        },
+        {
+          "name": "Switch to Resolve AI",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/llm/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "llm",
+                ""
+              ]
+            },
+            "description": "Use the Resolve AI Gemini key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"resolve_ai\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Pick Resolve AI model",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/llm/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "llm",
+                ""
+              ]
+            },
+            "description": "Only the cheap models offered in options.resolve_ai.models.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resolve_ai_model\": \"gemini-3.1-flash-lite\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Add or replace a key (OpenAI)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/llm/keys/openai/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "llm",
+                "keys",
+                "openai",
+                ""
+              ]
+            },
+            "description": "The key is checked with the provider, stored encrypted and never returned.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"api_key\": \"<your OpenAI API key>\",\n  \"model\": \"gpt-5-mini\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Use the Gemini key",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/llm/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "llm",
+                ""
+              ]
+            },
+            "description": "Needs a saved key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"own_key\",\n  \"active_provider\": \"gemini\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Change the model of a key (OpenAI)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/llm/keys/openai/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "llm",
+                "keys",
+                "openai",
+                ""
+              ]
+            },
+            "description": "Re-checks the stored key against the new model.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model\": \"gpt-5-nano\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete the OpenAI key",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/llm/keys/openai/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "llm",
+                "keys",
+                "openai",
+                ""
+              ]
+            },
+            "description": "Forgets the key and falls back to Resolve AI mode."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tickets",
+      "item": [
+        {
+          "name": "Create ticket (agent)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                ""
+              ]
+            },
+            "description": "Owner or member. category: billing, technical, account, feature_request, general (default), other. priority: low, medium (default), high, urgent. Gets the next per-workspace number.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subject\": \"Cannot log in\",\n  \"description\": \"The customer phoned: password reset email never arrives.\",\n  \"customer_email\": \"jane@example.com\",\n  \"customer_name\": \"Jane\",\n  \"category\": \"technical\",\n  \"priority\": \"medium\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json().data;",
+                  "if (d && d.id) { pm.environment.set('ticketId', d.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List tickets",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/?status=open&ordering=-priority",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "open"
+                },
+                {
+                  "key": "ordering",
+                  "value": "-priority"
+                }
+              ]
+            },
+            "description": "Filters: status, priority, category, created_from, created_to (YYYY-MM-DD), q (contains in subject, customer email and name), waiting_for_reply=true|false, assignee=<user id>|me|unassigned, ordering (number, created_at, updated_at, last_activity_at, priority, status; prefix - for descending), plus limit/offset (25, max 100)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const items = (pm.response.json().data || {}).items || [];",
+                  "if (items.length) { pm.environment.set('ticketId', items[0].id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get ticket",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                "{{ticketId}}",
+                ""
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Ticket overview (one call for the page)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/overview/?messages_limit=50&events_limit=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                "{{ticketId}}",
+                "overview",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "messages_limit",
+                  "value": "50"
+                },
+                {
+                  "key": "events_limit",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Everything the ticket page needs in one request: `ticket` (detail), `viewer` (your role and permission codes), `messages` (public replies and internal notes), `events` (history), `meta` (totals and how many were returned) and `email` (your own Gmail status, for the reply box). messages_limit and events_limit (1-100, default 50) return the newest items in chronological order; older ones come from the paginated messages/ and events/ requests. Read-only; same access rules as the separate requests."
+          }
+        },
+        {
+          "name": "Update ticket",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                "{{ticketId}}",
+                ""
+              ]
+            },
+            "description": "subject, description, customer_name, customer_email, category, priority. Status has its own request. On a CLOSED ticket members get 403 ticket_closed; the owner can still edit.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"priority\": \"high\",\n  \"category\": \"billing\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Change status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/status/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                "{{ticketId}}",
+                "status",
+                ""
+              ]
+            },
+            "description": "open, in_progress, pending, resolved, closed. Any member can change it, but only the owner can move a CLOSED ticket to another status (403 owner_only_reopen).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_progress\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Assign ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/assignee/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                "{{ticketId}}",
+                "assignee",
+                ""
+              ]
+            },
+            "description": "Assign to an ACTIVE member of the workspace (user id), 400 assignee_invalid otherwise. Owner and members may assign; on a CLOSED ticket only the owner (403 ticket_closed). Same assignee again changes nothing.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assignee\": \"{{userId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Unassign ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/assignee/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                "{{ticketId}}",
+                "assignee",
+                ""
+              ]
+            },
+            "description": "Clear the assignee.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assignee\": null\n}"
+            }
+          }
+        },
+        {
+          "name": "List messages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/messages/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                "{{ticketId}}",
+                "messages",
+                ""
+              ]
+            },
+            "description": "Public messages and internal notes (agent view)."
+          }
+        },
+        {
+          "name": "Add internal note",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/messages/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                "{{ticketId}}",
+                "messages",
+                ""
+              ]
+            },
+            "description": "Never visible to customers.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Customer is on the Pro plan.\",\n  \"visibility\": \"internal\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Add public reply",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/messages/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                "{{ticketId}}",
+                "messages",
+                ""
+              ]
+            },
+            "description": "Stored with delivery_status queued; feature 6 emails it from the agent's own Gmail. Not allowed on a CLOSED ticket.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Thanks, we are looking into it.\",\n  \"visibility\": \"public\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Ticket history",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/events/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                "{{ticketId}}",
+                "events",
+                ""
+              ]
+            },
+            "description": "Created, status/priority/category/details changed, reply and note added. Never contains message text."
+          }
+        },
+        {
+          "name": "Summarise a ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/summary/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                "{{ticketId}}",
+                "summary",
+                ""
+              ]
+            },
+            "description": "Needs tickets.view. Summary of the public conversation only; internal notes are never sent to the LLM. Not stored. Throttle scope ai.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "Draft a reply",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/draft-reply/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                "{{ticketId}}",
+                "draft-reply",
+                ""
+              ]
+            },
+            "description": "Needs tickets.view. `intent` is required, 1 to 200 characters. Uses the public conversation, matching published articles and the caller's name for the signature. Returns `draft` and `sources`. Nothing is sent or stored.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"intent\": \"Apologise for the delay and explain the refund steps\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Portal (public)",
+      "item": [
+        {
+          "name": "Portal info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/portal/{{portalSlug}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "portal",
+                "{{portalSlug}}",
+                ""
+              ]
+            },
+            "description": "No login. Name, slug and logo only. 404 when the slug is unknown, the portal is switched off or the workspace was deleted."
+          }
+        },
+        {
+          "name": "Submit ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/portal/{{portalSlug}}/tickets/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "portal",
+                "{{portalSlug}}",
+                "tickets",
+                ""
+              ]
+            },
+            "description": "No login, no CSRF token. Limited per IP and to 5 tickets per email address per hour per workspace. Leave the hidden field `website` empty or omit it (bots that fill it get a fake success). Returns only the ticket number.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_email\": \"customer@example.com\",\n  \"customer_name\": \"Cara\",\n  \"subject\": \"Where is my order?\",\n  \"description\": \"I ordered last week and nothing arrived.\",\n  \"category\": \"general\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Email (Gmail)",
+      "item": [
+        {
+          "name": "Gmail status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/email/gmail/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "email",
+                "gmail",
+                ""
+              ]
+            },
+            "description": "Connection created by Google sign-in. status: connected, not_connected (Gmail permission declined or no refresh token), reauth_required (token expired or revoked; Testing-mode tokens last 7 days), disconnected. When reconnecting is needed `reconnect_path` is a sign-in URL that forces Google's consent screen. Tokens are never returned."
+          }
+        },
+        {
+          "name": "Sync latest mails",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/email/gmail/sync/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "email",
+                "gmail",
+                "sync",
+                ""
+              ]
+            },
+            "description": "Reads at most the newest 30 inbox messages of your Gmail and files customer replies on their tickets (matched by email headers, never by subject). Mail from known customers that cannot be matched goes to the review list; everything else is ignored and not stored. Limited to 6 per minute."
+          }
+        },
+        {
+          "name": "Disconnect Gmail",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/email/gmail/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "email",
+                "gmail",
+                ""
+              ]
+            },
+            "description": "Stops the push watch, revokes the grant at Google and deletes the stored refresh token. Signing in again can reconnect."
+          }
+        },
+        {
+          "name": "List mail to review",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/email/review/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "email",
+                "review",
+                ""
+              ]
+            },
+            "description": "Messages from known customers that could not be matched to a ticket (sender, subject and a short snippet; newest 30, kept 30 days)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const items = (pm.response.json().data || {}).items || [];",
+                  "if (items.length) { pm.environment.set('reviewId', items[0].id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Attach mail to ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/email/review/{{reviewId}}/attach/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "email",
+                "review",
+                "{{reviewId}}",
+                "attach",
+                ""
+              ]
+            },
+            "description": "Files the message on the chosen ticket (its text is fetched from Gmail again) and removes it from the review list.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"workspace_id\": \"{{workspaceId}}\",\n  \"ticket_id\": \"{{ticketId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Dismiss mail",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/email/review/{{reviewId}}/dismiss/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "email",
+                "review",
+                "{{reviewId}}",
+                "dismiss",
+                ""
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Resend failed reply",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-CSRFToken",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/tickets/{{ticketId}}/messages/{{messageId}}/resend/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "tickets",
+                "{{ticketId}}",
+                "messages",
+                "{{messageId}}",
+                "resend",
+                ""
+              ]
+            },
+            "description": "Queues a public reply whose delivery_status is failed again (sender or owner). delivery_error says why it failed: gmail_not_connected, gmail_reauth_required, gmail_rejected, gmail_unavailable."
+          }
+        },
+        {
+          "name": "Gmail push (Google Pub/Sub only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/email/gmail/push/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "email",
+                "gmail",
+                "push",
+                ""
+              ]
+            },
+            "description": "Called by Google Pub/Sub with a signed JWT, never by clients. Listed for reference; it needs RESOLVE_AI_PUBSUB_PUSH_AUDIENCE and RESOLVE_AI_PUBSUB_PUSH_SERVICE_ACCOUNT.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": {\n    \"data\": \"<base64 of {emailAddress, historyId}>\",\n    \"messageId\": \"1\"\n  },\n  \"subscription\": \"projects/<project>/subscriptions/<name>\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Dashboard (everything, last 30 days)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/dashboard/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "dashboard",
+                ""
+              ],
+              "query": []
+            },
+            "description": "One call for the dashboard screen. Owner and members (dashboard.view); non-members get 404. Defaults: period=30d, tz=UTC, all sections, limits 5/5/10. Cached 30 s (meta.cached). 30 requests a minute per user. Unknown query parameters return 400. Shape: backend/docs/DASHBOARD_API.md."
+          }
+        },
+        {
+          "name": "Dashboard (custom range, local time zone)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/dashboard/?from=2026-03-01&to=2026-03-31&tz=Asia/Kathmandu",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "dashboard",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-03-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-03-31"
+                },
+                {
+                  "key": "tz",
+                  "value": "Asia/Kathmandu"
+                }
+              ]
+            },
+            "description": "from and to are inclusive dates, at most 366 days, and cannot be combined with period. The previous period is the same number of days right before from. Day boundaries follow tz (IANA name; unknown names return 400)."
+          }
+        },
+        {
+          "name": "Dashboard (7 days, subset and limits)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/dashboard/?period=7d&include=summary,waiting&waiting_limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "dashboard",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "7d"
+                },
+                {
+                  "key": "include",
+                  "value": "summary,waiting"
+                },
+                {
+                  "key": "waiting_limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "period is 7d, 30d or 90d. include is a comma list of summary, volume, recent_tickets, waiting, activity; only those sections are returned. recent_limit, waiting_limit and activity_limit are 1 to 50."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Audit",
+      "item": [
+        {
+          "name": "List audit log (owner only)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/audit/?action_prefix=member.&limit=25",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "audit",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "action_prefix",
+                  "value": "member."
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                }
+              ]
+            },
+            "description": "Newest first. Owner only (members get 403, non-members 404). Filters: action (exact, e.g. ticket.status_changed), action_prefix (e.g. member., ticket., article.), actor (user id), target_type, target_id, created_from, created_to (YYYY-MM-DD), plus limit/offset (25, max 100). Read-only: no create, edit, delete or export. Each item: id, action, actor {id, name}, target {type, id}, metadata (flat facts only, never secrets, message text or email addresses), created_at. Recorded actions: workspace and member changes, ownership transfer, join links and invitations, knowledge base changes, ticket created/updated/status changed. Replies and notes are not audited (they are the ticket's own history)."
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Google sign-in cannot finish inside Postman. Sign in with a browser, copy the",
+          "// `sessionid` cookie value into the `sessionCookie` environment variable, and every",
+          "// request below sends it (plus the CSRF cookie when `csrfToken` is set).",
+          "const session = pm.environment.get('sessionCookie');",
+          "if (session) {",
+          "  const csrf = pm.environment.get('csrfToken');",
+          "  let cookie = 'sessionid=' + session;",
+          "  if (csrf) { cookie += '; csrftoken=' + csrf; }",
+          "  pm.request.headers.upsert({ key: 'Cookie', value: cookie });",
+          "}"
+        ]
+      }
+    }
+  ]
+}
