@@ -88,7 +88,7 @@ class SettingsError extends Error {}
 /** The Django container. It sleeps when idle and starts again on the next request. */
 export class BackendContainer extends Container<Env> {
 	defaultPort = 8080;
-	sleepAfter = "10m";
+	sleepAfter = "3m";
 
 	/**
 	 * Called by the Worker on every request with the settings it sees right now. A running
