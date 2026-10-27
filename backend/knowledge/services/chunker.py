@@ -156,6 +156,12 @@ def _split_long(block: str, overlap: int = 0) -> list[str]:
         and len("\n".join(block.splitlines()[:2])) <= CHUNK_MAX_CHARS // 2
     ):
         return _split_table(block)
+    if overlap and "\n" in block:
+        # Extracted document text (PDF lines, DOCX paragraphs) has line breaks that mean
+        # something and few full stops: cut between lines, not in the middle of one.
+        pieces = _split_document_lines(block, overlap)
+        if pieces:
+            return pieces
     pieces: list[str] = []
     current = ""
     last_part = ""
@@ -173,6 +179,31 @@ def _split_long(block: str, overlap: int = 0) -> list[str]:
             last_part = part
     if current:
         pieces.append(current)
+    return pieces
+
+
+def _split_document_lines(block: str, overlap: int) -> list[str]:
+    """Pack whole lines into pieces of at most the maximum; a piece starts with the previous
+    piece's last line when that line is short enough. Returns [] when a single line is
+    longer than the maximum (the caller then cuts at sentences and words)."""
+    lines = [line.strip() for line in block.splitlines() if line.strip()]
+    if any(len(line) > CHUNK_MAX_CHARS for line in lines):
+        return []
+    pieces: list[str] = []
+    current: list[str] = []
+    size = 0
+    for line in lines:
+        if current and size + 1 + len(line) > CHUNK_MAX_CHARS:
+            pieces.append("\n".join(current))
+            keep = current[-1] if len(current[-1]) <= overlap else ""
+            current = (
+                [keep] if keep and len(keep) + 1 + len(line) <= CHUNK_MAX_CHARS else []
+            )
+            size = len(keep) if current else 0
+        current.append(line)
+        size += len(line) + (1 if len(current) > 1 else 0)
+    if current:
+        pieces.append("\n".join(current))
     return pieces
 
 
