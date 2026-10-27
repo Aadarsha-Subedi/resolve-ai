@@ -117,6 +117,18 @@ describe('AskPage', () => {
     expect(screen.getByText(/not that the statement is correct/)).toBeInTheDocument()
   })
 
+  it('shows one badge per source even when a claim has several quotes from it', async () => {
+    setup()
+    const claims = [{ text: 'He built two things.', cites: [{ n: 1, before: '', quote: 'first quote here', after: '' }, { n: 1, before: '', quote: 'second quote here', after: '' }] }]
+    vi.mocked(api.post).mockResolvedValue({ data: { ...turn({ claims }), conversation_id: 'c9' }, meta: {}, message: '' })
+    await userEvent.type(screen.getByLabelText('Your question'), 'What did he build?')
+    await userEvent.click(screen.getByRole('button', { name: 'Send question' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Show the quote from source 1' }))
+    expect(screen.getAllByRole('button', { name: 'Show the quote from source 1' })).toHaveLength(1)
+    expect(screen.getByText('first quote here')).toBeInTheDocument()
+    expect(screen.getByText('second quote here')).toBeInTheDocument()
+  })
+
   it('says no verified answer was found when every quote failed', async () => {
     setup()
     vi.mocked(api.post).mockResolvedValue({ data: { ...turn({ status: 'not_covered', answer: null, cited: [], claims: [] }), conversation_id: 'c9' }, meta: {}, message: '' })

@@ -1,7 +1,7 @@
 import { formatDistanceToNowStrict } from 'date-fns'
 import { useEffect, useState, type ReactNode } from 'react'
 
-import { hitSource, splitCitations, type Answer, type AskTurn, type Claim } from '@/features/ai/context-api'
+import { hitSource, splitCitations, type Answer, type AskTurn, type Claim, type ClaimCite } from '@/features/ai/context-api'
 import { ContextResults } from '@/features/ai/context-panel'
 import { ErrorPanel } from '@/features/app/page-states'
 import { Quotes, Robot, SealCheck } from '@/icons'
@@ -78,6 +78,16 @@ function AnswerText({ answer, prefix, onCite }: { answer: Answer; prefix: string
   )
 }
 
+/** A quote's text with the PDF's line breaks turned into spaces. */
+const flat = (text: string) => text.replace(/\s+/g, ' ')
+
+/** A claim's quotes grouped by the source they come from, in order of first appearance. */
+function citedSources(claim: Claim): [number, ClaimCite[]][] {
+  const groups = new Map<number, ClaimCite[]>()
+  for (const cite of claim.cites) groups.set(cite.n, [...(groups.get(cite.n) ?? []), cite])
+  return [...groups]
+}
+
 /** The answer as separate claims. A numbered badge opens the exact words found in that source. */
 function ClaimsList({ answer, prefix, onCite }: { answer: Answer & { claims: Claim[] }; prefix: string; onCite: (n: number) => void }) {
   const [open, setOpen] = useState<string | null>(null)
@@ -88,29 +98,33 @@ function ClaimsList({ answer, prefix, onCite }: { answer: Answer & { claims: Cla
           <li key={i} className="space-y-1.5">
             <p className="text-sm leading-relaxed [overflow-wrap:anywhere]">
               {claim.text}{' '}
-              {claim.cites.map((cite, j) => {
-                const id = `${i}-${j}`
+              {citedSources(claim).map(([n]) => {
+                const id = `${i}-${n}`
                 return (
-                  <button key={id} type="button" aria-expanded={open === id} aria-label={`Show the quote from source ${cite.n}`} onClick={() => setOpen(open === id ? null : id)} className="mr-0.5 inline-flex items-center gap-0.5 rounded-sm px-1 align-baseline text-xs font-medium tabular-nums text-primary hover:bg-primary/10">
-                    <SealCheck aria-hidden weight="fill" className="size-3" />[{cite.n}]
+                  <button key={id} type="button" aria-expanded={open === id} aria-label={`Show the quote from source ${n}`} onClick={() => setOpen(open === id ? null : id)} className="mr-0.5 inline-flex items-center gap-0.5 rounded-sm px-1 align-baseline text-xs font-medium tabular-nums text-primary hover:bg-primary/10">
+                    <SealCheck aria-hidden weight="fill" className="size-3" />[{n}]
                   </button>
                 )
               })}
             </p>
-            {claim.cites.map((cite, j) => {
-              if (open !== `${i}-${j}`) return null
-              const hit = answer.results[cite.n - 1]
+            {citedSources(claim).map(([n, cites]) => {
+              if (open !== `${i}-${n}`) return null
+              const hit = answer.results[n - 1]
               const source = hit ? hitSource(hit) : null
               return (
-                <blockquote key={j} className="space-y-1 rounded-md border-l-2 border-primary/50 bg-muted/40 px-3 py-2">
-                  <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><Quotes aria-hidden className="size-3.5" />Found in source {cite.n}{source ? `: ${source.title}${source.page ? `, page ${source.page}` : ''}` : ''}</p>
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere]">
-                    {cite.before && <span className="text-muted-foreground">…{cite.before}</span>}
-                    <mark className="rounded-sm bg-primary/15 px-0.5 text-foreground">{cite.quote}</mark>
-                    {cite.after && <span className="text-muted-foreground">{cite.after}…</span>}
-                  </p>
-                  <button type="button" onClick={() => onCite(cite.n)} className="text-xs font-medium text-primary underline-offset-2 hover:underline">Show source {cite.n}</button>
-                </blockquote>
+                <div key={n} className="space-y-2">
+                  {cites.map((cite, j) => (
+                    <blockquote key={j} className="space-y-1 rounded-md border-l-2 border-primary/50 bg-muted/40 px-3 py-2">
+                      <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><Quotes aria-hidden className="size-3.5" />Found in source {n}{source ? `: ${source.title}${source.page ? `, page ${source.page}` : ''}` : ''}</p>
+                      <p className="text-sm leading-relaxed [overflow-wrap:anywhere]">
+                        {cite.before && <span className="text-muted-foreground">…{flat(cite.before)}</span>}
+                        <mark className="rounded-sm bg-primary/15 px-0.5 text-foreground">{flat(cite.quote)}</mark>
+                        {cite.after && <span className="text-muted-foreground">{flat(cite.after)}…</span>}
+                      </p>
+                      {j === cites.length - 1 && <button type="button" onClick={() => onCite(n)} className="text-xs font-medium text-primary underline-offset-2 hover:underline">Show source {n}</button>}
+                    </blockquote>
+                  ))}
+                </div>
               )
             })}
           </li>

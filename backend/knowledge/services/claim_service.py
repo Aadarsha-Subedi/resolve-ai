@@ -6,10 +6,14 @@ marks and typographic quotes) proves the words exist there; it does not prove th
 follows from them. A claim with no found quote is dropped."""
 
 import json
+import logging
 import re
 import unicodedata
+from collections import Counter
 
 from knowledge.constants import settings as cfg
+
+logger = logging.getLogger(__name__)
 
 _MARK = re.compile(r"\[\d{1,2}\]")
 _STRIPPED = set("*_`#>~|\\")
@@ -53,21 +57,22 @@ def _find_quote(quote: str, passage: str) -> tuple[int, int] | None:
     return origin[position], origin[position + len(needle) - 1] + 1
 
 
-def _cite(item, passages: list[str]) -> dict | None:
+def _cite(item, passages: list[str]) -> tuple[dict | None, str]:
+    """(cite, "") when the quote is found in its passage, else (None, why it was dropped)."""
     if not isinstance(item, dict):
-        return None
+        return None, "bad_cite"
     number, quote = item.get("n"), item.get("quote")
     if isinstance(number, bool) or not isinstance(number, int):
-        return None
+        return None, "bad_cite"
     if not isinstance(quote, str) or not 1 <= number <= len(passages):
-        return None
+        return None, "bad_passage_number"
     words = len(quote.split())
     if not cfg.CLAIM_QUOTE_MIN_WORDS <= words <= cfg.CLAIM_QUOTE_MAX_WORDS:
-        return None
+        return None, "quote_length"
     passage = passages[number - 1]
     found = _find_quote(quote, passage)
     if found is None:
-        return None
+        return None, "quote_not_found"
     start, end = found
     room = cfg.CLAIM_CONTEXT_CHARS
     return {
@@ -76,7 +81,7 @@ def _cite(item, passages: list[str]) -> dict | None:
         "before": passage[max(0, start - room) : start],
         "quote": passage[start:end],
         "after": passage[end : end + room],
-    }
+    }, ""
 
 
 def verify_claims(raw: str, passages: list[str]) -> list[dict]:
@@ -86,26 +91,41 @@ def verify_claims(raw: str, passages: list[str]) -> list[dict]:
     try:
         data = json.loads(raw)
     except TypeError, ValueError:
+        logger.info("Claims: the model's output was not JSON")
         return []
     items = data.get("claims") if isinstance(data, dict) else None
     if not isinstance(items, list):
+        logger.info("Claims: the model's output had no claims list")
         return []
     claims = []
+    dropped: Counter = Counter()
     for item in items[: cfg.CLAIM_MAX_CLAIMS]:
         if not isinstance(item, dict) or not isinstance(item.get("text"), str):
             continue
         text = " ".join(_MARK.sub("", item["text"]).split())[: cfg.CLAIM_TEXT_MAX_CHARS]
         raw_cites = item.get("cites")
         if not text or not isinstance(raw_cites, list):
+            dropped["bad_claim"] += 1
             continue
         cites, seen = [], set()
         for raw_cite in raw_cites[: cfg.CLAIM_MAX_CITES]:
-            cite = _cite(raw_cite, passages)
-            if cite and (cite["n"], cite["quote"]) not in seen:
+            cite, reason = _cite(raw_cite, passages)
+            if cite is None:
+                dropped[reason] += 1
+            elif (cite["n"], cite["quote"]) not in seen:
                 seen.add((cite["n"], cite["quote"]))
                 cites.append(cite)
         if cites:
             claims.append({"text": text, "cites": cites})
+        else:
+            dropped["claim_without_verified_quote"] += 1
+    # Counts only: the text of the question, answer and passages is never logged.
+    logger.info(
+        "Claims: %d proposed, %d kept, dropped %s",
+        len(items),
+        len(claims),
+        dict(dropped),
+    )
     return claims
 
 
