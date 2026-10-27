@@ -6,14 +6,14 @@ from common.search.context import context_query
 from knowledge.models import KnowledgeChunk
 from knowledge.services import context_service
 from knowledge.tests.test_bm25 import pg_search_available
-from knowledge.tests.test_context import REFUND, ContextTestCase
+from knowledge.tests.test_context import PASSWORD, REFUND, ContextTestCase
 
 
 @skipUnless(pg_search_available(), "needs ParadeDB")
 class Bm25Debug(ContextTestCase):
     def test_print_scores(self):
         self.article("Refund policy", REFUND)
-        self.article("Reset password", "Reset your password from the sign in page.")
+        self.article("Reset password", PASSWORD)
         for text in (
             "How do I get a refund for my annual plan?",
             "annual plan refund 14 days",
@@ -26,3 +26,7 @@ class Bm25Debug(ContextTestCase):
                 chunk = KnowledgeChunk.objects.get(pk=chunk_id)
                 print(f"  {score:.4f}  {chunk.heading_path!r}")
                 print(f"           bm25_terms: {chunk.bm25_terms}")
+            data = self.ask(text).data["data"]
+            print("  API order:")
+            for r in data["results"]:
+                print(f"    {r['score']}  {r['section']!r}")
