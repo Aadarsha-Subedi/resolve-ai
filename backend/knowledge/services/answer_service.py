@@ -37,10 +37,17 @@ SYSTEM_PROMPT = (
     "Back every claim with one to three quotes: each quote is copied exactly, word for word, "
     "from one excerpt (5 to 25 words, no changes, no ellipsis) and n is that excerpt's number. "
     "Quote the part of the excerpt that holds the fact, such as a name or a date. "
-    "Use only facts that appear in the excerpts, and only claim what the quotes support; you "
-    "may combine facts from several quotes (for example to compare or count). If the "
-    "excerpts do not answer the question, or are unrelated to it, reply with an empty list of "
-    "claims; never claim that something does not exist or is absent elsewhere. "
+    "Use only facts that appear in the excerpts, and only claim what the quotes support. "
+    "When the excerpts hold the facts needed but never state the conclusion (a comparison, "
+    "a count, the longest or most recent item, a date difference), state the conclusion "
+    "yourself and quote every fact it rests on; do not return an empty list in that case. "
+    'Example: for "Which role lasted longer?" with excerpt 1 saying "Engineer Jan 2022 - Dec '
+    '2023 at Acme" and excerpt 2 saying "Intern Mar 2020 - May 2020 at Beta", reply '
+    '{"claims": [{"text": "The Acme engineer role (almost two years) lasted longer than the '
+    'Beta internship (three months).", "cites": [{"n": 1, "quote": "Engineer Jan 2022 - Dec '
+    '2023 at Acme"}, {"n": 2, "quote": "Intern Mar 2020 - May 2020 at Beta"}]}]}. '
+    "If the excerpts do not hold the facts, or are unrelated to the question, reply with an "
+    "empty list of claims; never claim that something does not exist or is absent elsewhere. "
     'Reply with JSON only: {"claims": [{"text": "...", "cites": [{"n": 1, "quote": "..."}]}]}'
 )
 _TAGS = re.compile(r"</?\s*(question|excerpt)[^>]*>", re.IGNORECASE)
