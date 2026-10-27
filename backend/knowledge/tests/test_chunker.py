@@ -212,6 +212,30 @@ class ChunkDocumentTests(SimpleTestCase):
         self.assertEqual(" ".join(c.text for c in plain).count(SENTENCE), 100)
         self.assertGreater(" ".join(c.text for c in document).count(SENTENCE), 100)
 
+    def test_documents_are_cut_between_lines_not_inside_them(self):
+        lines = [
+            f"Line {i} " + "word " * 12 + "end" for i in range(60)
+        ]  # no full stops
+        document = chunk_document("T", [(None, "\n".join(lines))])
+        self.assertGreater(len(document), 1)
+        for chunk in document:
+            self.assertLessEqual(len(chunk.text), CHUNK_MAX_CHARS)
+            for line in chunk.text.splitlines():
+                self.assertIn(line, lines)
+        for before, after in itertools.pairwise(document):
+            self.assertEqual(before.text.splitlines()[-1], after.text.splitlines()[0])
+        # articles keep their old behaviour: cut at sentences and words
+        plain = chunk_markdown("T", "\n".join(lines))
+        self.assertTrue(
+            any(line not in lines for c in plain for line in c.text.split("\n"))
+        )
+
+    def test_a_line_longer_than_a_passage_falls_back_to_words(self):
+        text = "short line\n" + "word " * 400
+        document = chunk_document("T", [(None, text)])
+        for chunk in document:
+            self.assertLessEqual(len(chunk.text), CHUNK_MAX_CHARS)
+
     def test_overlap_is_skipped_when_the_sentence_is_too_long(self):
         long_sentence = ("word " * 40).strip() + "."  # about 200 characters
         text = " ".join([long_sentence] * 30)

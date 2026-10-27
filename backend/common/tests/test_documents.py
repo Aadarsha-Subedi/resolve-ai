@@ -149,7 +149,69 @@ def _pdf_bytes(pages: list[list[str]]) -> bytes:
     return out
 
 
+def _pdf_sized(lines: list[tuple[int, str]]) -> bytes:
+    """A one-page text PDF where every line has its own font size: (size, text) pairs."""
+    stream = "BT " + " ".join(
+        f"/F1 {size} Tf 1 0 0 1 72 {740 - 22 * index} Tm ({text}) Tj"
+        for index, (size, text) in enumerate(lines)
+    )
+    stream += " ET"
+    objects = [
+        "<< /Type /Catalog /Pages 2 0 R >>",
+        "<< /Type /Pages /Kids [4 0 R] /Count 1 >>",
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+        (
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+            "/Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>"
+        ),
+        f"<< /Length {len(stream)} >>\nstream\n{stream}\nendstream",
+    ]
+    out = b"%PDF-1.4\n"
+    offsets = []
+    for number, body in enumerate(objects, start=1):
+        offsets.append(len(out))
+        out += f"{number} 0 obj\n{body}\nendobj\n".encode()
+    xref = len(out)
+    out += f"xref\n0 {len(objects) + 1}\n0000000000 65535 f \n".encode()
+    out += b"".join(f"{offset:010d} 00000 n \n".encode() for offset in offsets)
+    out += f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF".encode()
+    return out
+
+
 class PdfParserTests(SimpleTestCase):
+    def test_larger_short_lines_become_headings_by_size(self):
+        data = _pdf_sized(
+            [
+                (24, "Help Center"),
+                (16, "Refunds"),
+                (10, "You can request a refund within 14 days."),
+                (10, "The money goes back to the card."),
+                (16, "Shipping"),
+                (10, "Orders ship in two days."),
+            ]
+        )
+        markdown = PdfParser().parse(data, CONTENT_TYPE_PDF).pages[0].markdown
+        self.assertIn("# Help Center", markdown)
+        self.assertIn("\n## Refunds\n", markdown)
+        self.assertIn("\n## Shipping\n", markdown)
+        self.assertIn(
+            "You can request a refund within 14 days.\nThe money goes back to the card.",
+            markdown,
+        )
+        self.assertNotIn("# You can", markdown)
+
+    def test_a_page_in_one_size_has_no_headings(self):
+        data = _pdf_sized([(11, "Refunds"), (11, "Orders ship in two days.")])
+        markdown = PdfParser().parse(data, CONTENT_TYPE_PDF).pages[0].markdown
+        self.assertNotIn("#", markdown)
+
+    def test_a_large_line_that_reads_like_a_sentence_is_not_a_heading(self):
+        data = _pdf_sized(
+            [(18, "This large line ends like a sentence."), (10, "Body.")]
+        )
+        markdown = PdfParser().parse(data, CONTENT_TYPE_PDF).pages[0].markdown
+        self.assertNotIn("#", markdown)
+
     def test_pages_keep_their_numbers_and_empty_pages_are_dropped(self):
         data = _pdf_bytes([["Refunds take 14 days"], [], ["Contact support"]])
         parsed = PdfParser().parse(data, CONTENT_TYPE_PDF)

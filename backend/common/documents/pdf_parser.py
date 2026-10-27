@@ -1,12 +1,15 @@
 """PDF through pdfplumber, in this process (no models, no OCR).
 
 Text and tables are read page by page, so memory stays flat on long files. Tables become
-Markdown tables placed after the page's other text. Scanned pages have no text layer and
+Markdown tables placed after the page's other text. A short line set in a clearly larger font
+than the page's body text is written as a Markdown heading (`#` to `###`, the largest size
+first), so the chunker can start sections there. Scanned pages have no text layer and
 give nothing; a PDF with no text at all is reported as empty. Images and charts are not read.
 """
 
 import io
 import time
+from collections import Counter
 
 from common.documents.base import (
     DocumentCorruptError,
@@ -21,6 +24,9 @@ from common.documents.base import (
 )
 from common.documents.constants import (
     CONTENT_TYPE_PDF,
+    HEADING_MAX_CHARS,
+    HEADING_MAX_LEVEL,
+    HEADING_MIN_SIZE_RATIO,
     MAX_FILE_BYTES,
     MAX_MARKDOWN_CHARS,
     MAX_PAGES,
@@ -72,6 +78,47 @@ def _page_markdown(page) -> str:
     text_page = page
     for table in tables:
         text_page = text_page.outside_bbox(table.bbox)  # the table text is added below
-    parts = [(text_page.extract_text() or "").strip()]
+    parts = [_page_text(text_page)]
     parts.extend(table_to_markdown(table.extract()) for table in tables)
     return "\n\n".join(part for part in parts if part).replace("\x00", "")
+
+
+def _page_text(page) -> str:
+    """The page's text with large-font lines turned into Markdown headings."""
+    lines = page.extract_text_lines(return_chars=True, strip=True)
+    if not lines:
+        return ""
+    sizes = Counter()
+    for line in lines:
+        for char in line["chars"]:
+            if char["text"].strip():
+                sizes[round(char["size"], 1)] += 1
+    if not sizes:
+        return ""
+    body = sizes.most_common(1)[0][0]
+    larger = sorted(
+        {size for size in sizes if size >= body * HEADING_MIN_SIZE_RATIO},
+        reverse=True,
+    )[:HEADING_MAX_LEVEL]
+    out: list[str] = []
+    for line in lines:
+        text = " ".join(line["text"].split())
+        if not text:
+            continue
+        level = _heading_level(line, text, larger)
+        if level:
+            out.extend(["", f"{'#' * level} {text}", ""])
+        else:
+            out.append(text)
+    return "\n".join(out).strip()
+
+
+def _heading_level(line, text: str, larger: list[float]) -> int:
+    """1 to HEADING_MAX_LEVEL when the line is short, does not end like a sentence and its
+    largest letters are in one of the `larger` sizes; 0 otherwise."""
+    if not larger or len(text) > HEADING_MAX_CHARS or text.endswith((".", ",", ";")):
+        return 0
+    size = max(
+        (round(c["size"], 1) for c in line["chars"] if c["text"].strip()), default=0
+    )
+    return larger.index(size) + 1 if size in larger else 0
