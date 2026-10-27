@@ -89,15 +89,10 @@ def _visible_chunks(workspace_id):
 
 
 _BM25_SQL = """
-SELECT c.id, pdb.score(c.id) AS score
-FROM knowledge_chunk c
-LEFT JOIN knowledge_article a ON a.id = c.article_id
-LEFT JOIN knowledge_upload u ON u.id = c.upload_id
-WHERE c.bm25_terms ||| %s
-  AND c.workspace_id = %s
-  AND (a.status = %s OR u.status = %s)
-  AND pdb.score(c.id) >= %s
-ORDER BY score DESC, c.id
+SELECT id, pdb.score(id) AS score
+FROM knowledge_chunk
+WHERE bm25_terms ||| %s AND workspace_id = %s
+ORDER BY score DESC
 LIMIT %s
 """
 
@@ -106,26 +101,37 @@ def _bm25_ranked(workspace_id, query: ContextQuery) -> list[tuple[str, float]] |
     """(chunk id, BM25 score) for one query, best first, from the ParadeDB index; the query
     terms are the same stemmed lexemes `bm25_terms` holds. None when the index is not
     available, so the caller falls back to the tsvector search. The index covers all
-    workspaces, so IDF is corpus-wide; the rows returned are this workspace's only."""
+    workspaces, so IDF is corpus-wide; the rows returned are this workspace's only, and
+    only published articles and ready uploads."""
     many = len(query.terms) >= cfg.CONTEXT_MANY_TERMS
-    minimum = (
-        cfg.CONTEXT_BM25_MIN_SCORE_MANY_TERMS if many else cfg.CONTEXT_BM25_MIN_SCORE
+    min_hits = (
+        cfg.CONTEXT_BM25_MIN_HITS_MANY_TERMS if many else cfg.CONTEXT_BM25_MIN_HITS
     )
-    params = [
-        " ".join(query.terms),
-        str(workspace_id),
-        ArticleStatus.PUBLISHED.value,
-        UploadStatus.READY.value,
-        minimum,
-        cfg.CONTEXT_CANDIDATES_PER_QUERY,
-    ]
+    params = [" ".join(query.terms), str(workspace_id), cfg.CONTEXT_BM25_POOL]
     try:
         with transaction.atomic(), connection.cursor() as cursor:
             cursor.execute(_BM25_SQL, params)
-            return [(str(row[0]), float(row[1])) for row in cursor.fetchall()]
-    except DatabaseError:
-        logger.warning("BM25 search is not available: using the tsvector search")
+            scored = [(str(row[0]), float(row[1])) for row in cursor.fetchall()]
+    except DatabaseError as exc:
+        logger.warning(
+            "BM25 search is not available (%s): using the tsvector search",
+            f"{type(exc).__name__}: {str(exc).splitlines()[0][:200] if str(exc) else ''}",
+        )
         return None
+    visible = dict(
+        _visible_chunks(workspace_id)
+        .filter(id__in=[chunk_id for chunk_id, _ in scored])
+        .values_list("id", "bm25_terms")
+    )
+    visible = {str(chunk_id): terms or "" for chunk_id, terms in visible.items()}
+    ranked = []
+    for chunk_id, score in scored:
+        if chunk_id not in visible:
+            continue
+        words = visible[chunk_id].split()
+        if sum(words.count(term) for term in query.terms) >= min_hits:
+            ranked.append((chunk_id, score))
+    return ranked[: cfg.CONTEXT_CANDIDATES_PER_QUERY]
 
 
 def _ranked(workspace_id, query: ContextQuery) -> list[tuple[str, float]]:
