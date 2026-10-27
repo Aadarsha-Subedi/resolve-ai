@@ -52,8 +52,9 @@ CONTEXT_RRF_K = 60  # reciprocal rank fusion: score = sum of 1 / (K + rank)
 # and each passage together; the best CONTEXT_MAX_RESULTS by its score are kept. Skipped (the
 # fused order is used) with no key, over the daily limit or on any provider error.
 CONTEXT_RERANK_CANDIDATES = 25
-# Passages whose rerank score is below this are dropped. 0 = off, until real scores are known.
-CONTEXT_RERANK_MIN_SCORE = 0.0
+# Passages whose rerank score is below this are dropped (0 = off). 0.05 sits above the noise
+# seen on real queries (0.002 to 0.03) and below every relevant passage (0.26 and up).
+CONTEXT_RERANK_MIN_SCORE = 0.05
 # Reranked searches are counted per workspace per UTC day (the limit is RERANK_DAILY_LIMIT).
 RERANK_USAGE_KEY = "knowledge:rerank:{workspace_id}:{day}"
 # The same text is not sent to the LLM twice within this time.
@@ -130,3 +131,13 @@ EMBED_USAGE_KEY = "knowledge:embeddings:{workspace_id}:{day}"
 EMBED_USAGE_TTL_SECONDS = 2 * 24 * 60 * 60
 # The sweeper queues at most this many articles/uploads per run.
 EMBED_SWEEP_SOURCES = 50
+# Verified claims: the model returns claims with the exact quote that backs each one, and a
+# claim is shown only when a quote is found in the passage it cites.
+CLAIM_MAX_CLAIMS = 8
+CLAIM_TEXT_MAX_CHARS = 400
+CLAIM_MAX_CITES = 3
+CLAIM_QUOTE_MIN_WORDS = 3
+CLAIM_QUOTE_MAX_WORDS = 40
+CLAIM_CONTEXT_CHARS = (
+    160  # passage text kept before and after a quote, to show it in place
+)

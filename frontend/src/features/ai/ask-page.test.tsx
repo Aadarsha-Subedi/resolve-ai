@@ -37,6 +37,12 @@ function setup(llm: LlmSettings = settings(), conversations: Conversation[] = []
   vi.mocked(api.get).mockImplementation((async (path: string) => {
     if (path.endsWith('/llm/')) return { data: llm, meta: {}, message: '' }
     if (path.endsWith('/ask/conversations/')) return { data: { items: conversations }, meta: { count: conversations.length, limit: 50, offset: 0, next: null, previous: null }, message: '' }
+    // After a question is sent the chat is fetched again: the server returns the turn it just stored.
+    const sent = vi.mocked(api.post).mock.settledResults.at(-1)
+    if (sent?.type === 'fulfilled') {
+      const { conversation_id, ...stored } = (sent.value as { data: NewAskTurn }).data
+      return { data: { ...saved, id: conversation_id, turns: [stored] }, meta: {}, message: '' }
+    }
     return { data: { ...saved, turns: [turn({ question: 'Earlier question' })] }, meta: {}, message: '' }
   }) as never)
   render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><TooltipProvider><AskPage /></TooltipProvider></QueryClientProvider>)
@@ -95,6 +101,28 @@ describe('AskPage', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Chat options' }))
     await userEvent.click(await screen.findByRole('menuitem', { name: 'New chat' }))
     expect(await screen.findByRole('heading', { name: /Ada$/ })).toBeInTheDocument()
+  })
+
+  it('shows each claim with its verified quote in place, and an old answer as plain text', async () => {
+    setup()
+    const claims = [{ text: 'Annual plans can be refunded.', cites: [{ n: 1, before: 'You can request a ', quote: 'refund within 14 days', after: ' of purchase.' }] }]
+    vi.mocked(api.post).mockResolvedValue({ data: { ...turn({ claims, answer: 'Annual plans can be refunded. [1]' }), conversation_id: 'c9' }, meta: {}, message: '' })
+    await userEvent.type(screen.getByLabelText('Your question'), 'How do refunds work?')
+    await userEvent.click(screen.getByRole('button', { name: 'Send question' }))
+    expect(await screen.findByText('Annual plans can be refunded.')).toBeInTheDocument()
+    expect(screen.queryByText('refund within 14 days')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Show the quote from source 1' }))
+    expect(screen.getByText('refund within 14 days').tagName).toBe('MARK')
+    expect(screen.getByText(/Found in source 1: Refund policy/)).toBeInTheDocument()
+    expect(screen.getByText(/not that the statement is correct/)).toBeInTheDocument()
+  })
+
+  it('says no verified answer was found when every quote failed', async () => {
+    setup()
+    vi.mocked(api.post).mockResolvedValue({ data: { ...turn({ status: 'not_covered', answer: null, cited: [], claims: [] }), conversation_id: 'c9' }, meta: {}, message: '' })
+    await userEvent.type(screen.getByLabelText('Your question'), 'Who is the president?')
+    await userEvent.click(screen.getByRole('button', { name: 'Send question' }))
+    expect(await screen.findByText(/No verified answer/)).toBeInTheDocument()
   })
 
   it('says why no answer could be written when the provider has no credit', async () => {

@@ -24,7 +24,7 @@ PASSWORD = (
 )
 
 
-@override_settings(GEMINI_API_KEY="", LLM_CALL_LIMIT=100)
+@override_settings(GEMINI_API_KEY="", COHERE_API_KEY="", LLM_CALL_LIMIT=100)
 class ContextTestCase(KnowledgeTestCase):
     def setUp(self):
         super().setUp()

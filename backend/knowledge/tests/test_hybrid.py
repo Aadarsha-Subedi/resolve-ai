@@ -185,7 +185,21 @@ class DocumentAnswerTests(HybridTestCase):
         self.upload()
         with mock.patch.object(answer_service.llm_service, "generate") as generate:
             generate.return_value = LLMResponse(
-                text=json.dumps({"answer": "Water damage is not covered [1]."}),
+                text=json.dumps(
+                    {
+                        "claims": [
+                            {
+                                "text": "Water damage is not covered.",
+                                "cites": [
+                                    {
+                                        "n": 1,
+                                        "quote": "water damage and accidental drops",
+                                    }
+                                ],
+                            }
+                        ]
+                    }
+                ),
                 model="fake",
             )
             response = self.member_client.post(

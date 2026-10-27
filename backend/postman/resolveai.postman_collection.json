@@ -1638,7 +1638,7 @@
                 ""
               ]
             },
-            "description": "Same passages (articles and uploaded files) as 'Find context for a question', plus `answered` (true when `status` is answered) and `answer`: a paraphrase written only from those passages, with [n] markers that match `results[].citation`. `status` is answered, not_covered (passages do not answer it), unavailable (LLM failed; passages still returned) or no_results. Uses up to 2 Resolve AI calls (rewrite and answer). 30 requests per minute. The exchange is saved in your chat history; add `conversation_id` to continue a chat (omit it to start a new one).",
+            "description": "Same passages (articles and uploaded files) as 'Find context for a question', plus `answered` (true when `status` is answered) and `answer`: a paraphrase written only from those passages, with [n] markers that match `results[].citation`. `claims` lists the statements of the answer; each cite has `n` (the passage), `quote` (the exact words found in that passage) and `before`/`after` (the passage's text around it). A statement whose quote is not found in the passage is dropped. `status` is answered, not_covered (passages do not answer it, or no quote could be verified), unavailable (LLM failed; passages still returned) or no_results. Uses up to 2 Resolve AI calls (rewrite and answer). 30 requests per minute. The exchange is saved in your chat history; add `conversation_id` to continue a chat (omit it to start a new one).",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"query\": \"How do I get a refund for my annual plan?\"\n}"

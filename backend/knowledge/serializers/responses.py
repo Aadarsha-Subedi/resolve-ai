@@ -127,6 +127,9 @@ def answer_payload(result: AnswerResult) -> dict:
         "reason": result.reason or None,
         "answer": result.answer or None,
         "cited": result.cited,
+        # Verified claims: each cite's quote was found in that passage (`before` and `after` are
+        # the passage's own surrounding words). Absent in turns saved before claims existed.
+        "claims": result.claims,
     }
 
 
