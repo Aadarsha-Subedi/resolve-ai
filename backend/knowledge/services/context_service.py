@@ -33,7 +33,7 @@ from common.search.query import search_with_query, with_headline
 from knowledge.constants import settings as cfg
 from knowledge.constants.enums import ArticleStatus, UploadStatus
 from knowledge.models import KnowledgeChunk
-from knowledge.services import embedding_service
+from knowledge.services import embedding_service, rerank_service
 from workspaces.constants import permissions
 from workspaces.services import access
 
@@ -61,6 +61,7 @@ class ContextResult:
     results: list[Passage] = field(default_factory=list)
     terms: list[str] = field(default_factory=list)
     rewrites: list[str] = field(default_factory=list)
+    reranked: bool = False  # the order and scores come from the reranker (internal)
 
     @property
     def rewritten(self) -> bool:
@@ -252,6 +253,29 @@ def _passage(row: KnowledgeChunk, score: float) -> Passage:
     )
 
 
+def _rerank(
+    workspace_id, text: str, candidates: list[tuple[str, float]], rows: dict
+) -> tuple[list[tuple[str, float]], bool]:
+    """The passages to keep as (chunk id, score), and whether the reranker ordered them. Falls
+    back to the fused order (raw scores) when reranking did not happen."""
+    limit = cfg.CONTEXT_MAX_RESULTS
+    documents = [
+        f"{rows[c].heading_path}\n{rows[c].text}"
+        if rows[c].heading_path
+        else rows[c].text
+        for c, _ in candidates
+    ]
+    ranked = rerank_service.rerank(workspace_id, text, documents, limit)
+    if ranked is None:
+        return candidates[:limit], False
+    picked = [
+        (candidates[i][0], score)
+        for i, score in ranked
+        if score >= cfg.CONTEXT_RERANK_MIN_SCORE
+    ]
+    return picked[:limit], True
+
+
 def retrieve_context(user: User, workspace, text: str) -> ContextResult:
     """Passages for `text`. The caller has checked the user's permission."""
     text = " ".join((text or "").split())
@@ -278,7 +302,11 @@ def retrieve_context(user: User, workspace, text: str) -> ContextResult:
         .filter(id__in=[c for c, _ in merged])
         .select_related("article", "upload")
     }
-    picked = [m for m in merged if m[0] in rows][: cfg.CONTEXT_MAX_RESULTS]
+    candidates = [m for m in merged if m[0] in rows]
+    candidates = candidates[
+        : max(cfg.CONTEXT_RERANK_CANDIDATES, cfg.CONTEXT_MAX_RESULTS)
+    ]
+    picked, reranked = _rerank(workspace.id, text, candidates, rows)
 
     combined = _combined_query(queries)
     chosen = _visible_chunks(workspace.id).filter(id__in=[c for c, _ in picked])
@@ -296,7 +324,10 @@ def retrieve_context(user: User, workspace, text: str) -> ContextResult:
             rows[chunk_id].headline = headline
     passages = [_passage(rows[chunk_id], score) for chunk_id, score in picked]
     return ContextResult(
-        results=passages, terms=combined.terms or terms, rewrites=rewrites
+        results=passages,
+        terms=combined.terms or terms,
+        rewrites=rewrites,
+        reranked=reranked,
     )
 
 

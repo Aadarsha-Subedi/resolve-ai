@@ -305,6 +305,11 @@ ENCRYPTION_KEYS = env_list("RESOLVE_AI_ENCRYPTION_KEYS")
 GEMINI_API_KEY = env("RESOLVE_AI_GEMINI_API_KEY")
 LLM_CALL_LIMIT = int(env("RESOLVE_AI_LLM_CALL_LIMIT"))
 
+# Reranking of search results (Cohere). An empty key disables it: search keeps the fused order.
+# The limit is reranked searches per workspace per UTC day (over it, reranking is skipped).
+COHERE_API_KEY = env("RESOLVE_AI_COHERE_API_KEY")
+RERANK_DAILY_LIMIT = int(env("RESOLVE_AI_RERANK_DAILY_LIMIT"))
+
 # File storage (Cloudflare R2; empty bucket falls back to local disk)
 
 R2_ENDPOINT_URL = env("RESOLVE_AI_R2_ENDPOINT_URL")

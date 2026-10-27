@@ -48,6 +48,14 @@ CONTEXT_MIN_SIMILARITY = 0.55
 EMBED_QUERY_DAILY_LIMIT = 300
 EMBED_QUERY_USAGE_KEY = "knowledge:query-embeddings:{workspace_id}:{user_id}:{day}"
 CONTEXT_RRF_K = 60  # reciprocal rank fusion: score = sum of 1 / (K + rank)
+# Reranking (Cohere): the best fused passages are sent to the reranker, which reads the question
+# and each passage together; the best CONTEXT_MAX_RESULTS by its score are kept. Skipped (the
+# fused order is used) with no key, over the daily limit or on any provider error.
+CONTEXT_RERANK_CANDIDATES = 25
+# Passages whose rerank score is below this are dropped. 0 = off, until real scores are known.
+CONTEXT_RERANK_MIN_SCORE = 0.0
+# Reranked searches are counted per workspace per UTC day (the limit is RERANK_DAILY_LIMIT).
+RERANK_USAGE_KEY = "knowledge:rerank:{workspace_id}:{day}"
 # The same text is not sent to the LLM twice within this time.
 CONTEXT_REWRITE_CACHE_SECONDS = 60 * 60
 CONTEXT_REWRITE_CACHE_KEY = "knowledge:rewrites:{workspace_id}:{digest}"

@@ -241,3 +241,13 @@ Format: **Date, title** / Decision / Reason / Alternatives / Files.
 - **Not verified:** tests use hand-built PDFs; no real resume PDF was available in the sandbox. Headings in LaTeX small caps (varying letter sizes) rely on the line's largest letter.
 - **Files:** `common/documents/{pdf_parser.py,constants.py}`, `knowledge/services/chunker.py`, `common/tests/test_documents.py`, `knowledge/tests/test_chunker.py`.
 - **Deploy:** no migration. Existing uploads keep their old passages until re-indexed: `uv run python manage.py reindex_knowledge --uploads` (or delete and upload again).
+
+## 2026-10-27, Cohere rerank after fusion (RAG upgrade, step B)
+- **Decision:** after reciprocal rank fusion the top `CONTEXT_RERANK_CANDIDATES` (25) passages are sent to Cohere `rerank-v5.0-pro` with the question; the best `CONTEXT_MAX_RESULTS` (5) by rerank score are kept. The rerank score replaces `Passage.score` when reranking ran; it only orders passages and is never averaged with RRF or BM25 scores.
+- **Fallbacks:** no `RESOLVE_AI_COHERE_API_KEY` (empty disables), over the daily limit, or any `RerankError` returns the fused order (top 5, raw scores). The user sees no difference except ordering; failures log the code only.
+- **Daily limit:** `RESOLVE_AI_RERANK_DAILY_LIMIT` reranked searches per workspace per UTC day (cache counter, like embeddings). A failed request is not counted. The limit counts searches, not users.
+- **What is sent:** the question text and, per candidate, section path plus passage text from the workspace's own visible (published / ready) chunks. Nothing else. The privacy note in AI settings says so. Rewrites are not sent; the original question is used.
+- **Choices I made (change on request):** timeout 5 s, SDK retries off; relevance floor `CONTEXT_RERANK_MIN_SCORE` is 0 (off) until real scores are seen. Cohere trial keys are not licensed for production use.
+- **Not verified:** the real Cohere call (the key is only on the owner's machine). Tests use `FakeReranker` and a mocked SDK client.
+- **Files:** `common/rerank/*`, `knowledge/services/{rerank_service.py,context_service.py}`, `knowledge/constants/settings.py`, `config/settings.py`, `.env.example`, `cloudflare/*`, `pyproject.toml`, `uv.lock`, tests `common/tests/test_rerank.py`, `knowledge/tests/test_rerank.py`.
+- **Deploy:** set the two variables; after pulling, `docker compose build` (the `cohere` package brought extra dependencies, so the image build is longer).
