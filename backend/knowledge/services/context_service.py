@@ -51,7 +51,7 @@ class Passage:
     source_title: str  # the article title, or the uploaded file's name
     section: str
     snippet: str
-    score: float  # best raw score: word-search rank, or vector similarity (0 to 1)
+    score: float  # best raw score: BM25 (unbounded), ts_rank_cd (0 to 1) or vector similarity (0 to 1)
     text: str = ""
     page: int | None = None  # the PDF page, for passages of uploaded documents
 
