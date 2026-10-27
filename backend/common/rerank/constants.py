@@ -2,4 +2,4 @@
 
 PROVIDER_COHERE = "cohere"
 COHERE_RERANK_MODEL = "rerank-v5.0-pro"
-REQUEST_TIMEOUT_SECONDS = 5  # a rerank that is slower is skipped, never waited for
+REQUEST_TIMEOUT_SECONDS = 60  # a rerank that is slower is skipped, never waited for
