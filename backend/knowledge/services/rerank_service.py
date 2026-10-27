@@ -46,7 +46,7 @@ def rerank(
     if reranker is None:
         return None
     if not _reserve(workspace_id):
-        logger.info("Rerank skipped: daily limit reached")
+        logger.warning("Rerank skipped: daily limit reached")
         return None
     try:
         return reranker.rerank(query, documents, top_n)
