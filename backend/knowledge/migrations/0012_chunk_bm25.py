@@ -31,7 +31,7 @@ def enable_bm25(apps, schema_editor):
         cursor.execute("CREATE EXTENSION IF NOT EXISTS pg_search")
         cursor.execute(
             f"CREATE INDEX IF NOT EXISTS {BM25_INDEX} ON knowledge_chunk "
-            "USING bm25 (id, bm25_terms)"
+            "USING bm25 (id, bm25_terms) WITH (key_field = 'id')"
         )
 
 
