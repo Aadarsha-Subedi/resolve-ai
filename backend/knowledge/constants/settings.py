@@ -27,6 +27,14 @@ CONTEXT_CANDIDATES_PER_QUERY = 20
 CONTEXT_MIN_SCORE = 0.05
 CONTEXT_MIN_SCORE_MANY_TERMS = 0.3
 CONTEXT_MANY_TERMS = 3
+# BM25 (ParadeDB `pg_search`). The scale differs from ts_rank_cd, so it has its own floors.
+# Not measured yet (0 = no floor, RRF and the vector search decide): set them from real scores
+# on a ParadeDB database, then record the values in DECISION.md.
+CONTEXT_BM25_MIN_SCORE = 0.0
+CONTEXT_BM25_MIN_SCORE_MANY_TERMS = 0.0
+# A heading word counts this many times in `bm25_terms`, so a heading hit outweighs a body hit
+# (the BM25 counterpart of the weight-A heading in `search_vector`).
+BM25_HEADING_BOOST = 2
 # Vector search: a passage counts when its cosine similarity to the query is at least this.
 # Not tuned on real data yet; raise it if unrelated passages appear, lower it if related
 # ones are missed.

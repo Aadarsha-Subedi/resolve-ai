@@ -39,7 +39,7 @@ Quick start:
 ```bash
 cd backend
 cp .env.example .env        # fill in the values
-docker compose up -d        # Postgres + Redis (or `docker compose up --build` for the API too, with hot reload)
+docker compose up -d        # Postgres (ParadeDB image) + Redis (or `docker compose up --build` for the API too, with hot reload)
 uv sync
 uv run python manage.py migrate
 uv run python manage.py runserver

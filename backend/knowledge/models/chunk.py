@@ -56,6 +56,9 @@ class KnowledgeChunk(models.Model):
         default=DEFAULT_SEARCH_LANGUAGE,
     )
     search_vector = SearchVectorField(null=True, editable=False)
+    # The stemmed words of `search_vector`, one per occurrence (heading words repeated), for
+    # the ParadeDB BM25 index. Filled with `search_vector`; NULL on SQLite.
+    bm25_terms = models.TextField(null=True, editable=False)
     embedding = VectorField(dimensions=EMBEDDING_DIMENSIONS, null=True, editable=False)
     embedding_model = models.CharField(max_length=60, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)

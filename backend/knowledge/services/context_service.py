@@ -3,7 +3,8 @@ piece of text.
 
 The text can be a ticket, a customer's message or a question typed into the chat box. The
 original text and up to three LLM rewrites of it are each searched two ways: by words (OR of
-the most distinctive stemmed words, ranked with `ts_rank_cd`) and by meaning (the query's
+the most distinctive stemmed words, ranked with BM25 from the ParadeDB index, or with
+`ts_rank_cd` when the index is not available) and by meaning (the query's
 embedding against the passages' embeddings, cosine similarity). All the ranked lists are
 merged with reciprocal rank fusion, so a passage that ranks well for several wordings or in
 both searches rises to the top. There is no limit per article or document: when one
@@ -87,8 +88,52 @@ def _visible_chunks(workspace_id):
     )
 
 
+_BM25_SQL = """
+SELECT c.id, pdb.score(c.id) AS score
+FROM knowledge_chunk c
+LEFT JOIN knowledge_article a ON a.id = c.article_id
+LEFT JOIN knowledge_upload u ON u.id = c.upload_id
+WHERE c.bm25_terms ||| %s
+  AND c.workspace_id = %s
+  AND (a.status = %s OR u.status = %s)
+  AND pdb.score(c.id) >= %s
+ORDER BY score DESC, c.id
+LIMIT %s
+"""
+
+
+def _bm25_ranked(workspace_id, query: ContextQuery) -> list[tuple[str, float]] | None:
+    """(chunk id, BM25 score) for one query, best first, from the ParadeDB index; the query
+    terms are the same stemmed lexemes `bm25_terms` holds. None when the index is not
+    available, so the caller falls back to the tsvector search. The index covers all
+    workspaces, so IDF is corpus-wide; the rows returned are this workspace's only."""
+    many = len(query.terms) >= cfg.CONTEXT_MANY_TERMS
+    minimum = (
+        cfg.CONTEXT_BM25_MIN_SCORE_MANY_TERMS if many else cfg.CONTEXT_BM25_MIN_SCORE
+    )
+    params = [
+        " ".join(query.terms),
+        str(workspace_id),
+        ArticleStatus.PUBLISHED.value,
+        UploadStatus.READY.value,
+        minimum,
+        cfg.CONTEXT_CANDIDATES_PER_QUERY,
+    ]
+    try:
+        with transaction.atomic(), connection.cursor() as cursor:
+            cursor.execute(_BM25_SQL, params)
+            return [(str(row[0]), float(row[1])) for row in cursor.fetchall()]
+    except DatabaseError:
+        logger.warning("BM25 search is not available: using the tsvector search")
+        return None
+
+
 def _ranked(workspace_id, query: ContextQuery) -> list[tuple[str, float]]:
     """(chunk id, score) for one query by words, best first."""
+    if connection.vendor == "postgresql":
+        ranked = _bm25_ranked(workspace_id, query)
+        if ranked is not None:
+            return ranked
     base = _visible_chunks(workspace_id)
     many = len(query.terms) >= cfg.CONTEXT_MANY_TERMS
     minimum = cfg.CONTEXT_MIN_SCORE_MANY_TERMS if many else cfg.CONTEXT_MIN_SCORE
