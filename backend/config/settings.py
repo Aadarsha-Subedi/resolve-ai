@@ -196,6 +196,7 @@ STRICT_THROTTLE_RATES = {
     "join_link": "20/hour",  # join-link redemption, per IP
     "ai": "30/min",  # AI calls, per user
     "llm_settings": "10/min",  # AI settings reads and key checks, per user
+    "ai_usage": "60/min",  # AI usage log reads, per user
     "dashboard": "30/min",  # dashboard reads, per user
     "webhook": "300/min",
 }
@@ -305,6 +306,11 @@ ENCRYPTION_KEYS = env_list("RESOLVE_AI_ENCRYPTION_KEYS")
 GEMINI_API_KEY = env("RESOLVE_AI_GEMINI_API_KEY")
 LLM_CALL_LIMIT = int(env("RESOLVE_AI_LLM_CALL_LIMIT"))
 
+# Reranking of search results (Cohere). An empty key disables it: search keeps the fused order.
+# The limit is reranked searches per workspace per UTC day (over it, reranking is skipped).
+COHERE_API_KEY = env("RESOLVE_AI_COHERE_API_KEY")
+RERANK_DAILY_LIMIT = int(env("RESOLVE_AI_RERANK_DAILY_LIMIT"))
+
 # File storage (Cloudflare R2; empty bucket falls back to local disk)
 
 R2_ENDPOINT_URL = env("RESOLVE_AI_R2_ENDPOINT_URL")
@@ -361,6 +367,10 @@ CELERY_BEAT_SCHEDULE: dict = {  # feature apps register their periodic tasks her
     "workspaces-purge-deleted-workspaces": {
         "task": "workspaces.purge_deleted_workspaces",
         "schedule": crontab(hour=4, minute=0),
+    },
+    "ai-purge-usage-logs": {
+        "task": "ai.purge_usage_logs",
+        "schedule": crontab(hour=3, minute=30),
     },
     "knowledge-release-stale-uploads": {
         "task": "knowledge.release_stale_uploads",

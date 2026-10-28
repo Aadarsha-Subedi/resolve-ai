@@ -24,6 +24,7 @@ import { Route as DesignPreviewFrameRouteImport } from './routes/design-preview.
 import { Route as JoinTokenRouteImport } from './routes/join.$token'
 import { Route as PortalSlugRouteImport } from './routes/portal.$slug'
 import { Route as AppWsIndexRouteImport } from './routes/app.$ws.index'
+import { Route as AppWsAiUsageRouteImport } from './routes/app.$ws.ai-usage'
 import { Route as AppWsAskRouteImport } from './routes/app.$ws.ask'
 import { Route as AppWsAuditRouteImport } from './routes/app.$ws.audit'
 import { Route as AppWsMembersRouteImport } from './routes/app.$ws.members'
@@ -109,6 +110,11 @@ const AppWsIndexRoute = AppWsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppWsRoute,
 } as any)
+const AppWsAiUsageRoute = AppWsAiUsageRouteImport.update({
+  id: '/ai-usage',
+  path: '/ai-usage',
+  getParentRoute: () => AppWsRoute,
+} as any)
 const AppWsAskRoute = AppWsAskRouteImport.update({
   id: '/ask',
   path: '/ask',
@@ -170,6 +176,7 @@ export interface FileRoutesByFullPath {
   '/portal/$slug': typeof PortalSlugRoute
   '/app/': typeof AppIndexRoute
   '/design-preview/': typeof DesignPreviewIndexRoute
+  '/app/$ws/ai-usage': typeof AppWsAiUsageRoute
   '/app/$ws/ask': typeof AppWsAskRoute
   '/app/$ws/audit': typeof AppWsAuditRoute
   '/app/$ws/members': typeof AppWsMembersRoute
@@ -194,6 +201,7 @@ export interface FileRoutesByTo {
   '/portal/$slug': typeof PortalSlugRoute
   '/app': typeof AppIndexRoute
   '/design-preview': typeof DesignPreviewIndexRoute
+  '/app/$ws/ai-usage': typeof AppWsAiUsageRoute
   '/app/$ws/ask': typeof AppWsAskRoute
   '/app/$ws/audit': typeof AppWsAuditRoute
   '/app/$ws/members': typeof AppWsMembersRoute
@@ -221,6 +229,7 @@ export interface FileRoutesById {
   '/portal/$slug': typeof PortalSlugRoute
   '/app/': typeof AppIndexRoute
   '/design-preview/': typeof DesignPreviewIndexRoute
+  '/app/$ws/ai-usage': typeof AppWsAiUsageRoute
   '/app/$ws/ask': typeof AppWsAskRoute
   '/app/$ws/audit': typeof AppWsAuditRoute
   '/app/$ws/members': typeof AppWsMembersRoute
@@ -249,6 +258,7 @@ export interface FileRouteTypes {
     | '/portal/$slug'
     | '/app/'
     | '/design-preview/'
+    | '/app/$ws/ai-usage'
     | '/app/$ws/ask'
     | '/app/$ws/audit'
     | '/app/$ws/members'
@@ -273,6 +283,7 @@ export interface FileRouteTypes {
     | '/portal/$slug'
     | '/app'
     | '/design-preview'
+    | '/app/$ws/ai-usage'
     | '/app/$ws/ask'
     | '/app/$ws/audit'
     | '/app/$ws/members'
@@ -299,6 +310,7 @@ export interface FileRouteTypes {
     | '/portal/$slug'
     | '/app/'
     | '/design-preview/'
+    | '/app/$ws/ai-usage'
     | '/app/$ws/ask'
     | '/app/$ws/audit'
     | '/app/$ws/members'
@@ -429,6 +441,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppWsIndexRouteImport
       parentRoute: typeof AppWsRoute
     }
+    '/app/$ws/ai-usage': {
+      id: '/app/$ws/ai-usage'
+      path: '/ai-usage'
+      fullPath: '/app/$ws/ai-usage'
+      preLoaderRoute: typeof AppWsAiUsageRouteImport
+      parentRoute: typeof AppWsRoute
+    }
     '/app/$ws/ask': {
       id: '/app/$ws/ask'
       path: '/ask'
@@ -496,6 +515,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppWsRouteChildren {
+  AppWsAiUsageRoute: typeof AppWsAiUsageRoute
   AppWsAskRoute: typeof AppWsAskRoute
   AppWsAuditRoute: typeof AppWsAuditRoute
   AppWsMembersRoute: typeof AppWsMembersRoute
@@ -509,6 +529,7 @@ interface AppWsRouteChildren {
 }
 
 const AppWsRouteChildren: AppWsRouteChildren = {
+  AppWsAiUsageRoute: AppWsAiUsageRoute,
   AppWsAskRoute: AppWsAskRoute,
   AppWsAuditRoute: AppWsAuditRoute,
   AppWsMembersRoute: AppWsMembersRoute,

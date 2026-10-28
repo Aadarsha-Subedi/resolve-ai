@@ -36,7 +36,6 @@ DEFAULT_MODELS = {
 RESOLVE_AI_MODELS = (
     "gemini-3.5-flash-lite",
     "gemini-3.1-flash-lite",
-    "gemini-3.8-flash",
 )
 
 # Embeddings: one fixed model for every workspace, so all stored vectors can be compared.

@@ -26,8 +26,14 @@ export type ContextResult = {
 
 export type AnswerStatus = 'answered' | 'not_covered' | 'unavailable' | 'no_results'
 
-/** The context payload plus an answer paraphrased from it. `answer` is null unless `status` is "answered". */
-export type Answer = ContextResult & { answered?: boolean; status: AnswerStatus; answer: string | null; cited: number[]; reason?: string | null }
+/** A quote the server found in source `n`. `before` and `after` are the passage's own surrounding words. */
+export type ClaimCite = { n: number; before: string; quote: string; after: string }
+/** One statement of the answer. It is only sent when at least one of its quotes was found in the passage it cites. */
+export type Claim = { text: string; cites: ClaimCite[] }
+
+/** The context payload plus an answer paraphrased from it. `answer` is null unless `status` is "answered".
+ * `claims` is missing in chats saved before quotes were verified: those show `answer` as plain text. */
+export type Answer = ContextResult & { answered?: boolean; status: AnswerStatus; answer: string | null; cited: number[]; claims?: Claim[]; reason?: string | null; /** Replayed from the semantic cache instead of searched and written again. */ cached?: boolean }
 
 /** One question and its answer as stored in the chat history. */
 export type AskTurn = Answer & { turn_id: string; question: string; created_at: string }

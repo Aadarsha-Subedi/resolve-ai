@@ -39,7 +39,7 @@ Quick start:
 ```bash
 cd backend
 cp .env.example .env        # fill in the values
-docker compose up -d        # Postgres + Redis (or `docker compose up --build` for the API too, with hot reload)
+docker compose up -d        # Postgres (ParadeDB image) + Redis (or `docker compose up --build` for the API too, with hot reload)
 uv sync
 uv run python manage.py migrate
 uv run python manage.py runserver
@@ -52,7 +52,7 @@ API requests are kept in `backend/postman/` (collection and environment), update
 
 ## Frontend
 
-Built in `frontend/` (React 19, Vite, TanStack, Tailwind v4, Base UI): dashboard, tickets with assignment, knowledge base with a category graph view (`@xyflow/react`), members and invitations, settings, audit log, Gmail, public portal. All tables use one chip filter bar. See [frontend/README.md](frontend/README.md) and [frontend/PROJECT.md](frontend/PROJECT.md).
+Built in `frontend/` (React 19, Vite, TanStack, Tailwind v4, Base UI): dashboard, tickets with assignment, knowledge base with a category graph view (`@xyflow/react`), members and invitations, settings (with the owner-only AI usage log), audit log, Gmail, public portal. All tables use one chip filter bar. See [frontend/README.md](frontend/README.md) and [frontend/PROJECT.md](frontend/PROJECT.md).
 
 ## Key product decisions
 

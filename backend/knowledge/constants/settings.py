@@ -27,6 +27,18 @@ CONTEXT_CANDIDATES_PER_QUERY = 20
 CONTEXT_MIN_SCORE = 0.05
 CONTEXT_MIN_SCORE_MANY_TERMS = 0.3
 CONTEXT_MANY_TERMS = 3
+# BM25 (ParadeDB `pg_search`). BM25 scores depend on the size of the corpus (IDF), so there is
+# no fixed score floor. A passage counts when the query's words occur in it at least this many
+# times (`bm25_terms` repeats a word per occurrence and counts a heading word twice): one body
+# word is noise when the query has many words, a heading word or two body words are not.
+CONTEXT_BM25_MIN_HITS = 1
+CONTEXT_BM25_MIN_HITS_MANY_TERMS = 2
+# Candidates read from the BM25 index per query before the visibility filter (drafts and
+# archived articles are dropped afterwards); the best CONTEXT_CANDIDATES_PER_QUERY are kept.
+CONTEXT_BM25_POOL = 100
+# A heading word counts this many times in `bm25_terms`, so a heading hit outweighs a body hit
+# (the BM25 counterpart of the weight-A heading in `search_vector`).
+BM25_HEADING_BOOST = 2
 # Vector search: a passage counts when its cosine similarity to the query is at least this.
 # Not tuned on real data yet; raise it if unrelated passages appear, lower it if related
 # ones are missed.
@@ -36,6 +48,15 @@ CONTEXT_MIN_SIMILARITY = 0.55
 EMBED_QUERY_DAILY_LIMIT = 300
 EMBED_QUERY_USAGE_KEY = "knowledge:query-embeddings:{workspace_id}:{user_id}:{day}"
 CONTEXT_RRF_K = 60  # reciprocal rank fusion: score = sum of 1 / (K + rank)
+# Reranking (Cohere): the best fused passages are sent to the reranker, which reads the question
+# and each passage together; the best CONTEXT_MAX_RESULTS by its score are kept. Skipped (the
+# fused order is used) with no key, over the daily limit or on any provider error.
+CONTEXT_RERANK_CANDIDATES = 25
+# Passages whose rerank score is below this are dropped (0 = off). 0.05 sits above the noise
+# seen on real queries (0.002 to 0.03) and below every relevant passage (0.26 and up).
+CONTEXT_RERANK_MIN_SCORE = 0.05
+# Reranked searches are counted per workspace per UTC day (the limit is RERANK_DAILY_LIMIT).
+RERANK_USAGE_KEY = "knowledge:rerank:{workspace_id}:{day}"
 # The same text is not sent to the LLM twice within this time.
 CONTEXT_REWRITE_CACHE_SECONDS = 60 * 60
 CONTEXT_REWRITE_CACHE_KEY = "knowledge:rewrites:{workspace_id}:{digest}"
@@ -110,3 +131,21 @@ EMBED_USAGE_KEY = "knowledge:embeddings:{workspace_id}:{day}"
 EMBED_USAGE_TTL_SECONDS = 2 * 24 * 60 * 60
 # The sweeper queues at most this many articles/uploads per run.
 EMBED_SWEEP_SOURCES = 50
+# Verified claims: the model returns claims with the exact quote that backs each one, and a
+# claim is shown only when a quote is found in the passage it cites.
+CLAIM_MAX_CLAIMS = 8
+CLAIM_TEXT_MAX_CHARS = 400
+CLAIM_MAX_CITES = 3
+CLAIM_QUOTE_MIN_WORDS = 3
+CLAIM_QUOTE_MAX_WORDS = 40
+CLAIM_CONTEXT_CHARS = (
+    160  # passage text kept before and after a quote, to show it in place
+)
+
+# Semantic cache of answers: a question whose embedding is at least this similar (cosine) to a
+# cached question of the same workspace, answered by the same provider and model, gets the
+# cached answer with no search and no LLM call. Not tuned on real data yet: every hit logs its
+# similarity in the AI usage log; raise it if wrong answers are served, lower it if near
+# repeats miss.
+CACHE_MIN_SIMILARITY = 0.92
+CACHE_TTL_DAYS = 7

@@ -1638,7 +1638,7 @@
                 ""
               ]
             },
-            "description": "Same passages (articles and uploaded files) as 'Find context for a question', plus `answered` (true when `status` is answered) and `answer`: a paraphrase written only from those passages, with [n] markers that match `results[].citation`. `status` is answered, not_covered (passages do not answer it), unavailable (LLM failed; passages still returned) or no_results. Uses up to 2 Resolve AI calls (rewrite and answer). 30 requests per minute. The exchange is saved in your chat history; add `conversation_id` to continue a chat (omit it to start a new one).",
+            "description": "Same passages (articles and uploaded files) as 'Find context for a question', plus `answered` (true when `status` is answered) and `answer`: a paraphrase written only from those passages, with [n] markers that match `results[].citation`. `claims` lists the statements of the answer; each cite has `n` (the passage), `quote` (the exact words found in that passage) and `before`/`after` (the passage's text around it). A statement whose quote is not found in the passage is dropped. `status` is answered, not_covered (passages do not answer it, or no quote could be verified), unavailable (LLM failed; passages still returned) or no_results. Uses up to 2 Resolve AI calls (rewrite and answer). 30 requests per minute. The exchange is saved in your chat history; add `conversation_id` to continue a chat (omit it to start a new one).",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"query\": \"How do I get a refund for my annual plan?\"\n}"
@@ -1976,6 +1976,50 @@
               ]
             },
             "description": "Forgets the key and falls back to Resolve AI mode."
+          }
+        },
+        {
+          "name": "List AI usage log (owner only)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/ai/usage/?search=refund&feature=ask&outcome=cache_hit&ordering=-created_at&limit=25",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "ai",
+                "usage",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "refund"
+                },
+                {
+                  "key": "feature",
+                  "value": "ask"
+                },
+                {
+                  "key": "outcome",
+                  "value": "cache_hit"
+                },
+                {
+                  "key": "ordering",
+                  "value": "-created_at"
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                }
+              ]
+            },
+            "description": "Every AI call in the workspace, newest first. Owner only (members 403, non-members 404). Filters: search (question, answer, user), feature (ask, rewrite, rerank, embedding), outcome (cache_hit, llm_call, error), actor (user id), created_from, created_to (YYYY-MM-DD); ordering (created_at, user, feature, outcome, tokens; prefix - for descending); limit/offset (25, max 100). meta.summary counts the filtered rows: total, cache_hits, llm_calls, errors, hit_rate. Each item: id, feature, outcome, user, provider, model, question, answer, details (passages, similarity), input_tokens, output_tokens, error_code, created_at."
           }
         }
       ]

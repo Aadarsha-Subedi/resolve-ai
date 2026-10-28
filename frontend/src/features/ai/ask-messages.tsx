@@ -1,10 +1,10 @@
 import { formatDistanceToNowStrict } from 'date-fns'
 import { useEffect, useState, type ReactNode } from 'react'
 
-import { splitCitations, type Answer, type AskTurn } from '@/features/ai/context-api'
+import { hitSource, splitCitations, type Answer, type AskTurn, type Claim, type ClaimCite } from '@/features/ai/context-api'
 import { ContextResults } from '@/features/ai/context-panel'
 import { ErrorPanel } from '@/features/app/page-states'
-import { Robot } from '@/icons'
+import { Quotes, Robot, SealCheck } from '@/icons'
 import { cn } from '@/lib/utils'
 
 /** What the agent is "doing" while a question is answered; one is shown at a time. */
@@ -78,6 +78,63 @@ function AnswerText({ answer, prefix, onCite }: { answer: Answer; prefix: string
   )
 }
 
+/** A quote's text with the PDF's line breaks turned into spaces. */
+const flat = (text: string) => text.replace(/\s+/g, ' ')
+
+/** A claim's quotes grouped by the source they come from, in order of first appearance. */
+function citedSources(claim: Claim): [number, ClaimCite[]][] {
+  const groups = new Map<number, ClaimCite[]>()
+  for (const cite of claim.cites) groups.set(cite.n, [...(groups.get(cite.n) ?? []), cite])
+  return [...groups]
+}
+
+/** The answer as separate claims. A numbered badge opens the exact words found in that source. */
+function ClaimsList({ answer, prefix, onCite }: { answer: Answer & { claims: Claim[] }; prefix: string; onCite: (n: number) => void }) {
+  const [open, setOpen] = useState<string | null>(null)
+  return (
+    <div className="space-y-3">
+      <ul className="space-y-3">
+        {answer.claims.map((claim, i) => (
+          <li key={i} className="space-y-1.5">
+            <p className="text-sm leading-relaxed [overflow-wrap:anywhere]">
+              {claim.text}{' '}
+              {citedSources(claim).map(([n]) => {
+                const id = `${i}-${n}`
+                return (
+                  <button key={id} type="button" aria-expanded={open === id} aria-label={`Show the quote from source ${n}`} onClick={() => setOpen(open === id ? null : id)} className="mr-0.5 inline-flex items-center gap-0.5 rounded-sm px-1 align-baseline text-xs font-medium tabular-nums text-primary hover:bg-primary/10">
+                    <SealCheck aria-hidden weight="fill" className="size-3" />[{n}]
+                  </button>
+                )
+              })}
+            </p>
+            {citedSources(claim).map(([n, cites]) => {
+              if (open !== `${i}-${n}`) return null
+              const hit = answer.results[n - 1]
+              const source = hit ? hitSource(hit) : null
+              return (
+                <div key={n} className="space-y-2">
+                  {cites.map((cite, j) => (
+                    <blockquote key={j} className="space-y-1 rounded-md border-l-2 border-primary/50 bg-muted/40 px-3 py-2">
+                      <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><Quotes aria-hidden className="size-3.5" />Found in source {n}{source ? `: ${source.title}${source.page ? `, page ${source.page}` : ''}` : ''}</p>
+                      <p className="text-sm leading-relaxed [overflow-wrap:anywhere]">
+                        {cite.before && <span className="text-muted-foreground">…{flat(cite.before)}</span>}
+                        <mark className="rounded-sm bg-primary/15 px-0.5 text-foreground">{flat(cite.quote)}</mark>
+                        {cite.after && <span className="text-muted-foreground">{flat(cite.after)}…</span>}
+                      </p>
+                      {j === cites.length - 1 && <button type="button" onClick={() => onCite(n)} className="text-xs font-medium text-primary underline-offset-2 hover:underline">Show source {n}</button>}
+                    </blockquote>
+                  ))}
+                </div>
+              )
+            })}
+          </li>
+        ))}
+      </ul>
+      <p id={`${prefix}-verified`} className="text-xs text-muted-foreground">Each quote was checked against the source text. This confirms the words are in the source, not that the statement is correct. Open a quote to read it in place.</p>
+    </div>
+  )
+}
+
 /** Why an answer could not be written, by the backend's error code. The matching articles are always still shown. */
 const UNAVAILABLE_REASONS: Record<string, string> = {
   llm_insufficient_quota: 'Your AI provider account has no credit or quota left. Add credit with your provider, then ask again.',
@@ -88,7 +145,7 @@ const UNAVAILABLE_REASONS: Record<string, string> = {
 const UNAVAILABLE_DEFAULT = 'An answer could not be written right now.'
 
 const NOTES = {
-  not_covered: 'The sources found do not answer this directly. They are listed below in case they help.',
+  not_covered: 'No verified answer. No statement could be backed by a quote from the sources found. They are listed below in case they help.',
   no_results: 'No matching articles or documents. Only published articles and uploaded files that have been read are searched, so try different words.',
 } as const
 
@@ -106,7 +163,8 @@ export function TurnView({ workspaceId, turn }: { workspaceId: string; turn: Ask
       <UserBubble time={turn.created_at}>{turn.question}</UserBubble>
       <AgentRow>
         <div className="space-y-3">
-          {turn.status === 'answered' ? <AnswerText answer={turn} prefix={prefix} onCite={showSource} /> : <p className="text-sm text-muted-foreground">{turn.status === 'unavailable' ? `${(turn.reason && UNAVAILABLE_REASONS[turn.reason]) || UNAVAILABLE_DEFAULT} These are the matching sources.` : NOTES[turn.status]}</p>}
+          {turn.status === 'answered' ? (turn.claims && turn.claims.length > 0 ? <ClaimsList answer={{ ...turn, claims: turn.claims }} prefix={prefix} onCite={showSource} /> : <AnswerText answer={turn} prefix={prefix} onCite={showSource} />) : <p className="text-sm text-muted-foreground">{turn.status === 'unavailable' ? `${(turn.reason && UNAVAILABLE_REASONS[turn.reason]) || UNAVAILABLE_DEFAULT} These are the matching sources.` : NOTES[turn.status]}</p>}
+          {turn.cached && <p className="text-xs text-muted-foreground">Reused from a similar question asked earlier in this workspace.</p>}
           {turn.results.length > 0 && (
             <details open={sourcesOpen} onToggle={(e) => setSourcesOpen(e.currentTarget.open)} className="border-t pt-2">
               <summary className="cursor-pointer text-xs font-medium text-muted-foreground">Sources ({turn.results.length})</summary>

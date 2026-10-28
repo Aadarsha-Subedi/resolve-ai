@@ -10,3 +10,4 @@ MESSAGE_KEY_CHECK_FAILED = "The API key could not be checked right now. Try agai
 MESSAGE_KEY_FORMAT = "The API key must not contain spaces."
 MESSAGE_KEY_SAVED = "API key saved."
 MESSAGE_PROVIDER_NOT_FOUND = "Unknown provider."
+MESSAGE_USAGE_LISTED = "AI usage log retrieved successfully."

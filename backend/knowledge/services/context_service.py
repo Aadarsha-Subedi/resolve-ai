@@ -3,7 +3,8 @@ piece of text.
 
 The text can be a ticket, a customer's message or a question typed into the chat box. The
 original text and up to three LLM rewrites of it are each searched two ways: by words (OR of
-the most distinctive stemmed words, ranked with `ts_rank_cd`) and by meaning (the query's
+the most distinctive stemmed words, ranked with BM25 from the ParadeDB index, or with
+`ts_rank_cd` when the index is not available) and by meaning (the query's
 embedding against the passages' embeddings, cosine similarity). All the ranked lists are
 merged with reciprocal rank fusion, so a passage that ranks well for several wordings or in
 both searches rises to the top. There is no limit per article or document: when one
@@ -32,7 +33,7 @@ from common.search.query import search_with_query, with_headline
 from knowledge.constants import settings as cfg
 from knowledge.constants.enums import ArticleStatus, UploadStatus
 from knowledge.models import KnowledgeChunk
-from knowledge.services import embedding_service
+from knowledge.services import embedding_service, rerank_service
 from workspaces.constants import permissions
 from workspaces.services import access
 
@@ -50,7 +51,7 @@ class Passage:
     source_title: str  # the article title, or the uploaded file's name
     section: str
     snippet: str
-    score: float  # best raw score: word-search rank, or vector similarity (0 to 1)
+    score: float  # best raw score: BM25 (unbounded), ts_rank_cd (0 to 1) or vector similarity (0 to 1)
     text: str = ""
     page: int | None = None  # the PDF page, for passages of uploaded documents
 
@@ -60,6 +61,7 @@ class ContextResult:
     results: list[Passage] = field(default_factory=list)
     terms: list[str] = field(default_factory=list)
     rewrites: list[str] = field(default_factory=list)
+    reranked: bool = False  # the order and scores come from the reranker (internal)
 
     @property
     def rewritten(self) -> bool:
@@ -87,8 +89,58 @@ def _visible_chunks(workspace_id):
     )
 
 
+_BM25_SQL = """
+SELECT id, pdb.score(id) AS score
+FROM knowledge_chunk
+WHERE bm25_terms ||| %s AND workspace_id = %s
+ORDER BY score DESC
+LIMIT %s
+"""
+
+
+def _bm25_ranked(workspace_id, query: ContextQuery) -> list[tuple[str, float]] | None:
+    """(chunk id, BM25 score) for one query, best first, from the ParadeDB index; the query
+    terms are the same stemmed lexemes `bm25_terms` holds. None when the index is not
+    available, so the caller falls back to the tsvector search. The index covers all
+    workspaces, so IDF is corpus-wide; the rows returned are this workspace's only, and
+    only published articles and ready uploads."""
+    many = len(query.terms) >= cfg.CONTEXT_MANY_TERMS
+    min_hits = (
+        cfg.CONTEXT_BM25_MIN_HITS_MANY_TERMS if many else cfg.CONTEXT_BM25_MIN_HITS
+    )
+    params = [" ".join(query.terms), str(workspace_id), cfg.CONTEXT_BM25_POOL]
+    try:
+        with transaction.atomic(), connection.cursor() as cursor:
+            cursor.execute(_BM25_SQL, params)
+            scored = [(str(row[0]), float(row[1])) for row in cursor.fetchall()]
+    except DatabaseError as exc:
+        logger.warning(
+            "BM25 search is not available (%s): using the tsvector search",
+            f"{type(exc).__name__}: {str(exc).splitlines()[0][:200] if str(exc) else ''}",
+        )
+        return None
+    visible = dict(
+        _visible_chunks(workspace_id)
+        .filter(id__in=[chunk_id for chunk_id, _ in scored])
+        .values_list("id", "bm25_terms")
+    )
+    visible = {str(chunk_id): terms or "" for chunk_id, terms in visible.items()}
+    ranked = []
+    for chunk_id, score in scored:
+        if chunk_id not in visible:
+            continue
+        words = visible[chunk_id].split()
+        if sum(words.count(term) for term in query.terms) >= min_hits:
+            ranked.append((chunk_id, score))
+    return ranked[: cfg.CONTEXT_CANDIDATES_PER_QUERY]
+
+
 def _ranked(workspace_id, query: ContextQuery) -> list[tuple[str, float]]:
     """(chunk id, score) for one query by words, best first."""
+    if connection.vendor == "postgresql":
+        ranked = _bm25_ranked(workspace_id, query)
+        if ranked is not None:
+            return ranked
     base = _visible_chunks(workspace_id)
     many = len(query.terms) >= cfg.CONTEXT_MANY_TERMS
     minimum = cfg.CONTEXT_MIN_SCORE_MANY_TERMS if many else cfg.CONTEXT_MIN_SCORE
@@ -201,6 +253,31 @@ def _passage(row: KnowledgeChunk, score: float) -> Passage:
     )
 
 
+def _rerank(
+    user: User, workspace_id, text: str, candidates: list[tuple[str, float]], rows: dict
+) -> tuple[list[tuple[str, float]], bool]:
+    """The passages to keep as (chunk id, score), and whether the reranker ordered them. Falls
+    back to the fused order (raw scores) when reranking did not happen."""
+    limit = cfg.CONTEXT_MAX_RESULTS
+    documents = [
+        f"{rows[c].heading_path}\n{rows[c].text}"
+        if rows[c].heading_path
+        else rows[c].text
+        for c, _ in candidates
+    ]
+    ranked = rerank_service.rerank(
+        workspace_id, text, documents, limit, user_id=user.id
+    )
+    if ranked is None:
+        return candidates[:limit], False
+    picked = [
+        (candidates[i][0], score)
+        for i, score in ranked
+        if score >= cfg.CONTEXT_RERANK_MIN_SCORE
+    ]
+    return picked[:limit], True
+
+
 def retrieve_context(user: User, workspace, text: str) -> ContextResult:
     """Passages for `text`. The caller has checked the user's permission."""
     text = " ".join((text or "").split())
@@ -227,7 +304,11 @@ def retrieve_context(user: User, workspace, text: str) -> ContextResult:
         .filter(id__in=[c for c, _ in merged])
         .select_related("article", "upload")
     }
-    picked = [m for m in merged if m[0] in rows][: cfg.CONTEXT_MAX_RESULTS]
+    candidates = [m for m in merged if m[0] in rows]
+    candidates = candidates[
+        : max(cfg.CONTEXT_RERANK_CANDIDATES, cfg.CONTEXT_MAX_RESULTS)
+    ]
+    picked, reranked = _rerank(user, workspace.id, text, candidates, rows)
 
     combined = _combined_query(queries)
     chosen = _visible_chunks(workspace.id).filter(id__in=[c for c, _ in picked])
@@ -245,7 +326,10 @@ def retrieve_context(user: User, workspace, text: str) -> ContextResult:
             rows[chunk_id].headline = headline
     passages = [_passage(rows[chunk_id], score) for chunk_id, score in picked]
     return ContextResult(
-        results=passages, terms=combined.terms or terms, rewrites=rewrites
+        results=passages,
+        terms=combined.terms or terms,
+        rewrites=rewrites,
+        reranked=reranked,
     )
 
 

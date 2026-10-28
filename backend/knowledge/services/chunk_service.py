@@ -18,7 +18,11 @@ from django.db import connections, transaction
 from django.db.models import F, QuerySet
 
 from common.documents import ParsedDocument
-from knowledge.constants.settings import EMBED_SOURCE_ARTICLE, EMBED_SOURCE_UPLOAD
+from knowledge.constants.settings import (
+    BM25_HEADING_BOOST,
+    EMBED_SOURCE_ARTICLE,
+    EMBED_SOURCE_UPLOAD,
+)
 from knowledge.models import KnowledgeArticle, KnowledgeChunk, KnowledgeUpload
 from knowledge.services.chunker import ChunkDraft, chunk_document, chunk_markdown
 from workspaces.models import Workspace
@@ -28,9 +32,27 @@ from workspaces.models import Workspace
 _PARK_OFFSET = 10_000_000
 
 
+# Rebuilds `bm25_terms` from `search_vector`: every lexeme once per occurrence, a heading
+# (weight A) occurrence BM25_HEADING_BOOST times. Same stemming and stop words as the search
+# vector, so the BM25 index and the query terms (also lexemes) agree.
+BM25_TERMS_SQL = """
+UPDATE knowledge_chunk SET bm25_terms = (
+    SELECT string_agg(u.lexeme, ' ')
+    FROM unnest(knowledge_chunk.search_vector) AS u(lexeme, positions, weights)
+    CROSS JOIN LATERAL generate_series(
+        1,
+        (SELECT coalesce(sum(CASE WHEN w = 'A' THEN %s ELSE 1 END), 1)
+         FROM unnest(u.weights) AS w)::int
+    )
+)
+WHERE id = ANY(%s)
+"""
+
+
 def fill_vectors(chunks: QuerySet[KnowledgeChunk]) -> None:
     """Compute `search_vector` from heading (weight A) and text (weight B) in each row's
-    own language. Postgres only: on other databases the column stays NULL."""
+    own language, then `bm25_terms` from it. Postgres only: on other databases the columns
+    stay NULL."""
     if connections[chunks.db].vendor != "postgresql":
         return
     from django.contrib.postgres.search import SearchVector
@@ -41,6 +63,9 @@ def fill_vectors(chunks: QuerySet[KnowledgeChunk]) -> None:
             + SearchVector("text", weight="B", config=F("search_language"))
         )
     )
+    ids = list(chunks.values_list("id", flat=True))
+    with connections[chunks.db].cursor() as cursor:
+        cursor.execute(BM25_TERMS_SQL, [BM25_HEADING_BOOST, ids])
 
 
 def _language(workspace_id) -> str:

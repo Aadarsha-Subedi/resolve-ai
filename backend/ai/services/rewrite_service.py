@@ -12,7 +12,8 @@ import logging
 import re
 
 from accounts.models import User
-from ai.services import llm_service
+from ai.constants import settings as cfg
+from ai.services import llm_service, usage_service
 from common.exception.domain import AppException
 from common.llm import LLMError, LLMRequest
 
@@ -79,9 +80,27 @@ def rewrite_query(user: User, workspace_id, text: str) -> list[str]:
         response = llm_service.generate(user, workspace_id, request)
     except (LLMError, AppException) as exc:
         # AppException: for example the encryption keys are not configured.
-        logger.warning(
-            "Query rewriting skipped: %s",
-            getattr(exc, "code", None) or getattr(exc, "error_code", ""),
+        code = getattr(exc, "code", None) or getattr(exc, "error_code", "") or ""
+        logger.warning("Query rewriting skipped: %s", code)
+        usage_service.record(
+            workspace_id,
+            user.id,
+            cfg.USAGE_FEATURE_REWRITE,
+            cfg.USAGE_OUTCOME_ERROR,
+            question=text,
+            error_code=code,
         )
         return []
+    usage_service.record(
+        workspace_id,
+        user.id,
+        cfg.USAGE_FEATURE_REWRITE,
+        cfg.USAGE_OUTCOME_LLM_CALL,
+        question=text,
+        answer="\n".join(parse_queries(response.text, text)),
+        provider=usage_service.provider_of(response.model),
+        model=response.model,
+        input_tokens=response.input_tokens,
+        output_tokens=response.output_tokens,
+    )
     return parse_queries(response.text, text)

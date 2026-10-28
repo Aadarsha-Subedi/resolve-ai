@@ -25,7 +25,7 @@ from knowledge.constants.settings import (
     INDEX_STALE_SECONDS,
 )
 from knowledge.models import KnowledgeUpload
-from knowledge.services import chunk_service
+from knowledge.services import cache_service, chunk_service
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +110,9 @@ def index_upload(upload_id, force: bool = False) -> bool:
     if not done:  # deleted (or taken over) while we were reading it
         storage.delete(key)
         return False
+    cache_service.clear(
+        upload.workspace_id
+    )  # new passages: cached answers may be stale
     return True
 
 
