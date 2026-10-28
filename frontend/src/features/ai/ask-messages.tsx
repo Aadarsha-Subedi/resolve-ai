@@ -164,6 +164,7 @@ export function TurnView({ workspaceId, turn }: { workspaceId: string; turn: Ask
       <AgentRow>
         <div className="space-y-3">
           {turn.status === 'answered' ? (turn.claims && turn.claims.length > 0 ? <ClaimsList answer={{ ...turn, claims: turn.claims }} prefix={prefix} onCite={showSource} /> : <AnswerText answer={turn} prefix={prefix} onCite={showSource} />) : <p className="text-sm text-muted-foreground">{turn.status === 'unavailable' ? `${(turn.reason && UNAVAILABLE_REASONS[turn.reason]) || UNAVAILABLE_DEFAULT} These are the matching sources.` : NOTES[turn.status]}</p>}
+          {turn.cached && <p className="text-xs text-muted-foreground">Reused from a similar question asked earlier in this workspace.</p>}
           {turn.results.length > 0 && (
             <details open={sourcesOpen} onToggle={(e) => setSourcesOpen(e.currentTarget.open)} className="border-t pt-2">
               <summary className="cursor-pointer text-xs font-medium text-muted-foreground">Sources ({turn.results.length})</summary>

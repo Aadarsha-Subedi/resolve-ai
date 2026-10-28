@@ -254,7 +254,7 @@ def _passage(row: KnowledgeChunk, score: float) -> Passage:
 
 
 def _rerank(
-    workspace_id, text: str, candidates: list[tuple[str, float]], rows: dict
+    user: User, workspace_id, text: str, candidates: list[tuple[str, float]], rows: dict
 ) -> tuple[list[tuple[str, float]], bool]:
     """The passages to keep as (chunk id, score), and whether the reranker ordered them. Falls
     back to the fused order (raw scores) when reranking did not happen."""
@@ -265,7 +265,9 @@ def _rerank(
         else rows[c].text
         for c, _ in candidates
     ]
-    ranked = rerank_service.rerank(workspace_id, text, documents, limit)
+    ranked = rerank_service.rerank(
+        workspace_id, text, documents, limit, user_id=user.id
+    )
     if ranked is None:
         return candidates[:limit], False
     picked = [
@@ -306,7 +308,7 @@ def retrieve_context(user: User, workspace, text: str) -> ContextResult:
     candidates = candidates[
         : max(cfg.CONTEXT_RERANK_CANDIDATES, cfg.CONTEXT_MAX_RESULTS)
     ]
-    picked, reranked = _rerank(workspace.id, text, candidates, rows)
+    picked, reranked = _rerank(user, workspace.id, text, candidates, rows)
 
     combined = _combined_query(queries)
     chosen = _visible_chunks(workspace.id).filter(id__in=[c for c, _ in picked])

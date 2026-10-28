@@ -12,6 +12,8 @@ from django.core.cache import cache
 from django.db import transaction
 from django.db.models import Q, QuerySet
 
+from ai.constants import settings as ai_cfg
+from ai.services import usage_service
 from common.llm import (
     LLMError,
     LLMRateLimitedError,
@@ -23,6 +25,7 @@ from common.llm.constants import (
     EMBED_QUERY,
     EMBEDDING_BATCH_SIZE,
     EMBEDDING_MODEL,
+    PROVIDER_GEMINI,
 )
 from knowledge.constants.settings import (
     EMBED_DAILY_CHUNK_LIMIT,
@@ -147,6 +150,30 @@ def embed_queries(user_id, workspace_id, texts: list[str]) -> list[list[float]]:
     then searches by words alone."""
     if not is_configured():
         raise LLMUnavailableError()
+    try:
+        vectors = _embed_queries(user_id, workspace_id, texts)
+    except LLMError as exc:
+        _log_query_embedding(user_id, workspace_id, texts, exc.code)
+        raise
+    _log_query_embedding(user_id, workspace_id, texts)
+    return vectors
+
+
+def _log_query_embedding(user_id, workspace_id, texts, error_code: str = "") -> None:
+    usage_service.record(
+        workspace_id,
+        user_id,
+        ai_cfg.USAGE_FEATURE_EMBEDDING,
+        ai_cfg.USAGE_OUTCOME_ERROR if error_code else ai_cfg.USAGE_OUTCOME_LLM_CALL,
+        question=texts[0] if texts else "",
+        provider=PROVIDER_GEMINI,
+        model=EMBEDDING_MODEL,
+        error_code=error_code,
+        details={"texts": len(texts)},
+    )
+
+
+def _embed_queries(user_id, workspace_id, texts: list[str]) -> list[list[float]]:
     key = EMBED_QUERY_USAGE_KEY.format(
         workspace_id=workspace_id,
         user_id=user_id,

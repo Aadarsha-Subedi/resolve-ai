@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from django.conf import settings
 
+from ai.models import AIUsageLog
 from ai.services import allowance
 from ai.services.settings_service import SettingsView
 from common.llm.constants import (
@@ -56,4 +57,34 @@ class LLMSettingsData(BaseResponseData):
                 "resets_at": usage.resets_at.isoformat(),
             },
             "options": _options(),
+        }
+
+
+@dataclass(frozen=True)
+class UsageLogData(BaseResponseData):
+    log: AIUsageLog
+
+    def to_dict(self) -> dict:
+        row = self.log
+        return {
+            "id": str(row.id),
+            "feature": row.feature,
+            "outcome": row.outcome,
+            "user": (
+                {
+                    "id": str(row.user_id),
+                    "name": row.user.display_name or row.user.email,
+                }
+                if row.user_id
+                else None
+            ),
+            "provider": row.provider,
+            "model": row.model,
+            "question": row.question,
+            "answer": row.answer,
+            "details": row.details,
+            "input_tokens": row.input_tokens,
+            "output_tokens": row.output_tokens,
+            "error_code": row.error_code,
+            "created_at": row.created_at.isoformat(),
         }

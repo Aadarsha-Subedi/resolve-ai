@@ -99,7 +99,7 @@ export function SettingsPage() {
         </SettingRow>
       </SettingGroup>
 
-      <AiSettings workspaceId={workspace.id} />
+      <AiSettings workspaceId={workspace.id} isOwner={isOwner} />
 
       <SettingGroup id="danger" title="Danger zone">
         {workspace.is_demo && (

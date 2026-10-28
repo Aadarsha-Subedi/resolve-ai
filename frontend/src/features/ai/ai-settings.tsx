@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -20,7 +21,7 @@ import {
   type LlmSettings,
 } from '@/features/ai/api'
 import { ErrorPanel, LinesSkeleton } from '@/features/app/page-states'
-import { Gear } from '@/icons'
+import { ClockCounterClockwise, Gear } from '@/icons'
 import { errorMessage } from '@/lib/api'
 
 const MODES: { value: LlmMode; label: string }[] = [
@@ -33,7 +34,7 @@ function resetTime(iso: string) {
 }
 
 /** "AI assistant" group of the settings page. Per user and per workspace: every member sees their own. */
-export function AiSettings({ workspaceId }: { workspaceId: string }) {
+export function AiSettings({ workspaceId, isOwner = false }: { workspaceId: string; isOwner?: boolean }) {
   const settings = useLlmSettings(workspaceId)
   return (
     <SettingGroup id="ai" title="AI assistant">
@@ -46,13 +47,13 @@ export function AiSettings({ workspaceId }: { workspaceId: string }) {
           <ErrorPanel error={settings.error} onRetry={() => void settings.refetch()} />
         </div>
       ) : (
-        <AiSettingsRows workspaceId={workspaceId} settings={settings.data} />
+        <AiSettingsRows workspaceId={workspaceId} settings={settings.data} isOwner={isOwner} />
       )}
     </SettingGroup>
   )
 }
 
-function AiSettingsRows({ workspaceId, settings }: { workspaceId: string; settings: LlmSettings }) {
+function AiSettingsRows({ workspaceId, settings, isOwner }: { workspaceId: string; settings: LlmSettings; isOwner: boolean }) {
   const update = useUpdateLlmSettings(workspaceId)
   const [configuring, setConfiguring] = useState(false)
   const { options, keys, usage } = settings
@@ -135,6 +136,21 @@ function AiSettingsRows({ workspaceId, settings }: { workspaceId: string; settin
           Configure
         </Button>
       </SettingRow>
+      {isOwner && (
+        <SettingRow
+          title="AI usage log"
+          description="Every AI call in this workspace, with the question, the answer and whether it came from the cache or was sent to the AI. Only you can see it."
+        >
+          <Button
+            variant="outline"
+            icon={<ClockCounterClockwise />}
+            nativeButton={false}
+            render={<Link to={`/app/${workspaceId}/ai-usage` as never} />}
+          >
+            Open log
+          </Button>
+        </SettingRow>
+      )}
       {configuring && (
         <AiKeysDialog
           workspaceId={workspaceId}
