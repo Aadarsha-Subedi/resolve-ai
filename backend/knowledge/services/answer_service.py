@@ -11,12 +11,18 @@ import re
 from dataclasses import dataclass, field
 
 from accounts.models import User
-from ai.services import llm_service
+from ai.constants import settings as ai_cfg
+from ai.services import llm_service, settings_service, usage_service
 from common.exception.domain import AppException
 from common.llm import LLMError, LLMRequest
 from knowledge.constants import settings as cfg
 from knowledge.models import AskConversation, AskTurn
-from knowledge.services import ask_history, claim_service, context_service
+from knowledge.services import (
+    ask_history,
+    cache_service,
+    claim_service,
+    context_service,
+)
 from knowledge.services.context_service import ContextResult, Passage
 
 logger = logging.getLogger(__name__)
@@ -63,6 +69,10 @@ class AnswerResult:
     claims: list[dict] = field(default_factory=list)
     conversation: AskConversation | None = None
     turn: AskTurn | None = None
+    # Set when the answer came from the semantic cache: the payload that was stored with it.
+    cached_payload: dict | None = None
+    # What the LLM call cost, for the usage log (empty when no call was made).
+    usage: dict = field(default_factory=dict)
 
 
 def _clean(text: str) -> str:
@@ -103,16 +113,20 @@ def _answer(user: User, workspace_id, text: str) -> AnswerResult:
             "Answer skipped: %s",
             getattr(exc, "code", None) or getattr(exc, "error_code", ""),
         )
+        code = getattr(exc, "code", None) or getattr(exc, "error_code", "") or ""
         return AnswerResult(
-            context,
-            UNAVAILABLE,
-            reason=getattr(exc, "code", None) or getattr(exc, "error_code", "") or "",
+            context, UNAVAILABLE, reason=code, usage={"error_code": code}
         )
+    usage = {
+        "model": response.model,
+        "input_tokens": response.input_tokens,
+        "output_tokens": response.output_tokens,
+    }
     claims = claim_service.verify_claims(
         response.text, [p.text for p in context.results]
     )
     if not claims:
-        return AnswerResult(context, NOT_COVERED)
+        return AnswerResult(context, NOT_COVERED, usage=usage)
     cited = sorted({c["n"] for claim in claims for c in claim["cites"]})
     return AnswerResult(
         context,
@@ -120,6 +134,73 @@ def _answer(user: User, workspace_id, text: str) -> AnswerResult:
         answer=claim_service.answer_text(claims),
         cited=cited,
         claims=claims,
+        usage=usage,
+    )
+
+
+def _llm_model(user: User, workspace_id) -> tuple[str, str] | None:
+    """(provider, model) the caller's questions go to, or None when that cannot be resolved
+    (the answer attempt then reports the problem as it always did)."""
+    try:
+        resolved = settings_service.provider_for(user, workspace_id)
+    except LLMError, AppException:
+        return None
+    return resolved.provider.provider, resolved.provider.model
+
+
+def _cited_passages(payload: dict) -> list[dict]:
+    cited = set(payload.get("cited") or [])
+    return [
+        {
+            "citation": p["citation"],
+            "title": p["source"]["title"],
+            "section": p["section"],
+            "page": p["source"]["page"],
+            "cited": p["citation"] in cited,
+        }
+        for p in payload.get("results", [])
+    ]
+
+
+def _log(user, workspace_id, text, result, payload, resolved, found) -> None:
+    """One usage-log row for an answer that cost an LLM call or came from the cache."""
+    provider, model = resolved or ("", "")
+    details = {"status": result.status, "passages": _cited_passages(payload)}
+    if result.cached_payload is not None:
+        details["similarity"] = found.similarity
+        details["cached_question"] = found.cached_question
+        outcome = ai_cfg.USAGE_OUTCOME_CACHE_HIT
+    elif result.usage.get("error_code"):
+        outcome = ai_cfg.USAGE_OUTCOME_ERROR
+    elif result.usage:
+        outcome = ai_cfg.USAGE_OUTCOME_LLM_CALL
+    else:
+        return  # no passages, so no call was made
+    usage_service.record(
+        workspace_id,
+        user.id,
+        ai_cfg.USAGE_FEATURE_ASK,
+        outcome,
+        question=text,
+        answer=result.answer,
+        provider=provider,
+        model=result.usage.get("model") or model,
+        input_tokens=result.usage.get("input_tokens", 0),
+        output_tokens=result.usage.get("output_tokens", 0),
+        error_code=result.usage.get("error_code", ""),
+        details=details,
+    )
+
+
+def _from_cache(found: cache_service.Lookup) -> AnswerResult:
+    payload = found.payload
+    return AnswerResult(
+        context_service.ContextResult(),
+        ANSWERED,
+        answer=payload.get("answer") or "",
+        cited=payload.get("cited") or [],
+        claims=payload.get("claims") or [],
+        cached_payload={**payload, "cached": True},
     )
 
 
@@ -131,8 +212,23 @@ def answer_question(
     `to_dict` turns the result into the JSON that is stored and replayed later (the response
     serializer, so history shows exactly what the user was shown)."""
     conversation = ask_history.check_can_add_turn(user, workspace_id, conversation_id)
-    result = _answer(user, workspace_id, text)
+    resolved = _llm_model(user, workspace_id)
+    found = None
+    if to_dict and resolved:
+        found = cache_service.lookup(user.id, workspace_id, text, ":".join(resolved))
+    if found is not None and found.payload is not None:
+        result = _from_cache(found)
+    else:
+        result = _answer(user, workspace_id, text)
     stored = to_dict(result) if to_dict else {}
+    if to_dict:
+        if (
+            found is not None
+            and result.status == ANSWERED
+            and not result.cached_payload
+        ):
+            cache_service.store(workspace_id, text, found, stored)
+        _log(user, workspace_id, text, result, stored, resolved, found)
     turn = ask_history.record_turn(user, workspace_id, conversation, text, stored)
     result.conversation = turn.conversation
     result.turn = turn

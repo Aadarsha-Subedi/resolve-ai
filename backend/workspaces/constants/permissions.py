@@ -22,6 +22,7 @@ TICKETS_ASSIGN = "tickets.assign"
 DASHBOARD_VIEW = "dashboard.view"
 AI_USE = "ai.use"
 AUDIT_VIEW = "audit.view"  # owner only
+AI_USAGE_VIEW = "ai.usage_view"  # owner only
 
 _MEMBER_PERMISSIONS = frozenset(
     {
@@ -48,5 +49,6 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         JOIN_LINK_MANAGE,
         INVITATIONS_MANAGE,
         AUDIT_VIEW,
+        AI_USAGE_VIEW,
     },
 }

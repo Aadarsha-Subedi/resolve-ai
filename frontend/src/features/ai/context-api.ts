@@ -33,7 +33,7 @@ export type Claim = { text: string; cites: ClaimCite[] }
 
 /** The context payload plus an answer paraphrased from it. `answer` is null unless `status` is "answered".
  * `claims` is missing in chats saved before quotes were verified: those show `answer` as plain text. */
-export type Answer = ContextResult & { answered?: boolean; status: AnswerStatus; answer: string | null; cited: number[]; claims?: Claim[]; reason?: string | null }
+export type Answer = ContextResult & { answered?: boolean; status: AnswerStatus; answer: string | null; cited: number[]; claims?: Claim[]; reason?: string | null; /** Replayed from the semantic cache instead of searched and written again. */ cached?: boolean }
 
 /** One question and its answer as stored in the chat history. */
 export type AskTurn = Answer & { turn_id: string; question: string; created_at: string }

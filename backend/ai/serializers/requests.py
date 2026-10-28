@@ -7,6 +7,10 @@ from ai.constants.settings import (
     MODE_OWN_KEY,
     MODE_RESOLVE_AI,
     MODEL_MAX_LENGTH,
+    USAGE_FEATURES,
+    USAGE_ORDERINGS,
+    USAGE_OUTCOMES,
+    USAGE_SEARCH_MAX_LENGTH,
 )
 from common.llm.constants import PROVIDERS
 from common.serializers.base import StrictSerializer
@@ -50,3 +54,21 @@ class SaveKeySerializer(StrictSerializer):
         if not attrs:
             raise serializers.ValidationError(messages.MESSAGE_NOTHING_TO_UPDATE)
         return attrs
+
+
+class UsageFilterSerializer(serializers.Serializer):
+    """Query-string filters of the usage log; limit and offset are read by the paginator."""
+
+    search = serializers.CharField(
+        required=False, max_length=USAGE_SEARCH_MAX_LENGTH, trim_whitespace=True
+    )
+    feature = serializers.ChoiceField(required=False, choices=list(USAGE_FEATURES))
+    outcome = serializers.ChoiceField(required=False, choices=list(USAGE_OUTCOMES))
+    actor = serializers.UUIDField(required=False)
+    created_from = serializers.DateField(required=False)
+    created_to = serializers.DateField(required=False)
+    ordering = serializers.ChoiceField(
+        required=False,
+        default="-created_at",
+        choices=[*USAGE_ORDERINGS, *(f"-{name}" for name in USAGE_ORDERINGS)],
+    )

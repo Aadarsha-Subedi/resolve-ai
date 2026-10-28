@@ -12,6 +12,8 @@ from datetime import UTC, datetime
 from django.conf import settings
 from django.core.cache import cache
 
+from ai.constants import settings as ai_cfg
+from ai.services import usage_service
 from common.rerank import RerankError, get_reranker
 from knowledge.constants import settings as cfg
 
@@ -35,8 +37,21 @@ def _reserve(workspace_id) -> bool:
     return True
 
 
+def _log(workspace_id, user_id, query: str, count: int, error_code: str = "") -> None:
+    usage_service.record(
+        workspace_id,
+        user_id,
+        ai_cfg.USAGE_FEATURE_RERANK,
+        ai_cfg.USAGE_OUTCOME_ERROR if error_code else ai_cfg.USAGE_OUTCOME_LLM_CALL,
+        question=query,
+        provider="cohere",
+        error_code=error_code,
+        details={"passages": count},
+    )
+
+
 def rerank(
-    workspace_id, query: str, documents: list[str], top_n: int
+    workspace_id, query: str, documents: list[str], top_n: int, user_id=None
 ) -> list[tuple[int, float]] | None:
     """(index into `documents`, relevance score) for the best `top_n`, best first; None when
     reranking did not happen."""
@@ -49,8 +64,11 @@ def rerank(
         logger.warning("Rerank skipped: daily limit reached")
         return None
     try:
-        return reranker.rerank(query, documents, top_n)
+        ranked = reranker.rerank(query, documents, top_n)
     except RerankError as exc:
+        _log(workspace_id, user_id, query, len(documents), exc.code)
         cache.decr(_usage_key(workspace_id))  # a failed request is not counted
         logger.warning("Rerank skipped: %s", exc.code)
         return None
+    _log(workspace_id, user_id, query, len(documents))
+    return ranked

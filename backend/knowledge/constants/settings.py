@@ -141,3 +141,11 @@ CLAIM_QUOTE_MAX_WORDS = 40
 CLAIM_CONTEXT_CHARS = (
     160  # passage text kept before and after a quote, to show it in place
 )
+
+# Semantic cache of answers: a question whose embedding is at least this similar (cosine) to a
+# cached question of the same workspace, answered by the same provider and model, gets the
+# cached answer with no search and no LLM call. Not tuned on real data yet: every hit logs its
+# similarity in the AI usage log; raise it if wrong answers are served, lower it if near
+# repeats miss.
+CACHE_MIN_SIMILARITY = 0.92
+CACHE_TTL_DAYS = 7
